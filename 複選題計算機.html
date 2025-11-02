@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>雙模式複選題計分器</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+    <style>
+        :root {
+            --md-sys-color-primary: #6750A4;
+            --md-sys-color-on-primary: #FFFFFF;
+            --md-sys-color-primary-container: #EADDFF;
+            --md-sys-color-on-primary-container: #21005D;
+            --md-sys-color-secondary: #625B71;
+            --md-sys-color-on-secondary: #FFFFFF;
+            --md-sys-color-secondary-container: #E8DEF8;
+            --md-sys-color-on-secondary-container: #1D192B;
+            --md-sys-color-error: #B3261E;
+            --md-sys-color-on-error: #FFFFFF;
+            --md-sys-color-error-container: #F9DEDC;
+            --md-sys-color-on-error-container: #410E0B;
+            --md-sys-color-background: #FFFBFE;
+            --md-sys-color-on-background: #1C1B1F;
+            --md-sys-color-surface: #FFFBFE;
+            --md-sys-color-on-surface: #1C1B1F;
+            --md-sys-color-surface-variant: #E7E0EC;
+            --md-sys-color-on-surface-variant: #49454F;
+            --md-sys-color-outline: #79747E;
+            --md-sys-color-shadow: #000000;
+        }
+        body {
+            background-color: var(--md-sys-color-background);
+            color: var(--md-sys-color-on-background);
+            font-family: 'Roboto', 'Noto Sans TC', sans-serif;
+            padding-top: 2rem;
+        }
+        .card {
+            background-color: var(--md-sys-color-surface);
+            border-radius: 12px;
+            border: 1px solid var(--md-sys-color-outline);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
+        }
+        .card-header {
+             background-color: var(--md-sys-color-surface-variant);
+             color: var(--md-sys-color-on-surface-variant);
+             border-bottom: 1px solid var(--md-sys-color-outline);
+             font-weight: 500;
+        }
+        .form-label {
+            color: var(--md-sys-color-on-surface-variant);
+        }
+        .form-control, .form-control:focus {
+            background-color: var(--md-sys-color-surface-variant);
+            color: var(--md-sys-color-on-surface-variant);
+            border: none;
+            border-radius: 4px 4px 0 0;
+            box-shadow: none;
+            border-bottom: 1px solid var(--md-sys-color-on-surface-variant);
+        }
+        .form-control:focus {
+            border-bottom: 2px solid var(--md-sys-color-primary);
+        }
+        .btn {
+            border-radius: 20px;
+            padding: 10px 24px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border: none;
+        }
+        .btn-secondary {
+            background-color: var(--md-sys-color-secondary-container);
+            color: var(--md-sys-color-on-secondary-container);
+        }
+        .btn-danger {
+            background-color: var(--md-sys-color-error-container);
+            color: var(--md-sys-color-on-error-container);
+        }
+        .material-symbols-outlined {
+            vertical-align: bottom;
+            font-size: 1.2em;
+        }
+        .form-switch .form-check-input {
+            background-color: var(--md-sys-color-outline);
+        }
+        .form-switch .form-check-input:checked {
+            background-color: var(--md-sys-color-primary);
+        }
+        #result {
+            min-height: 48px;
+            display: flex;
+            align-items: center;
+            font-size: 1.1rem;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-8 col-lg-6">
+                <div class="card">
+                    <div class="card-header text-center">
+                        <h4 class="mb-0">雙模式複選題計分器</h4>
+                    </div>
+                    <div class="card-body p-4">
+
+                        <!-- Mode Selector -->
+                        <div class="mb-4 p-3 border rounded" style="background-color: var(--md-sys-color-surface-variant);">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" role="switch" id="modeSwitch" onchange="toggleMode()">
+                                <label class="form-check-label" for="modeSwitch" id="modeLabel">目前為：扣分模式</label>
+                            </div>
+                        </div>
+                        
+                        <!-- Question Inputs -->
+                        <div class="mb-3">
+                            <label for="questionScore" class="form-label">每題分數</label>
+                            <input type="number" class="form-control" id="questionScore" value="4" oninput="calculateScore()">
+                        </div>
+                        <div class="mb-3">
+                            <label for="numOptions" class="form-label">選項個數</label>
+                            <input type="number" class="form-control" id="numOptions" value="5" oninput="calculateScore()">
+                        </div>
+                        <div class="mb-3">
+                            <label for="numErrors" class="form-label">答錯選項數 (留白=全對)</label>
+                            <input type="number" class="form-control" id="numErrors" placeholder="請輸入答錯的選項數量" oninput="calculateScore()">
+                        </div>
+                        
+                        <div id="result" class="alert alert-info mt-4" role="alert">結果將顯示於此</div>
+
+                        <hr class="my-4">
+
+                        <!-- Total Score and Actions -->
+                        <div class="d-flex justify-content-between align-items-center">
+                             <div>
+                                <h5><span id="totalLabel">總扣分</span>: 
+                                    <span id="totalScore" class="badge rounded-pill fs-6">0.00</span>
+                                </h5>
+                            </div>
+                             <div class="d-flex gap-2">
+                                <button type="button" class="btn btn-secondary" id="addButton" onclick="addToTotal()">
+                                     <span class="material-symbols-outlined">add_circle</span> <span id="addButtonLabel">加總扣分</span>
+                                 </button>
+                                <button type="button" class="btn btn-danger" onclick="clearAll()">
+                                    <span class="material-symbols-outlined">delete_sweep</span> 全部清除
+                                </button>
+                             </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let calculationMode = 'deduction'; // 'deduction' or 'addition'
+        let currentEarnedScore = 0;
+        let currentDeduction = 0;
+
+        function toggleMode() {
+            const modeSwitch = document.getElementById('modeSwitch');
+            const modeLabel = document.getElementById('modeLabel');
+            const totalLabel = document.getElementById('totalLabel');
+            const addButtonLabel = document.getElementById('addButtonLabel');
+            const totalScoreBadge = document.getElementById('totalScore');
+
+            if (modeSwitch.checked) {
+                calculationMode = 'addition';
+                modeLabel.textContent = '目前為：加分模式';
+                totalLabel.textContent = '總得分';
+                addButtonLabel.textContent = '加總得分';
+                totalScoreBadge.classList.remove('bg-danger');
+                totalScoreBadge.classList.add('bg-primary');
+            } else {
+                calculationMode = 'deduction';
+                modeLabel.textContent = '目前為：扣分模式';
+                totalLabel.textContent = '總扣分';
+                addButtonLabel.textContent = '加總扣分';
+                totalScoreBadge.classList.remove('bg-primary');
+                totalScoreBadge.classList.add('bg-danger');
+            }
+            clearTotals();
+        }
+        
+        function calculateScore() {
+            const questionScore = parseFloat(document.getElementById('questionScore').value) || 0;
+            const numOptions = parseInt(document.getElementById('numOptions').value) || 5;
+            const numErrorsInput = document.getElementById('numErrors');
+            const resultDiv = document.getElementById('result');
+            
+            let earnedScore;
+
+            if (numOptions === 0) {
+                resultDiv.textContent = '選項個數不能為零';
+                currentEarnedScore = 0;
+                currentDeduction = 0;
+                return;
+            }
+
+            if (numErrorsInput.value.trim() === '' || parseInt(numErrorsInput.value) === 0) {
+                 earnedScore = questionScore;
+            } else {
+                const numErrors = parseInt(numErrorsInput.value);
+                if (numErrors < 0) {
+                    resultDiv.textContent = '錯誤數不能為負數';
+                    earnedScore = 0; // Assume 0 score for invalid input
+                } else {
+                    earnedScore = (numOptions - (2 * numErrors)) / numOptions * questionScore;
+                }
+                
+                if (earnedScore < 0) {
+                    earnedScore = 0;
+                }
+            }
+            
+            currentEarnedScore = earnedScore;
+            currentDeduction = questionScore - earnedScore;
+
+            if (calculationMode === 'deduction') {
+                resultDiv.textContent = `扣分: ${currentDeduction.toFixed(2)}`;
+            } else { // addition mode
+                resultDiv.textContent = `得分: ${currentEarnedScore.toFixed(2)}`;
+            }
+        }
+        
+        function addToTotal() {
+            const totalScoreSpan = document.getElementById('totalScore');
+            let currentTotal = parseFloat(totalScoreSpan.textContent);
+            
+            calculateScore(); // Ensure values are current
+            
+            if (calculationMode === 'addition') {
+                currentTotal += currentEarnedScore;
+            } else { // deduction mode
+                currentTotal += currentDeduction;
+            }
+
+            totalScoreSpan.textContent = currentTotal.toFixed(2);
+            
+            document.getElementById('numErrors').value = '';
+            calculateScore();
+        }
+        
+        function clearTotals() {
+            document.getElementById('totalScore').textContent = '0.00';
+            calculateScore();
+        }
+
+        function clearAll() {
+            document.getElementById('questionScore').value = '4';
+            document.getElementById('numOptions').value = '5';
+            document.getElementById('numErrors').value = '';
+            clearTotals();
+        }
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            toggleMode();
+        });
+    </script>
+</body>
+</html>
