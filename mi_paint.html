@@ -54,7 +54,7 @@
             border-radius: 1.5rem;
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
             overflow: hidden;
-            cursor: none; /* 【修復】在容器層級隱藏原生游標 */
+            cursor: none;
         }
 
         #drawingCanvas {
@@ -1056,45 +1056,94 @@
             initialMidPoint = { x: (pointers[0].clientX + pointers[1].clientX) / 2, y: (pointers[0].clientY + pointers[1].clientY) / 2 };
         }
         
-        // 【修復】將所有指標事件監聽器綁定到 #canvasContainer
+        // 【修復】重構指標事件邏輯
         container.addEventListener('pointerdown', (e) => {
             e.preventDefault();
             container.setPointerCapture(e.pointerId);
             activePointers.set(e.pointerId, e);
-            if (activePointers.size >= 2) { isDrawing = isSelecting = isMovingSelected = isRectSelecting = false; isPanningOrZooming = true; hideSelection(); initializePanAndZoom(); return; }
-            const transformedPoint = getTransformedPoint(e.clientX, e.clientY);
-            const isPenOrMouse = (e.pointerType === 'pen' || e.pointerType === 'mouse'); const isTouch = e.pointerType === 'touch';
-            if (isPenOrMouse || (isTouch && !isPalmRejectionEnabled)) {
-                isPanningOrZooming = false;
-                if (currentTool === 'pen') { hideSelection(); startDrawing(transformedPoint, e.pressure || 1, e.pointerType); }
-                else if (currentTool === 'eraser') { hideSelection(); if (currentEraseMode === 'round') startDrawing(transformedPoint, e.pressure || 1, e.pointerType); else if (currentEraseMode === 'rect_delete') startRectSelect(transformedPoint); }
-                else if (currentTool === 'select') { if (selectionActive && selectionBounds && isPointInSelectionBounds(transformedPoint, selectionBounds)) { startMove(transformedPoint); } else { startLasso(transformedPoint); } }
+
+            if (activePointers.size >= 2) {
+                // 轉換為多點觸控：取消單點操作並開始縮放
+                isDrawing = isSelecting = isMovingSelected = isRectSelecting = false;
+                recordingPath = [];
+                lassoPath = [];
+                isPanningOrZooming = true;
+                initializePanAndZoom();
+            } else if (activePointers.size === 1) {
+                // 新的單點觸控開始
+                isPanningOrZooming = false; // 確保縮放已關閉
+
+                const transformedPoint = getTransformedPoint(e.clientX, e.clientY);
+                const isPenOrMouse = (e.pointerType === 'pen' || e.pointerType === 'mouse');
+                const isTouch = e.pointerType === 'touch';
+
+                if (isPenOrMouse || (isTouch && !isPalmRejectionEnabled)) {
+                    if (currentTool === 'pen') {
+                        hideSelection();
+                        startDrawing(transformedPoint, e.pressure || 1, e.pointerType);
+                    } else if (currentTool === 'eraser') {
+                        hideSelection();
+                        if (currentEraseMode === 'round') startDrawing(transformedPoint, e.pressure || 1, e.pointerType);
+                        else if (currentEraseMode === 'rect_delete') startRectSelect(transformedPoint);
+                    } else if (currentTool === 'select') {
+                        if (selectionActive && selectionBounds && isPointInSelectionBounds(transformedPoint, selectionBounds)) {
+                            startMove(transformedPoint);
+                        } else {
+                            startLasso(transformedPoint);
+                        }
+                    }
+                }
             }
         });
+
         container.addEventListener('pointermove', (e) => {
-            e.preventDefault(); if (!activePointers.has(e.pointerId) && activePointers.size > 0) return;
+            e.preventDefault();
+            if (!activePointers.has(e.pointerId)) return;
+            
             activePointers.set(e.pointerId, e); 
             updateCustomCursor(e);
-            if (isPanningOrZooming) { handlePanAndZoom(); }
-            else if (isDrawing) { updateDrawing(getTransformedPoint(e.clientX, e.clientY), e.pressure || 1, e.pointerType); }
-            else if (isMovingSelected) { updateMove(getTransformedPoint(e.clientX, e.clientY)); }
-            else if (isSelecting) { updateLasso(getTransformedPoint(e.clientX, e.clientY)); }
-            else if (isRectSelecting) { updateRectSelect(getTransformedPoint(e.clientX, e.clientY)); }
+
+            if (isPanningOrZooming) {
+                handlePanAndZoom();
+            } else if (isDrawing) {
+                updateDrawing(getTransformedPoint(e.clientX, e.clientY), e.pressure || 1, e.pointerType);
+            } else if (isMovingSelected) {
+                updateMove(getTransformedPoint(e.clientX, e.clientY));
+            } else if (isSelecting) {
+                updateLasso(getTransformedPoint(e.clientX, e.clientY));
+            } else if (isRectSelecting) {
+                updateRectSelect(getTransformedPoint(e.clientX, e.clientY));
+            }
         });
+
         function stopInteraction(e) {
             container.releasePointerCapture(e.pointerId);
-            const wasPanningOrZooming = isPanningOrZooming;
-            activePointers.delete(e.pointerId);
-            if (wasPanningOrZooming && activePointers.size < 2) { isPanningOrZooming = false; redrawCanvas(); }
-            else if (wasPanningOrZooming) { initializePanAndZoom(); }
-            if (!wasPanningOrZooming) {
+            
+            if (!activePointers.has(e.pointerId)) return;
+
+            // 在移除指標前，完成當前操作
+            if (!isPanningOrZooming) {
                 if (isDrawing) finishStroke(e.pointerType);
                 else if (isSelecting) finishLasso();
                 else if (isMovingSelected) endMove();
                 else if (isRectSelecting) executeRectDelete();
             }
-            isDrawing = isSelecting = isMovingSelected = false;
+
+            activePointers.delete(e.pointerId);
+
+            // 根據剩餘的指標更新狀態
+            if (activePointers.size < 2) {
+                isPanningOrZooming = false;
+            }
+
+            // 【關鍵修復】當最後一個指標離開時，重置所有狀態
+            if (activePointers.size === 0) {
+                isDrawing = isSelecting = isMovingSelected = isRectSelecting = isPanningOrZooming = false;
+                recordingPath = [];
+                lassoPath = [];
+            }
         }
+
         container.addEventListener('pointerup', stopInteraction);
         container.addEventListener('pointercancel', stopInteraction);
         
