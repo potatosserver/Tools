@@ -162,7 +162,6 @@
             flex-grow: 1;
         }
         
-        /* --- MODIFIED: Loading indicator with spinner --- */
         #list-loading {
             display: flex;
             flex-direction: column;
@@ -184,7 +183,6 @@
         
         .list-error { color: #d8000c; background-color: #ffbaba; border: 1px solid #d8000c; padding: 15px; border-radius: 8px; text-align: center; margin: 20px; }
         
-        /* --- Article List Styles (from ai_studio_code.html, adapted) --- */
         #article-list-container { padding-left: 0; }
         .month-header { margin-top: 30px; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid #005a3c; color: #005a3c; font-size: 1.5em; }
         .article-item { background-color: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 15px 20px; margin-bottom: 12px; list-style-type: none; transition: box-shadow 0.2s ease-in-out, transform 0.2s ease; cursor: pointer; }
@@ -213,7 +211,6 @@
             </button>
         </div>
         <div id="panel-content">
-            <!-- MODIFIED: HTML for the new loading indicator -->
             <div id="list-loading">
                 <div class="list-spinner"></div>
                 <span>正在載入資料中...</span>
@@ -522,51 +519,31 @@
              scannerModal.style.display = 'none';
         });
 
-        // --- Article List Logic ---
+        // =========================================================================
+        // --- [NEW] Article List Logic (Using Structured JSON) ---
+        // =========================================================================
+        
+        // 請確認此 URL 指向您部署的、會回傳【結構化 JSON】的 Google Apps Script
         const GAS_URL = 'https://script.google.com/macros/s/AKfycbx2otgRUoMgTf73QWaWFgwcQhfHFxb4RNFguTxUV8FgO6b57oJAi91lLI-xgCRZS3mO/exec';
 
+        /**
+         * 抓取並渲染文章列表
+         */
         async function fetchAndRenderArticles() {
             const container = document.getElementById('article-list-container');
             const loadingDiv = document.getElementById('list-loading');
             try {
                 const response = await fetch(GAS_URL);
                 if (!response.ok) throw new Error(`網路請求失敗，狀態碼: ${response.status}`);
-                const data = await response.json();
-                const articlesHtml = data[0];
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(articlesHtml, 'text/html');
-                let allArticles = [];
-                const monthBlocks = doc.querySelectorAll('.newsbook_box');
-                monthBlocks.forEach(block => {
-                    const monthHeader = block.querySelector('.top_date h4').textContent.trim();
-                    const yearMatch = monthHeader.match(/(\d{4})/);
-                    if (!yearMatch) return;
-                    const year = yearMatch[1];
-                    const articleNodes = block.querySelectorAll('a.list_title');
-                    articleNodes.forEach(node => {
-                        const dateText = node.querySelector('p.date').textContent.trim();
-                        const month = dateText.substring(0, 2);
-                        const day = dateText.substring(2, 4);
-                        const fullDate = `${year}-${month}-${day}`;
-                        if (!isNaN(new Date(fullDate))) {
-                            allArticles.push({
-                                title: node.querySelector('h6.word_title').textContent.trim(),
-                                link: node.href,
-                                dateDisplay: dateText,
-                                fullDate: fullDate
-                            });
-                        }
-                    });
-                });
-                allArticles.sort((a, b) => {
-                    const dateA = new Date(a.fullDate);
-                    const dateB = new Date(b.fullDate);
-                    if (dateB.getFullYear() !== dateA.getFullYear()) return dateB.getFullYear() - dateA.getFullYear();
-                    if (dateB.getMonth() !== dateA.getMonth()) return dateB.getMonth() - dateA.getMonth();
-                    return dateA.getDate() - dateB.getDate();
-                });
-                renderGroupedArticles(allArticles, container);
+                
+                // 直接將回應解析為 JSON 物件
+                const groupedData = await response.json();
+                
+                // 使用新的渲染函式來處理 JSON
+                renderArticlesFromJSON(groupedData, container);
+                
                 loadingDiv.style.display = 'none';
+
             } catch (error) {
                 console.error('載入文章列表時發生錯誤:', error);
                 loadingDiv.style.display = 'none';
@@ -574,28 +551,48 @@
             }
         }
 
-        function renderGroupedArticles(sortedArticles, container) {
+        /**
+         * [輔助函式] 將月份縮寫轉為數字
+         */
+        function getMonthNumber(monthName) {
+            const months = { 'JAN': '1', 'FEB': '2', 'MAR': '3', 'APR': '4', 'MAY': '5', 'JUN': '6', 'JUL': '7', 'AUG': '8', 'SEP': '9', 'OCT': '10', 'NOV': '11', 'DEC': '12' };
+            return months[monthName.toUpperCase()] || '';
+        }
+
+        /**
+         * 根據結構化的 JSON 資料來渲染文章列表
+         * @param {object} groupedData - 從 GAS API 獲取的、按月份分組的文章資料
+         * @param {HTMLElement} container - 要渲染內容的容器元素
+         */
+        function renderArticlesFromJSON(groupedData, container) {
             container.innerHTML = '';
-            let currentMonthHeader = '';
-            sortedArticles.forEach(article => {
-                const articleDate = new Date(article.fullDate);
-                const articleMonthHeader = `${articleDate.getFullYear()} 年 ${articleDate.getMonth() + 1} 月`;
-                if (articleMonthHeader !== currentMonthHeader) {
-                    currentMonthHeader = articleMonthHeader;
-                    const headerElement = document.createElement('h2');
-                    headerElement.className = 'month-header';
-                    headerElement.textContent = currentMonthHeader;
-                    headerElement.style.display = 'block'; // Make sure month headers are visible
-                    container.appendChild(headerElement);
-                }
-                const itemElement = document.createElement('div');
-                itemElement.className = 'article-item';
-                itemElement.dataset.url = article.link; // Store URL in data attribute
-                itemElement.innerHTML = `<span class="date">${article.dateDisplay}</span><span class="title">${article.title}</span>`;
-                container.appendChild(itemElement);
+            
+            // 取得所有月份的鍵 (例如 "2025-NOV")，並進行排序 (新的在前面)
+            const sortedMonthKeys = Object.keys(groupedData).sort().reverse();
+
+            sortedMonthKeys.forEach(key => {
+                const monthData = groupedData[key];
+                
+                // 建立月份標題 (e.g., "2025 年 11 月")
+                const headerElement = document.createElement('h2');
+                headerElement.className = 'month-header';
+                headerElement.textContent = `${monthData.year} 年 ${getMonthNumber(monthData.month)} 月`;
+                headerElement.style.display = 'block';
+                container.appendChild(headerElement);
+
+                // 遍歷該月份的所有文章並建立對應的項目
+                monthData.articles.forEach(article => {
+                    const itemElement = document.createElement('div');
+                    itemElement.className = 'article-item';
+                    itemElement.dataset.url = article.url; // 將 URL 存在 data-url 屬性中
+                    
+                    // 從 JSON 物件中取得日期、星期和標題
+                    itemElement.innerHTML = `<span class="date">${article.date.replace('.', '/')} (${article.day_of_week})</span><span class="title">${article.title}</span>`;
+                    container.appendChild(itemElement);
+                });
             });
         }
-        
+
         // --- Floating Panel Control ---
         const panel = document.getElementById('article-list-panel');
         const overlay = document.getElementById('modal-overlay');
@@ -629,13 +626,13 @@
         document.getElementById('article-list-container').addEventListener('click', (event) => {
             const articleItem = event.target.closest('.article-item');
             if (articleItem && articleItem.dataset.url) {
-                // Go to home page if not already there, to show loading state
+                // 如果不在主頁，先模擬點擊返回按鈕回到主頁，以顯示載入狀態
                 if (!document.getElementById('home-page').classList.contains('active')) {
                     document.getElementById('back-to-home-btn').click();
                 }
-                // Set URL and extract
+                // 設定 URL 並開始提取
                 document.getElementById('url-input').value = articleItem.dataset.url;
-                toggleArticlePanel(true); // Force close panel
+                toggleArticlePanel(true); // 強制關閉面板
                 handleExtract();
             }
         });
@@ -643,7 +640,7 @@
         // --- Initial Page Load ---
         document.addEventListener('DOMContentLoaded', () => {
             showPage('home-page');
-            fetchAndRenderArticles(); // Pre-fetch the article list on page load
+            fetchAndRenderArticles(); // 在頁面載入時預先抓取文章列表
         });
     </script>
 </body>
