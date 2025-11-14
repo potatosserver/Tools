@@ -520,30 +520,20 @@
         });
 
         // =========================================================================
-        // --- [NEW] Article List Logic (Using Structured JSON) ---
+        // --- Article List Logic (Using Structured JSON) ---
         // =========================================================================
         
-        // 請確認此 URL 指向您部署的、會回傳【結構化 JSON】的 Google Apps Script
         const GAS_URL = 'https://script.google.com/macros/s/AKfycbx2otgRUoMgTf73QWaWFgwcQhfHFxb4RNFguTxUV8FgO6b57oJAi91lLI-xgCRZS3mO/exec';
 
-        /**
-         * 抓取並渲染文章列表
-         */
         async function fetchAndRenderArticles() {
             const container = document.getElementById('article-list-container');
             const loadingDiv = document.getElementById('list-loading');
             try {
                 const response = await fetch(GAS_URL);
                 if (!response.ok) throw new Error(`網路請求失敗，狀態碼: ${response.status}`);
-                
-                // 直接將回應解析為 JSON 物件
                 const groupedData = await response.json();
-                
-                // 使用新的渲染函式來處理 JSON
                 renderArticlesFromJSON(groupedData, container);
-                
                 loadingDiv.style.display = 'none';
-
             } catch (error) {
                 console.error('載入文章列表時發生錯誤:', error);
                 loadingDiv.style.display = 'none';
@@ -551,9 +541,6 @@
             }
         }
 
-        /**
-         * [輔助函式] 將月份縮寫轉為數字
-         */
         function getMonthNumber(monthName) {
             const months = { 'JAN': '1', 'FEB': '2', 'MAR': '3', 'APR': '4', 'MAY': '5', 'JUN': '6', 'JUL': '7', 'AUG': '8', 'SEP': '9', 'OCT': '10', 'NOV': '11', 'DEC': '12' };
             return months[monthName.toUpperCase()] || '';
@@ -561,14 +548,23 @@
 
         /**
          * 根據結構化的 JSON 資料來渲染文章列表
+         * [MODIFIED] 修正了月份排序邏輯，確保月份按時間倒序排列。
          * @param {object} groupedData - 從 GAS API 獲取的、按月份分組的文章資料
          * @param {HTMLElement} container - 要渲染內容的容器元素
          */
         function renderArticlesFromJSON(groupedData, container) {
             container.innerHTML = '';
             
-            // 取得所有月份的鍵 (例如 "2025-NOV")，並進行排序 (新的在前面)
-            const sortedMonthKeys = Object.keys(groupedData).sort().reverse();
+            // [修正] 取得所有月份的鍵 (例如 "2025-NOV")，並進行正確的日期排序
+            const sortedMonthKeys = Object.keys(groupedData).sort((a, b) => {
+                // 將 "YYYY-MON" 格式轉為可以比較的 Date 物件
+                // 為了安全，我們給一個固定的日期 '01'
+                const dateA = new Date(a.replace("-", " 01, "));
+                const dateB = new Date(b.replace("-", " 01, "));
+                
+                // 進行日期比較，b - a 會得到從新到舊的順序
+                return dateB - dateA;
+            });
 
             sortedMonthKeys.forEach(key => {
                 const monthData = groupedData[key];
@@ -581,13 +577,14 @@
                 container.appendChild(headerElement);
 
                 // 遍歷該月份的所有文章並建立對應的項目
+                // 因為後端已經將文章排序為月初到月底，這裡直接遍歷即可
                 monthData.articles.forEach(article => {
                     const itemElement = document.createElement('div');
                     itemElement.className = 'article-item';
-                    itemElement.dataset.url = article.url; // 將 URL 存在 data-url 屬性中
+                    itemElement.dataset.url = article.url;
                     
-                    // 從 JSON 物件中取得日期、星期和標題
-                    itemElement.innerHTML = `<span class="date">${article.date.replace('.', '/')} (${article.day_of_week})</span><span class="title">${article.title}</span>`;
+                    const dateDisplay = `${article.date.replace('.', '/')} (${article.day_of_week})`;
+                    itemElement.innerHTML = `<span class="date">${dateDisplay}</span><span class="title">${article.title}</span>`;
                     container.appendChild(itemElement);
                 });
             });
