@@ -3,53 +3,59 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>暴力版掃描儀</title>
+    <title>OpenCV 視覺分析儀</title>
     <style>
-        body { margin: 0; background: #000; overflow: hidden; font-family: sans-serif; touch-action: none; }
+        body { margin: 0; background: #111; color: #fff; font-family: monospace; overflow-x: hidden; }
         
-        .view-layer { position: fixed; top: 0; left: 0; width: 100%; height: 100%; }
-        video { width: 100%; height: 100%; object-fit: cover; }
-        canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+        /* 上半部：主畫面 */
+        .main-stage { position: relative; width: 100vw; height: 50vh; background: #000; overflow: hidden; }
+        video { width: 100%; height: 100%; object-fit: cover; opacity: 0.6; }
+        canvas.overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
         
-        /* 狀態列 */
-        #status { position: absolute; top: 10%; width: 100%; text-align: center; color: #fff; font-size: 18px; font-weight: bold; text-shadow: 0 2px 4px #000; pointer-events: none; z-index: 10; }
-        
-        /* 拍攝按鈕 */
-        .controls { position: fixed; bottom: 40px; width: 100%; display: flex; justify-content: center; pointer-events: none; z-index: 20; }
-        .btn { pointer-events: auto; width: 80px; height: 80px; border-radius: 50%; border: 5px solid #fff; background: rgba(255,255,255,0.2); cursor: pointer; transition: 0.2s; }
-        .btn:active { transform: scale(0.9); background: rgba(255,255,255,0.5); }
+        /* 下半部：四個偵錯視窗 */
+        .debug-grid { display: flex; flex-wrap: wrap; height: 50vh; width: 100vw; background: #222; }
+        .debug-box { width: 50%; height: 50%; position: relative; border: 1px solid #444; box-sizing: border-box; }
+        .debug-box canvas { width: 100%; height: 100%; object-fit: contain; }
+        .label { position: absolute; top: 5px; left: 5px; background: rgba(0,0,0,0.7); padding: 2px 5px; font-size: 12px; color: #0f0; }
+        .score { position: absolute; bottom: 5px; right: 5px; font-weight: bold; font-size: 14px; }
 
-        /* 編輯模式 UI */
-        #editLayer { display: none; background: #111; z-index: 30; }
-        #editControls { position: fixed; bottom: 20px; width: 100%; text-align: center; z-index: 40; }
-        .action-btn { padding: 12px 30px; border-radius: 30px; font-size: 18px; border: none; margin: 0 10px; font-weight: bold; cursor: pointer; }
-        
-        /* Debug 小視窗 (讓你知道電腦在看什麼) */
-        #debugCanvas { position: absolute; top: 10px; right: 10px; width: 100px; height: auto; border: 1px solid red; z-index: 50; background: #000; display: block; }
+        /* 贏家高亮 */
+        .winner { border: 3px solid #0f0; z-index: 10; }
+
+        #status { position: absolute; top: 10px; left: 0; width: 100%; text-align: center; z-index: 20; text-shadow: 1px 1px 2px #000; }
     </style>
 </head>
 <body>
 
-    <div id="status">啟動暴力演算法...</div>
-    
-    <!-- 讓使用者看到電腦在算什麼，增加信心 -->
-    <canvas id="debugCanvas"></canvas>
+    <div id="status">載入分析模組...</div>
 
-    <!-- 取景介面 -->
-    <div class="view-layer" id="cameraLayer">
+    <!-- 主畫面：顯示原始影像 + 最佳預測框 -->
+    <div class="main-stage">
         <video id="videoInput" playsinline muted autoplay></video>
         <canvas id="canvasOverlay"></canvas>
-        <div class="controls">
-            <button id="scanBtn" class="btn"></button>
-        </div>
     </div>
 
-    <!-- 編輯介面 -->
-    <div class="view-layer" id="editLayer">
-        <canvas id="canvasEdit"></canvas>
-        <div id="editControls">
-            <button class="action-btn" style="background:#555; color:#fff;" onclick="location.reload()">重來</button>
-            <button class="action-btn" id="confirmBtn" style="background:#007bff; color:#fff;">確認</button>
+    <!-- 偵錯網格：顯示 4 種演算法的「腦中畫面」 -->
+    <div class="debug-grid">
+        <div class="debug-box" id="box1">
+            <div class="label">1. Canny (邊緣)</div>
+            <canvas id="c1"></canvas>
+            <div class="score" id="s1">Score: 0</div>
+        </div>
+        <div class="debug-box" id="box2">
+            <div class="label">2. HSV (飽和度)</div>
+            <canvas id="c2"></canvas>
+            <div class="score" id="s2">Score: 0</div>
+        </div>
+        <div class="debug-box" id="box3">
+            <div class="label">3. Blur+Otsu (亮度)</div>
+            <canvas id="c3"></canvas>
+            <div class="score" id="s3">Score: 0</div>
+        </div>
+        <div class="debug-box" id="box4">
+            <div class="label">4. Adaptive (自適應)</div>
+            <canvas id="c4"></canvas>
+            <div class="score" id="s4">Score: 0</div>
         </div>
     </div>
 
@@ -59,20 +65,38 @@
         let video = document.getElementById("videoInput");
         let canvasOverlay = document.getElementById("canvasOverlay");
         let ctxOverlay = canvasOverlay.getContext("2d");
-        let debugCanvas = document.getElementById("debugCanvas");
         
-        // 編輯相關
-        let canvasEdit = document.getElementById("canvasEdit");
-        let ctxEdit = canvasEdit.getContext("2d");
-        let editLayer = document.getElementById("editLayer");
-        let currentCorners = []; // 手動調整的四個點
+        // Debug Canvases
+        let debugs = [
+            document.getElementById("c1"),
+            document.getElementById("c2"),
+            document.getElementById("c3"),
+            document.getElementById("c4")
+        ];
+        let scores = [
+            document.getElementById("s1"),
+            document.getElementById("s2"),
+            document.getElementById("s3"),
+            document.getElementById("s4")
+        ];
+        let boxes = [
+            document.getElementById("box1"),
+            document.getElementById("box2"),
+            document.getElementById("box3"),
+            document.getElementById("box4")
+        ];
 
         let streaming = false;
-        // OpenCV 變數
-        let src, small, gray, binary, contours, hierarchy;
-        let detectedPoints = null; // 偵測到的四個點 (0~1 比例)
+        let src = null, small = null;
+        // Mats for pipelines
+        let gray = null, blur = null, edge = null; // Pipeline 1 & 4
+        let hsv = null, sat = null, planes = null; // Pipeline 2
+        let binary = null; // Pipeline 3
+        
+        // Contours
+        let contours = null, hierarchy = null, approx = null;
 
-        // 座標映射
+        // 渲染映射參數
         let renderW, renderH, offsetX, offsetY;
 
         function onOpenCvReady() {
@@ -80,7 +104,6 @@
         }
 
         function startCamera() {
-            // 請求 4K 以獲得最廣視野
             navigator.mediaDevices.getUserMedia({
                 video: { facingMode: "environment", width: { ideal: 3840 }, height: { ideal: 2160 } },
                 audio: false
@@ -88,25 +111,23 @@
                 video.srcObject = stream;
                 video.onloadedmetadata = () => {
                     video.play();
-                    handleResize();
-                    window.addEventListener('resize', handleResize);
+                    resizeLayout();
+                    window.addEventListener('resize', resizeLayout);
                     streaming = true;
                     initOpenCV();
                     requestAnimationFrame(processVideo);
-                    document.getElementById("status").innerText = "暴力模式：尋找最大亮區";
+                    document.getElementById("status").innerText = "分析中... 綠框代表最佳演算法";
                 };
-            }).catch(e => alert("相機錯誤: " + e));
+            }).catch(e => alert(e));
         }
 
-        function handleResize() {
+        function resizeLayout() {
             let w = window.innerWidth;
-            let h = window.innerHeight;
+            let h = window.innerHeight / 2; // 主畫面佔一半
             canvasOverlay.width = w;
             canvasOverlay.height = h;
-            canvasEdit.width = w;
-            canvasEdit.height = h;
             
-            // 計算 Cover 模式下的真實渲染尺寸
+            // 計算 object-fit: cover 的真實渲染區域
             if (video.videoWidth) {
                 let vRatio = video.videoWidth / video.videoHeight;
                 let sRatio = w / h;
@@ -124,9 +145,15 @@
             src = new cv.Mat();
             small = new cv.Mat();
             gray = new cv.Mat();
+            blur = new cv.Mat();
+            edge = new cv.Mat();
+            hsv = new cv.Mat();
+            sat = new cv.Mat();
+            planes = new cv.MatVector();
             binary = new cv.Mat();
             contours = new cv.MatVector();
             hierarchy = new cv.Mat();
+            approx = new cv.Mat();
         }
 
         function processVideo() {
@@ -136,279 +163,189 @@
                 let cap = new cv.VideoCapture(video);
                 cap.read(src);
 
-                // 1. 極度縮小 (加快速度 + 模糊細節)
-                // 寬度只設 200，這樣木紋會直接消失，只剩顏色塊
-                let scale = 200 / src.cols;
-                cv.resize(src, small, new cv.Size(200, src.rows * scale));
+                // 1. 統一縮小到寬度 320px (為了同時跑 4 個演算法不卡頓)
+                let scale = 320 / src.cols;
+                cv.resize(src, small, new cv.Size(320, src.rows * scale));
 
-                // 2. 灰階 + 強力模糊
+                let resultScores = [0, 0, 0, 0];
+                let bestPolys = [null, null, null, null];
+
+                // ==========================================
+                // 🧠 Pipeline 1: Classic Canny (邊緣)
+                // ==========================================
                 cv.cvtColor(small, gray, cv.COLOR_RGBA2GRAY);
-                // 11x11 的模糊核，把所有雜訊都抹平
-                cv.GaussianBlur(gray, gray, new cv.Size(11, 11), 0);
+                cv.GaussianBlur(gray, blur, new cv.Size(5, 5), 0);
+                cv.Canny(blur, edge, 30, 120); // 低閥值
+                // 膨脹連接斷線
+                let kernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(3, 3));
+                cv.dilate(edge, edge, kernel);
+                
+                cv.imshow('c1', edge); // 顯示在視窗 1
+                let res1 = analyzeContours(edge, scale); // 評分
+                resultScores[0] = res1.score;
+                bestPolys[0] = res1.poly;
 
-                // 3. 🧨 暴力二值化 (Adaptive Threshold 的反向應用)
-                // 我們計算整張圖的平均亮度
-                let mean = cv.mean(gray);
-                // 設定閥值為平均亮度 + 一點點 (例如 10)
-                // 意思就是：只要比平均亮度亮一點點的，都算紙！
-                let threshValue = mean[0] + 10; 
-                cv.threshold(gray, binary, threshValue, 255, cv.THRESH_BINARY);
 
-                // 4. 形態學：開運算 (去除小白點) -> 閉運算 (填補紙上的黑字)
-                let kernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(5, 5));
+                // ==========================================
+                // 🧠 Pipeline 2: HSV Saturation (飽和度)
+                // ==========================================
+                cv.cvtColor(small, hsv, cv.COLOR_RGB2HSV);
+                cv.split(hsv, planes);
+                let sChannel = planes.get(1);
+                // 木頭飽和度高，紙飽和度低。低於 60 算紙。
+                cv.threshold(sChannel, sat, 60, 255, cv.THRESH_BINARY_INV);
+                cv.dilate(sat, sat, kernel); // 連接
+                
+                cv.imshow('c2', sat); // 顯示在視窗 2
+                let res2 = analyzeContours(sat, scale);
+                resultScores[1] = res2.score;
+                bestPolys[1] = res2.poly;
+                sChannel.delete();
+
+
+                // ==========================================
+                // 🧠 Pipeline 3: Blur + Otsu (暴力亮度)
+                // ==========================================
+                // 重度模糊
+                cv.GaussianBlur(gray, blur, new cv.Size(7, 7), 0);
+                // Otsu 自動二值化
+                cv.threshold(blur, binary, 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU);
+                // 形態學清理
                 cv.morphologyEx(binary, binary, cv.MORPH_OPEN, kernel);
                 cv.morphologyEx(binary, binary, cv.MORPH_CLOSE, kernel);
+                
+                cv.imshow('c3', binary); // 顯示在視窗 3
+                let res3 = analyzeContours(binary, scale);
+                resultScores[2] = res3.score;
+                bestPolys[2] = res3.poly;
 
-                // 顯示 Debug 畫面 (右上角小圖)
-                cv.imshow('debugCanvas', binary);
 
-                // 5. 找輪廓
-                cv.findContours(binary, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+                // ==========================================
+                // 🧠 Pipeline 4: Adaptive Threshold (自適應)
+                // ==========================================
+                // 這種方法通常雜訊很多，但對陰影抵抗力強
+                cv.adaptiveThreshold(gray, binary, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, 11, 2);
+                // 因為雜點多，需要侵蝕再膨脹
+                cv.erode(binary, binary, kernel);
+                cv.dilate(binary, binary, kernel);
+                
+                cv.imshow('c4', binary); // 顯示在視窗 4
+                let res4 = analyzeContours(binary, scale);
+                resultScores[3] = res4.score;
+                bestPolys[3] = res4.poly;
 
-                let maxArea = 0;
-                let bestCnt = null;
-                let totalArea = small.rows * small.cols;
 
-                for (let i = 0; i < contours.size(); ++i) {
-                    let cnt = contours.get(i);
-                    let area = cv.contourArea(cnt);
+                // ==========================================
+                // 🏆 決勝負：顯示最佳結果
+                // ==========================================
+                let maxScore = -1;
+                let winnerIndex = -1;
 
-                    // 條件：必須是最大的，且至少佔畫面的 15%
-                    // 且要把邊邊角角的雜訊濾掉 (比如貼在邊緣的棉被)
-                    if (area > maxArea && area > totalArea * 0.15) {
-                        maxArea = area;
-                        bestCnt = cnt;
+                // 更新分數 UI
+                for(let i=0; i<4; i++) {
+                    scores[i].innerText = "Score: " + Math.round(resultScores[i]);
+                    boxes[i].classList.remove("winner");
+                    if (resultScores[i] > maxScore) {
+                        maxScore = resultScores[i];
+                        winnerIndex = i;
                     }
                 }
 
-                detectedPoints = null;
+                // 繪製主畫面 Overlay
                 ctxOverlay.clearRect(0, 0, canvasOverlay.width, canvasOverlay.height);
-
-                if (bestCnt) {
-                    // 6. 🧨 暴力方框 (MinAreaRect)
-                    // 不管輪廓長怎樣 (哪怕缺一角)，直接算出它的「最小外接旋轉矩形」
-                    let rotatedRect = cv.minAreaRect(bestCnt);
-                    let vertices = cv.RotatedRect.points(rotatedRect);
-
-                    // 整理成我們的格式 (0~1)
-                    detectedPoints = [
-                        {x: vertices[0].x / small.cols, y: vertices[0].y / small.rows},
-                        {x: vertices[1].x / small.cols, y: vertices[1].y / small.rows},
-                        {x: vertices[2].x / small.cols, y: vertices[2].y / small.rows},
-                        {x: vertices[3].x / small.cols, y: vertices[3].y / small.rows}
-                    ];
-
-                    // 重新排序角落順序
-                    detectedPoints = sortPoints(detectedPoints);
-
-                    // 畫出來
-                    drawQuad(detectedPoints);
+                
+                if (winnerIndex !== -1 && maxScore > 50) { // 至少要有點分數
+                    boxes[winnerIndex].classList.add("winner"); // 亮起贏家視窗
+                    let winnerPoly = bestPolys[winnerIndex];
+                    if (winnerPoly) {
+                        drawMainOverlay(winnerPoly);
+                        document.getElementById("status").innerText = `最佳策略: ${getAlgoName(winnerIndex)} (分: ${Math.round(maxScore)})`;
+                    }
                 } else {
-                    // 沒抓到時畫個虛線框提示
-                    drawGuide();
+                    document.getElementById("status").innerText = "分析中... 無法鎖定目標";
                 }
-
+                
                 kernel.delete();
+
                 requestAnimationFrame(processVideo);
 
-            } catch (e) {
-                console.error(e);
+            } catch (err) {
+                console.error(err);
             }
         }
 
-        // 輔助繪圖
-        function drawQuad(points) {
-            ctxOverlay.beginPath();
-            ctxOverlay.lineWidth = 6;
-            ctxOverlay.strokeStyle = "#00AAFF"; // 科技藍
+        // === 評分邏輯 ===
+        function analyzeContours(matInput, scale) {
+            cv.findContours(matInput, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
             
-            let p0 = map(points[0]);
+            let maxArea = 0;
+            let bestScore = 0;
+            let bestPolyPoints = null;
+            let totalArea = matInput.rows * matInput.cols;
+
+            for (let i = 0; i < contours.size(); ++i) {
+                let cnt = contours.get(i);
+                let area = cv.contourArea(cnt);
+                
+                // 1. 面積過濾 (太小不要，太大佔滿全螢幕也不要)
+                if (area < totalArea * 0.1 || area > totalArea * 0.95) continue;
+
+                let peri = cv.arcLength(cnt, true);
+                cv.approxPolyDP(cnt, approx, 0.04 * peri, true);
+
+                // 2. 形狀評分
+                let score = 0;
+                
+                // 是四邊形？
+                if (approx.rows === 4) {
+                    score += 100;
+                    // 是凸多邊形？
+                    if (cv.isContourConvex(approx)) score += 50;
+                    
+                    // 面積越大越好 (加權)
+                    score += (area / totalArea) * 100;
+
+                    if (score > bestScore) {
+                        bestScore = score;
+                        // 儲存正規化座標
+                        bestPolyPoints = [];
+                        for(let j=0; j<8; j+=2) {
+                            bestPolyPoints.push({
+                                x: approx.data32S[j] / matInput.cols, // 0~1
+                                y: approx.data32S[j+1] / matInput.rows // 0~1
+                            });
+                        }
+                    }
+                }
+            }
+            return { score: bestScore, poly: bestPolyPoints };
+        }
+
+        function drawMainOverlay(normPoints) {
+            ctxOverlay.beginPath();
+            ctxOverlay.lineWidth = 5;
+            ctxOverlay.strokeStyle = "#0f0";
+            
+            let p0 = mapToScreen(normPoints[0]);
             ctxOverlay.moveTo(p0.x, p0.y);
             for(let i=1; i<4; i++) {
-                let p = map(points[i]);
+                let p = mapToScreen(normPoints[i]);
                 ctxOverlay.lineTo(p.x, p.y);
             }
             ctxOverlay.closePath();
             ctxOverlay.stroke();
-            
-            // 四個角畫圓圈
-            ctxOverlay.fillStyle = "#00AAFF";
-            for(let i=0; i<4; i++) {
-                let p = map(points[i]);
-                ctxOverlay.beginPath();
-                ctxOverlay.arc(p.x, p.y, 8, 0, 2*Math.PI);
-                ctxOverlay.fill();
-            }
         }
 
-        function drawGuide() {
-            let w = canvasOverlay.width;
-            let h = canvasOverlay.height;
-            ctxOverlay.strokeStyle = "rgba(255,255,255,0.3)";
-            ctxOverlay.lineWidth = 2;
-            ctxOverlay.setLineDash([10, 10]);
-            ctxOverlay.strokeRect(w*0.2, h*0.2, w*0.6, h*0.6);
-            ctxOverlay.setLineDash([]);
-        }
-
-        function map(pt) {
+        function mapToScreen(np) {
             return {
-                x: pt.x * video.videoWidth / video.videoWidth * renderW + offsetX,
-                y: pt.y * video.videoHeight / video.videoHeight * renderH + offsetY
+                x: np.x * video.videoWidth / video.videoWidth * renderW + offsetX,
+                y: np.y * video.videoHeight / video.videoHeight * renderH + offsetY
             };
         }
 
-        function sortPoints(pts) {
-            // 簡單排序：先依 Y 排序，前兩個是上方，後兩個是下方
-            // 上方兩個依 X 排序 => 左上, 右上
-            // 下方兩個依 X 排序 => 左下, 右下 (要小心旋轉角度導致的錯位，這裡用簡單版)
-            // 為求穩定，這裡用重心法排序
-            
-            // 計算重心
-            let cx = (pts[0].x + pts[1].x + pts[2].x + pts[3].x) / 4;
-            let cy = (pts[0].y + pts[1].y + pts[2].y + pts[3].y) / 4;
-
-            let top = [], bot = [];
-            pts.forEach(p => {
-                if(p.y < cy) top.push(p); else bot.push(p);
-            });
-
-            // 特殊情況處理 (如果太傾斜，可能 top 只有 1 個)
-            // 這裡用極角排序法 (更穩)
-            return pts.sort((a, b) => {
-                return Math.atan2(a.y - cy, a.x - cx) - Math.atan2(b.y - cy, b.x - cx);
-            });
-            // 注意：極角排序的順序通常是：左上(-135) -> 右上(-45) -> 右下(45) -> 左下(135)
-            // 但順序可能會有差異，稍後手動調整補救
+        function getAlgoName(i) {
+            return ["Canny", "HSV", "Blur+Otsu", "Adaptive"][i];
         }
-
-
-        // === 拍照與編輯 ===
-        document.getElementById('scanBtn').addEventListener('click', () => {
-            streaming = false;
-            document.getElementById('cameraLayer').style.display = 'none';
-            editLayer.style.display = 'block';
-
-            // 1. 截圖
-            canvasEdit.width = video.videoWidth;
-            canvasEdit.height = video.videoHeight;
-            ctxEdit.drawImage(video, 0, 0);
-
-            // 2. 初始化四點 (如果有偵測到就用偵測的，沒有就給預設)
-            if (detectedPoints) {
-                // 這裡需要更嚴謹的排序，確保是 TL, TR, BR, BL
-                let mapped = detectedPoints.map(p => ({x: p.x * video.videoWidth, y: p.y * video.videoHeight}));
-                
-                // Y 軸排序法
-                mapped.sort((a, b) => a.y - b.y);
-                let top = mapped.slice(0, 2).sort((a, b) => a.x - b.x);
-                let bot = mapped.slice(2, 4).sort((a, b) => a.x - b.x);
-                currentCorners = [top[0], top[1], bot[1], bot[0]];
-            } else {
-                let w = video.videoWidth, h = video.videoHeight;
-                currentCorners = [
-                    {x: w*0.2, y: h*0.2}, {x: w*0.8, y: h*0.2},
-                    {x: w*0.8, y: h*0.8}, {x: w*0.2, y: h*0.8}
-                ];
-            }
-            
-            drawEditor();
-        });
-
-        // 編輯器繪圖
-        function drawEditor() {
-            // 畫底圖
-            ctxEdit.drawImage(video, 0, 0);
-            
-            // 畫遮罩
-            ctxEdit.fillStyle = "rgba(0,0,0,0.6)";
-            ctxEdit.beginPath();
-            ctxEdit.rect(0,0,canvasEdit.width, canvasEdit.height);
-            
-            // 挖空
-            ctxEdit.moveTo(currentCorners[0].x, currentCorners[0].y);
-            ctxEdit.lineTo(currentCorners[1].x, currentCorners[1].y);
-            ctxEdit.lineTo(currentCorners[2].x, currentCorners[2].y);
-            ctxEdit.lineTo(currentCorners[3].x, currentCorners[3].y);
-            ctxEdit.closePath();
-            ctxEdit.fill("evenodd");
-
-            // 畫線與點
-            ctxEdit.strokeStyle = "#00AAFF";
-            ctxEdit.lineWidth = 4;
-            ctxEdit.stroke();
-
-            currentCorners.forEach(p => {
-                ctxEdit.beginPath();
-                ctxEdit.arc(p.x, p.y, 20, 0, 2*Math.PI); // 點大一點好拖曳
-                ctxEdit.fillStyle = "#00AAFF";
-                ctxEdit.fill();
-                ctxEdit.strokeStyle = "#fff";
-                ctxEdit.lineWidth = 2;
-                ctxEdit.stroke();
-            });
-        }
-
-        // 觸控邏輯 (與上一版相同，略為精簡)
-        let activeIdx = -1;
-        function getPos(e) {
-            let r = canvasEdit.getBoundingClientRect();
-            let sx = canvasEdit.width / r.width;
-            let sy = canvasEdit.height / r.height;
-            return {
-                x: (e.touches[0].clientX - r.left) * sx,
-                y: (e.touches[0].clientY - r.top) * sy
-            };
-        }
-        canvasEdit.addEventListener("touchstart", e => {
-            e.preventDefault();
-            let pos = getPos(e);
-            let minD = 100, idx = -1;
-            currentCorners.forEach((p, i) => {
-                let d = Math.hypot(p.x - pos.x, p.y - pos.y);
-                if(d < minD) { minD = d; idx = i; }
-            });
-            activeIdx = idx;
-        }, {passive: false});
-        
-        canvasEdit.addEventListener("touchmove", e => {
-            e.preventDefault();
-            if (activeIdx >= 0) {
-                currentCorners[activeIdx] = getPos(e);
-                requestAnimationFrame(drawEditor);
-            }
-        }, {passive: false});
-
-        // 確認輸出 (透視變換)
-        document.getElementById('confirmBtn').addEventListener('click', () => {
-            let w1 = Math.hypot(currentCorners[1].x - currentCorners[0].x, currentCorners[1].y - currentCorners[0].y);
-            let w2 = Math.hypot(currentCorners[2].x - currentCorners[3].x, currentCorners[2].y - currentCorners[3].y);
-            let w = Math.max(w1, w2);
-            
-            let h1 = Math.hypot(currentCorners[3].x - currentCorners[0].x, currentCorners[3].y - currentCorners[0].y);
-            let h2 = Math.hypot(currentCorners[2].x - currentCorners[1].x, currentCorners[2].y - currentCorners[1].y);
-            let h = Math.max(h1, h2);
-
-            let srcTri = cv.matFromArray(4, 1, cv.CV_32FC2, [
-                currentCorners[0].x, currentCorners[0].y, currentCorners[1].x, currentCorners[1].y,
-                currentCorners[2].x, currentCorners[2].y, currentCorners[3].x, currentCorners[3].y
-            ]);
-            let dstTri = cv.matFromArray(4, 1, cv.CV_32FC2, [0,0, w,0, w,h, 0,h]);
-            let M = cv.getPerspectiveTransform(srcTri, dstTri);
-            
-            let raw = cv.imread(canvasEdit); // 讀現在的畫面 (包含 video)
-            let dst = new cv.Mat();
-            cv.warpPerspective(raw, dst, M, new cv.Size(w, h));
-
-            // 簡單增強
-            cv.cvtColor(dst, dst, cv.COLOR_RGBA2GRAY);
-            cv.adaptiveThreshold(dst, dst, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, 15, 12);
-            
-            cv.imshow('canvasEdit', dst);
-            document.getElementById('editControls').innerHTML = '<button class="action-btn" onclick="location.reload()">完成</button>';
-            
-            raw.delete(); dst.delete(); srcTri.delete(); dstTri.delete(); M.delete();
-        });
 
     </script>
 </body>
