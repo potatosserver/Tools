@@ -3,50 +3,53 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>廣角全螢幕掃描儀</title>
+    <title>飽和度增強掃描儀</title>
     <style>
-        body { margin: 0; background: #000; overflow: hidden; font-family: sans-serif; }
+        body { margin: 0; background: #000; overflow: hidden; font-family: sans-serif; touch-action: none; }
         
-        /* 視訊層：填滿螢幕 */
-        .camera-view { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; background: #000; }
-        video { width: 100%; height: 100%; object-fit: cover; } /* cover 讓畫面填滿，但可能會切邊，我們後續用 JS 修正 */
+        /* 相機與疊加層 */
+        .stage { position: fixed; top: 0; left: 0; width: 100%; height: 100%; }
+        video { width: 100%; height: 100%; object-fit: cover; }
+        canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
         
-        /* 繪圖層：覆蓋在視訊上 */
-        canvas.overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; }
+        /* UI 介面 */
+        #status { position: absolute; top: 20px; left: 0; width: 100%; text-align: center; color: #0f0; text-shadow: 1px 1px 1px #000; z-index: 10; pointer-events: none; font-weight: bold;}
         
-        /* 提示文字 */
-        #status { position: absolute; top: 20px; left: 0; width: 100%; text-align: center; color: white; text-shadow: 1px 1px 2px black; z-index: 3; pointer-events: none; font-size: 16px; }
+        .controls { position: fixed; bottom: 30px; left: 0; width: 100%; display: flex; justify-content: center; gap: 20px; z-index: 20; pointer-events: none; }
+        .controls button { pointer-events: auto; } /* 讓按鈕可點，背景穿透 */
+
+        .btn { width: 70px; height: 70px; border-radius: 50%; border: 4px solid #fff; background: rgba(0,0,0,0.3); color: #fff; font-weight: bold; cursor: pointer; backdrop-filter: blur(4px); }
+        #scanBtn.active { background: #28a745; border-color: #fff; box-shadow: 0 0 20px #28a745; }
+
+        /* 編輯模式 UI */
+        #editLayer { display: none; z-index: 30; background: #111; }
+        #editControls { position: fixed; bottom: 20px; width: 100%; text-align: center; pointer-events: auto; }
+        .rect-btn { padding: 10px 25px; border-radius: 30px; font-size: 16px; border: none; margin: 0 10px; cursor: pointer; }
         
-        /* 按鈕區 */
-        .controls { position: fixed; bottom: 40px; left: 0; width: 100%; display: flex; justify-content: center; gap: 20px; z-index: 10; }
-        .btn { width: 70px; height: 70px; border-radius: 50%; border: 4px solid #fff; background: rgba(0,0,0,0.3); color: #fff; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
-        #scanBtn.ready { background: #28a745; border-color: #fff; box-shadow: 0 0 15px #28a745; }
-        
-        /* 結果預覽層 */
-        .result-layer { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #111; z-index: 20; display: none; flex-direction: column; align-items: center; justify-content: center; }
-        canvas.result-canvas { max-width: 90%; max-height: 80%; border: 2px solid #fff; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
-        .result-btns { margin-top: 20px; display: flex; gap: 20px; }
-        .rect-btn { width: auto; height: auto; padding: 10px 30px; border-radius: 30px; font-size: 16px; background: #fff; color: #000; border: none; }
+        /* 拖曳點樣式 */
+        .corner-point { position: absolute; width: 30px; height: 30px; background: rgba(0,255,0,0.5); border: 2px solid #fff; border-radius: 50%; transform: translate(-50%, -50%); z-index: 40; }
     </style>
 </head>
 <body>
 
-    <div id="status">啟動廣角相機中...</div>
+    <div id="status">載入強力模式 (HSV)...</div>
 
-    <div class="camera-view">
+    <!-- 預覽與拍照區 -->
+    <div class="stage" id="cameraStage">
         <video id="videoInput" playsinline muted autoplay></video>
-        <canvas id="canvasOverlay" class="overlay"></canvas>
+        <canvas id="canvasOverlay"></canvas>
     </div>
 
-    <div class="controls" id="cameraControls">
-        <button id="scanBtn" class="btn">偵測中</button>
+    <div class="controls" id="mainControls">
+        <button id="scanBtn" class="btn">拍照</button>
     </div>
 
-    <div class="result-layer" id="resultLayer">
-        <canvas id="canvasResult" class="result-canvas"></canvas>
-        <div class="result-btns">
-            <button id="retryBtn" class="rect-btn">重拍</button>
-            <button id="saveBtn" class="rect-btn" style="background:#007bff; color:fff;">下載</button>
+    <!-- 手動編輯區 -->
+    <div class="stage" id="editLayer">
+        <canvas id="canvasEdit"></canvas>
+        <div id="editControls">
+            <button id="retakeBtn" class="rect-btn" style="background: #666; color:#fff;">重拍</button>
+            <button id="confirmBtn" class="rect-btn" style="background: #007bff; color:#fff;">確認掃描</button>
         </div>
     </div>
 
@@ -56,293 +59,386 @@
         let video = document.getElementById("videoInput");
         let canvasOverlay = document.getElementById("canvasOverlay");
         let ctxOverlay = canvasOverlay.getContext("2d");
+        let canvasEdit = document.getElementById("canvasEdit");
+        let ctxEdit = canvasEdit.getContext("2d");
+        
         let status = document.getElementById("status");
         let scanBtn = document.getElementById("scanBtn");
-        let resultLayer = document.getElementById("resultLayer");
-        let canvasResult = document.getElementById("canvasResult");
+        let editLayer = document.getElementById("editLayer");
 
         let streaming = false;
-        let src = null;
-        let dst = null; // 縮圖
-        let gray = null;
-        let cap = null;
-        let detectedContour = null;
+        let src = null;      // 原始全解析度
+        let dsMat = null;    // 縮圖 (Detection Scale)
+        let hsv = null;
+        let planes = null;   // 通道分離
+        let sat = null;      // 飽和度通道
+        let contours = null;
+        let hierarchy = null;
+        let approx = null;
+
+        let detectedContour = null; // 存座標 (0~1 的比例)
+        let currentCorners = [];    // 存手動調整時的四個點 (螢幕座標)
         
-        // 用來計算座標映射的參數
-        let scaleFactor = 1; 
-        let videoRenderW, videoRenderH, offsetX, offsetY;
+        // 座標映射參數
+        let renderW, renderH, offsetX, offsetY;
 
         function onOpenCvReady() {
+            status.innerText = "開啟廣角相機...";
             startCamera();
         }
 
         function startCamera() {
-            // 🌟 關鍵修改：請求 4K 解析度
-            // 這會強迫平板使用最廣角的鏡頭，並提供最高畫質
-            const constraints = {
-                video: {
-                    facingMode: "environment",
-                    width: { ideal: 3840 },  
-                    height: { ideal: 2160 }
-                },
+            // 請求高解析度
+            navigator.mediaDevices.getUserMedia({
+                video: { facingMode: "environment", width: { ideal: 3840 }, height: { ideal: 2160 } },
                 audio: false
-            };
-
-            navigator.mediaDevices.getUserMedia(constraints)
-                .then(function(stream) {
-                    video.srcObject = stream;
-                    video.onloadedmetadata = function(e) {
-                        video.play();
-                        status.innerText = `解析度: ${video.videoWidth}x${video.videoHeight} (全螢幕模式)`;
-                        if (!streaming) {
-                            streaming = true;
-                            resizeCanvas();
-                            window.addEventListener('resize', resizeCanvas);
-                            
-                            initOpenCV();
-                            requestAnimationFrame(processVideo);
-                        }
-                    };
-                })
-                .catch(err => {
-                    status.innerText = "相機錯誤: " + err.name;
-                });
+            }).then(stream => {
+                video.srcObject = stream;
+                video.onloadedmetadata = () => {
+                    video.play();
+                    resizeCanvas();
+                    window.addEventListener('resize', resizeCanvas);
+                    streaming = true;
+                    initOpenCV();
+                    requestAnimationFrame(processVideo);
+                    status.innerText = "HSV 模式：專攻淺色背景";
+                };
+            }).catch(err => alert("相機錯誤: " + err));
         }
 
-        // 處理視窗縮放與 object-fit: cover 的座標計算
         function resizeCanvas() {
-            canvasOverlay.width = window.innerWidth;
-            canvasOverlay.height = window.innerHeight;
+            let w = window.innerWidth;
+            let h = window.innerHeight;
+            canvasOverlay.width = w;
+            canvasOverlay.height = h;
+            canvasEdit.width = w;
+            canvasEdit.height = h;
+            
+            // 計算 object-fit: cover 的參數
+            if(video.videoWidth){
+                let vRatio = video.videoWidth / video.videoHeight;
+                let sRatio = w / h;
+                if(sRatio > vRatio) {
+                    renderW = w; renderH = w / vRatio;
+                    offsetX = 0; offsetY = (h - renderH) / 2;
+                } else {
+                    renderH = h; renderW = h * vRatio;
+                    offsetX = (w - renderW) / 2; offsetY = 0;
+                }
+            }
         }
 
         function initOpenCV() {
             src = new cv.Mat();
-            dst = new cv.Mat();
-            gray = new cv.Mat();
+            dsMat = new cv.Mat();
+            hsv = new cv.Mat();
+            planes = new cv.MatVector();
+            sat = new cv.Mat();
+            contours = new cv.MatVector();
+            hierarchy = new cv.Mat();
+            approx = new cv.Mat();
         }
 
         function processVideo() {
             if (!streaming) return;
 
             try {
-                if (!cap) cap = new cv.VideoCapture(video);
-                cap.read(src); // 讀取原始高畫質影像
+                let cap = new cv.VideoCapture(video);
+                cap.read(src);
 
-                // 1. 縮小影像以加快運算 (寬度固定 600)
-                // 越小越快，且對淺色邊緣的模糊容忍度越高
-                let processWidth = 600;
-                scaleFactor = src.cols / processWidth;
-                let processHeight = src.rows / scaleFactor;
-                cv.resize(src, dst, new cv.Size(processWidth, processHeight), 0, 0, cv.INTER_AREA);
+                // 1. 縮小運算 (寬度 500)
+                let scale = 500 / src.cols;
+                let dsSize = new cv.Size(500, src.rows * scale);
+                cv.resize(src, dsMat, dsSize);
 
-                // 2. 影像處理 (針對淺色桌面優化)
-                cv.cvtColor(dst, gray, cv.COLOR_RGBA2GRAY);
-                cv.GaussianBlur(gray, gray, new cv.Size(5, 5), 0);
-                // 使用較低閥值來抓取微弱邊緣
-                cv.Canny(gray, gray, 30, 120); 
+                // 2. 🌟 核心魔法：HSV 色彩空間分離 🌟
+                cv.cvtColor(dsMat, hsv, cv.COLOR_RGB2HSV); // 轉 HSV
+                cv.split(hsv, planes); // 分離通道 [Hue, Saturation, Value]
                 
-                // 膨脹操作 (把斷掉的線連起來)
-                let kernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(3, 3));
-                cv.dilate(gray, gray, kernel);
-                cv.dilate(gray, gray, kernel); // 兩次膨脹更保險
+                // 取出 Saturation (通道 1)
+                let sChannel = planes.get(1); 
+
+                // 反轉與二值化
+                // 木頭飽和度高(亮)，紙張飽和度低(暗)。
+                // 我們要做的是：Threshold (把飽和度低的變成白，飽和度高的變成黑)
+                // 這裡設 80 (0-255)，低於 80 的飽和度視為紙張
+                cv.threshold(sChannel, sat, 60, 255, cv.THRESH_BINARY_INV);
+
+                // 形態學運算：閉合 (把紙張上的字填滿) + 膨脹 (連接邊緣)
+                let kernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(5, 5));
+                cv.dilate(sat, sat, kernel);
+                cv.morphologyEx(sat, sat, cv.MORPH_CLOSE, kernel);
 
                 // 3. 找輪廓
-                let contours = new cv.MatVector();
-                let hierarchy = new cv.Mat();
-                cv.findContours(gray, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+                cv.findContours(sat, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
 
-                let maxArea = 0;
                 detectedContour = null;
-                let approx = new cv.Mat();
-
-                // 畫面總面積 (小圖)
-                let totalArea = processWidth * processHeight;
+                let maxArea = 0;
+                let totalArea = dsSize.width * dsSize.height;
 
                 for (let i = 0; i < contours.size(); ++i) {
                     let cnt = contours.get(i);
                     let area = cv.contourArea(cnt);
-
-                    // 條件：面積要夠大 (畫面 1/10 以上)，避免抓到小雜訊
-                    if (area > totalArea * 0.1) {
+                    
+                    // 只要夠大 (大於畫面 15%)
+                    if (area > totalArea * 0.15) {
                         let peri = cv.arcLength(cnt, true);
-                        // 0.03 的擬合度比較寬鬆，適合稍微彎曲的紙張
-                        cv.approxPolyDP(cnt, approx, 0.03 * peri, true);
+                        cv.approxPolyDP(cnt, approx, 0.04 * peri, true);
 
                         if (approx.rows === 4 && cv.isContourConvex(approx) && area > maxArea) {
                             maxArea = area;
-                            if (detectedContour) detectedContour.delete();
-                            detectedContour = approx.clone();
+                            // 存正規化座標 (0.0 ~ 1.0) 方便不同尺寸映射
+                            detectedContour = [];
+                            for(let j=0; j<8; j+=2) {
+                                detectedContour.push({
+                                    x: approx.data32S[j] / dsSize.width,
+                                    y: approx.data32S[j+1] / dsSize.height
+                                });
+                            }
                         }
                     }
                 }
 
-                // 4. 繪製 (座標映射)
+                // 4. 繪製預覽
                 ctxOverlay.clearRect(0, 0, canvasOverlay.width, canvasOverlay.height);
-                calculateRenderParams(); // 計算 video 在螢幕上的實際顯示位置
-
+                
                 if (detectedContour) {
-                    drawResult(detectedContour);
-                    scanBtn.innerText = "拍照";
-                    scanBtn.classList.add('ready');
+                    scanBtn.classList.add("active");
+                    drawQuad(ctxOverlay, detectedContour, "#00ff00", 4);
                 } else {
-                    scanBtn.innerText = "偵測中";
-                    scanBtn.classList.remove('ready');
-                    // 沒抓到時，畫一個全螢幕的半透明引導框
-                    drawGuide();
+                    scanBtn.classList.remove("active");
+                    // 沒偵測到時，顯示相機中心框框提示
+                    drawGuide(ctxOverlay);
                 }
 
-                // 清理
-                contours.delete(); hierarchy.delete(); approx.delete(); kernel.delete();
-
+                // 釋放記憶體
+                sChannel.delete(); kernel.delete(); 
                 requestAnimationFrame(processVideo);
+
             } catch (err) {
                 console.error(err);
+                requestAnimationFrame(processVideo);
             }
         }
 
-        // 計算 video (object-fit: cover) 在 Canvas 上的真實偏移量
-        function calculateRenderParams() {
-            let screenRatio = canvasOverlay.width / canvasOverlay.height;
-            let videoRatio = video.videoWidth / video.videoHeight;
-
-            if (screenRatio > videoRatio) {
-                // 螢幕比較寬，影片上下裁切 (還是左右？ cover 邏輯)
-                // 螢幕寬度 = 影片渲染寬度
-                videoRenderW = canvasOverlay.width;
-                videoRenderH = videoRenderW / videoRatio;
-                offsetX = 0;
-                offsetY = (canvasOverlay.height - videoRenderH) / 2;
-            } else {
-                // 螢幕比較高，影片左右裁切
-                videoRenderH = canvasOverlay.height;
-                videoRenderW = videoRenderH * videoRatio;
-                offsetX = (canvasOverlay.width - videoRenderW) / 2;
-                offsetY = 0;
-            }
-        }
-
-        function drawResult(cnt) {
-            ctxOverlay.beginPath();
-            ctxOverlay.lineWidth = 5;
-            ctxOverlay.strokeStyle = "#00ff00"; // 亮綠色
-            ctxOverlay.lineJoin = "round";
-
-            let data = cnt.data32S;
-            // 座標轉換公式：
-            // (小圖座標 * 縮放比) -> 原始影片座標
-            // (原始影片座標 / 原始影片寬) * 渲染寬 + 偏移 -> 螢幕座標
+        // 繪製四邊形
+        function drawQuad(ctx, points, color, lw) {
+            ctx.beginPath();
+            ctx.strokeStyle = color;
+            ctx.lineWidth = lw;
             
-            let mapX = (x) => (x * scaleFactor) / video.videoWidth * videoRenderW + offsetX;
-            let mapY = (y) => (y * scaleFactor) / video.videoHeight * videoRenderH + offsetY;
-
-            ctxOverlay.moveTo(mapX(data[0]), mapY(data[1]));
-            for (let i = 2; i < data.length; i += 2) {
-                ctxOverlay.lineTo(mapX(data[i]), mapY(data[i+1]));
+            // 映射回螢幕座標
+            let p0 = mapToScreen(points[0]);
+            ctx.moveTo(p0.x, p0.y);
+            for (let i = 1; i < 4; i++) {
+                let p = mapToScreen(points[i]);
+                ctx.lineTo(p.x, p.y);
             }
-            ctxOverlay.closePath();
-            ctxOverlay.stroke();
-
-            // 畫一個半透明填充，更有質感
-            ctxOverlay.fillStyle = "rgba(0, 255, 0, 0.2)";
-            ctxOverlay.fill();
-        }
-
-        function drawGuide() {
-            // 畫四個角落的提示框
-            let w = canvasOverlay.width;
-            let h = canvasOverlay.height;
-            let m = 50; // margin
-            let l = 30; // length
+            ctx.closePath();
+            ctx.stroke();
             
-            ctxOverlay.strokeStyle = "rgba(255, 255, 255, 0.5)";
-            ctxOverlay.lineWidth = 3;
-            ctxOverlay.beginPath();
-            // 左上
-            ctxOverlay.moveTo(m, m+l); ctxOverlay.lineTo(m, m); ctxOverlay.lineTo(m+l, m);
-            // 右上
-            ctxOverlay.moveTo(w-m-l, m); ctxOverlay.lineTo(w-m, m); ctxOverlay.lineTo(w-m, m+l);
-            // 右下
-            ctxOverlay.moveTo(w-m, h-m-l); ctxOverlay.lineTo(w-m, h-m); ctxOverlay.lineTo(w-m-l, h-m);
-            // 左下
-            ctxOverlay.moveTo(m+l, h-m); ctxOverlay.lineTo(m, h-m); ctxOverlay.lineTo(m, h-m-l);
-            ctxOverlay.stroke();
+            // 半透明填充
+            ctx.fillStyle = color + "33"; // alpha ~0.2
+            ctx.fill();
         }
 
-        // === 拍照與透視變換 ===
+        function mapToScreen(normPoint) {
+            // 正規化座標 (0~1) -> 影片像素 -> 螢幕像素
+            return {
+                x: normPoint.x * video.videoWidth / video.videoWidth * renderW + offsetX,
+                y: normPoint.y * video.videoHeight / video.videoHeight * renderH + offsetY
+            };
+        }
+
+        function drawGuide(ctx) {
+            let w = ctx.canvas.width;
+            let h = ctx.canvas.height;
+            let cx = w/2, cy = h/2;
+            let rw = w * 0.6, rh = h * 0.7;
+            ctx.strokeStyle = "rgba(255,255,255,0.3)";
+            ctx.lineWidth = 2;
+            ctx.strokeRect(cx - rw/2, cy - rh/2, rw, rh);
+        }
+
+        // === 拍照與手動編輯邏輯 ===
+        
         scanBtn.addEventListener('click', () => {
-            if (!streaming) return;
+            streaming = false;
+            document.getElementById('cameraStage').style.display = 'none';
+            document.getElementById('mainControls').style.display = 'none';
+            editLayer.style.display = 'block';
 
-            // 1. 決定要裁切的點
-            let finalPoints = [];
+            // 抓圖到 CanvasEdit
+            canvasEdit.width = video.videoWidth;
+            canvasEdit.height = video.videoHeight;
+            ctxEdit.drawImage(video, 0, 0);
+
+            // 初始化四個角點
             if (detectedContour) {
-                let data = detectedContour.data32S;
-                for(let i=0; i<8; i+=2) {
-                    // 還原回原始高畫質圖的座標
-                    finalPoints.push({ x: data[i] * scaleFactor, y: data[i+1] * scaleFactor });
-                }
+                // 如果有偵測到，用偵測到的點 (轉回原始解析度)
+                currentCorners = detectedContour.map(p => ({
+                    x: p.x * video.videoWidth,
+                    y: p.y * video.videoHeight
+                }));
+                // 重新排序
+                currentCorners = sortCorners(currentCorners);
             } else {
-                // 沒偵測到，就拍全螢幕 (這在廣角模式下很有用)
-                // 這裡需要計算螢幕可見範圍對應到 Video 的座標 (因為 object-fit: cover)
-                // 簡單起見，我們直接拍視訊中心的一塊區域
-                let vw = video.videoWidth;
-                let vh = video.videoHeight;
-                finalPoints = [
-                    {x: vw*0.1, y: vh*0.1}, {x: vw*0.9, y: vh*0.1},
-                    {x: vw*0.9, y: vh*0.9}, {x: vw*0.1, y: vh*0.9}
+                // 沒偵測到，給預設四角 (內縮一點)
+                let w = video.videoWidth, h = video.videoHeight;
+                currentCorners = [
+                    {x: w*0.1, y: h*0.1}, {x: w*0.9, y: h*0.1},
+                    {x: w*0.9, y: h*0.9}, {x: w*0.1, y: h*0.9}
                 ];
-                alert("未偵測到邊緣，將拍攝畫面中央區域");
             }
+            
+            drawEditor();
+        });
 
-            // 2. 排序座標
-            let sorted = sortCorners(finalPoints);
+        // 編輯器繪圖 loop
+        function drawEditor() {
+            // 重繪背景圖
+            ctxEdit.drawImage(video, 0, 0);
+            
+            // 畫遮罩 (讓框框外變暗)
+            ctxEdit.fillStyle = "rgba(0,0,0,0.5)";
+            ctxEdit.beginPath();
+            ctxEdit.rect(0, 0, canvasEdit.width, canvasEdit.height);
+            
+            // 挖空多邊形
+            ctxEdit.moveTo(currentCorners[0].x, currentCorners[0].y);
+            ctxEdit.lineTo(currentCorners[1].x, currentCorners[1].y);
+            ctxEdit.lineTo(currentCorners[2].x, currentCorners[2].y);
+            ctxEdit.lineTo(currentCorners[3].x, currentCorners[3].y);
+            ctxEdit.closePath();
+            ctxEdit.fill("evenodd"); // 關鍵：奇偶填充規則實現挖空
 
-            // 3. 透視變換
+            // 畫線
+            ctxEdit.strokeStyle = "#00ff00";
+            ctxEdit.lineWidth = 5;
+            ctxEdit.beginPath();
+            ctxEdit.moveTo(currentCorners[0].x, currentCorners[0].y);
+            for(let i=1; i<4; i++) ctxEdit.lineTo(currentCorners[i].x, currentCorners[i].y);
+            ctxEdit.closePath();
+            ctxEdit.stroke();
+
+            // 畫四個圓點
+            currentCorners.forEach(p => {
+                ctxEdit.beginPath();
+                ctxEdit.arc(p.x, p.y, 20, 0, 2*Math.PI);
+                ctxEdit.fillStyle = "rgba(0,255,0,0.5)";
+                ctxEdit.fill();
+                ctxEdit.strokeStyle = "white";
+                ctxEdit.lineWidth = 3;
+                ctxEdit.stroke();
+            });
+        }
+
+        // === 觸控拖曳邏輯 (Touch Events) ===
+        let activePointIndex = -1;
+
+        function getTouchPos(e) {
+            // 編輯模式下，canvasEdit 是全螢幕，但內容是 videoWidth/Height
+            // 我們需要計算觸控點對應到 Canvas 內部圖片的座標
+            // 因為我們把 Canvas 設為 3840x2160 (video size)，但 CSS 讓它 fit screen
+            // 這邊為了簡單，我們假設 editLayer 顯示時，canvasEdit 透過 CSS object-fit 顯示
+            // 實際做法：計算螢幕點 -> 圖片點
+            
+            let rect = canvasEdit.getBoundingClientRect();
+            let scaleX = canvasEdit.width / rect.width;
+            let scaleY = canvasEdit.height / rect.height;
+            
+            let clientX = e.touches[0].clientX;
+            let clientY = e.touches[0].clientY;
+            
+            return {
+                x: (clientX - rect.left) * scaleX,
+                y: (clientY - rect.top) * scaleY
+            };
+        }
+
+        canvasEdit.addEventListener("touchstart", (e) => {
+            e.preventDefault();
+            let pos = getTouchPos(e);
+            // 檢查是否點到圓圈 (半徑 60px 容錯)
+            let minDist = 100;
+            activePointIndex = -1;
+            
+            currentCorners.forEach((p, i) => {
+                let dist = Math.hypot(p.x - pos.x, p.y - pos.y);
+                if(dist < minDist) {
+                    minDist = dist;
+                    activePointIndex = i;
+                }
+            });
+        }, {passive: false});
+
+        canvasEdit.addEventListener("touchmove", (e) => {
+            e.preventDefault();
+            if(activePointIndex !== -1) {
+                let pos = getTouchPos(e);
+                currentCorners[activePointIndex] = pos;
+                requestAnimationFrame(drawEditor);
+            }
+        }, {passive: false});
+
+        canvasEdit.addEventListener("touchend", (e) => {
+            activePointIndex = -1;
+        });
+
+
+        // === 確認裁切與輸出 ===
+        document.getElementById("confirmBtn").addEventListener("click", () => {
+            // 1. 透視變換
+            let srcMat = cv.imread(canvasEdit); // 從編輯畫布讀取
+            
+            // 排序點
+            let sorted = sortCorners(currentCorners);
             let w1 = Math.hypot(sorted[1].x - sorted[0].x, sorted[1].y - sorted[0].y);
             let w2 = Math.hypot(sorted[2].x - sorted[3].x, sorted[2].y - sorted[3].y);
-            let maxWidth = Math.max(w1, w2);
+            let mw = Math.max(w1, w2);
             let h1 = Math.hypot(sorted[3].x - sorted[0].x, sorted[3].y - sorted[0].y);
             let h2 = Math.hypot(sorted[2].x - sorted[1].x, sorted[2].y - sorted[1].y);
-            let maxHeight = Math.max(h1, h2);
+            let mh = Math.max(h1, h2);
 
             let srcTri = cv.matFromArray(4, 1, cv.CV_32FC2, [
                 sorted[0].x, sorted[0].y, sorted[1].x, sorted[1].y,
                 sorted[2].x, sorted[2].y, sorted[3].x, sorted[3].y
             ]);
-            let dstTri = cv.matFromArray(4, 1, cv.CV_32FC2, [0,0, maxWidth,0, maxWidth,maxHeight, 0,maxHeight]);
-            
+            let dstTri = cv.matFromArray(4, 1, cv.CV_32FC2, [0,0, mw,0, mw,mh, 0,mh]);
             let M = cv.getPerspectiveTransform(srcTri, dstTri);
-            let resultMat = new cv.Mat();
-            let dsize = new cv.Size(maxWidth, maxHeight);
+            let dst = new cv.Mat();
+            let dsize = new cv.Size(mw, mh);
             
-            cv.warpPerspective(src, resultMat, M, dsize);
+            cv.warpPerspective(srcMat, dst, M, dsize);
 
-            // 4. 濾鏡處理
-            cv.cvtColor(resultMat, resultMat, cv.COLOR_RGBA2GRAY);
-            cv.adaptiveThreshold(resultMat, resultMat, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, 15, 10);
+            // 2. 二值化濾鏡
+            cv.cvtColor(dst, dst, cv.COLOR_RGBA2GRAY);
+            // 針對淺色背景，增加亮度對比
+            // cv.equalizeHist(dst, dst); // 直方圖均衡化 (可選)
+            cv.adaptiveThreshold(dst, dst, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, 15, 12);
 
-            // 5. 顯示
-            cv.imshow('canvasResult', resultMat);
-            resultLayer.style.display = 'flex';
-            document.getElementById('cameraControls').style.display = 'none';
-            streaming = false;
+            // 3. 顯示最終結果 (直接覆蓋在 canvasEdit 上簡單展示)
+            cv.imshow('canvasEdit', dst);
+            
+            // 隱藏按鈕，顯示下載
+            document.getElementById('editControls').innerHTML = '<button class="rect-btn" onclick="location.reload()">完成 (點擊重整)</button>';
 
-            // 清理
-            srcTri.delete(); dstTri.delete(); M.delete(); resultMat.delete();
+            srcMat.delete(); srcTri.delete(); dstTri.delete(); M.delete(); dst.delete();
         });
 
-        document.getElementById('retryBtn').addEventListener('click', () => {
-            resultLayer.style.display = 'none';
-            document.getElementById('cameraControls').style.display = 'flex';
-            streaming = true;
-            requestAnimationFrame(processVideo);
+        document.getElementById("retakeBtn").addEventListener("click", () => {
+            location.reload();
         });
 
         function sortCorners(pts) {
-            pts.sort((a, b) => a.y - b.y);
-            let top = pts.slice(0, 2).sort((a, b) => a.x - b.x);
-            let bot = pts.slice(2, 4).sort((a, b) => a.x - b.x);
+            // 複製陣列避免修改原物件
+            let p = pts.slice(); 
+            p.sort((a, b) => a.y - b.y);
+            let top = p.slice(0, 2).sort((a, b) => a.x - b.x);
+            let bot = p.slice(2, 4).sort((a, b) => a.x - b.x);
             return [top[0], top[1], bot[1], bot[0]];
         }
+
     </script>
 </body>
 </html>
