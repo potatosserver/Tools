@@ -2,55 +2,49 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>OpenCV.js 智能文件掃描儀</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"> <!-- 手機版面適配 -->
+    <title>廣角智能掃描儀</title>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; text-align: center; background: #222; color: #fff; margin: 0; padding: 20px; }
-        h2 { margin-bottom: 10px; }
+        body { font-family: sans-serif; background: #111; color: #fff; text-align: center; margin: 0; padding: 10px; }
         
-        /* 佈局容器 */
-        .container { display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; margin-top: 20px; }
+        /* 響應式容器 */
+        .container { position: relative; width: 100%; max-width: 640px; margin: 0 auto; }
         
-        /* 視訊預覽區 */
-        .video-wrapper { position: relative; border: 3px solid #444; border-radius: 8px; overflow: hidden; width: 640px; height: 480px; background: #000; }
-        video { position: absolute; top: 0; left: 0; object-fit: cover; }
-        canvas.overlay { position: absolute; top: 0; left: 0; z-index: 10; } /* 畫紅框用的 */
+        /* 影像疊加層 */
+        video { width: 100%; height: auto; display: block; border-radius: 8px; }
+        canvas.overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; }
+        
+        /* 結果顯示 */
+        #resultContainer { margin-top: 20px; display: none; }
+        canvas.result { width: 100%; border: 2px solid #fff; border-radius: 8px; }
 
-        /* 結果顯示區 */
-        .result-wrapper { width: 300px; display: flex; flex-direction: column; align-items: center; }
-        canvas.result { border: 2px solid #fff; max-width: 100%; background: #fff; }
-        
-        /* 按鈕 */
-        .controls { margin-top: 20px; }
-        button { padding: 12px 24px; font-size: 18px; cursor: pointer; background: #28a745; color: white; border: none; border-radius: 5px; transition: 0.3s; }
-        button:disabled { background: #555; cursor: not-allowed; }
-        button:hover:not(:disabled) { background: #218838; }
-        
-        #status { margin-top: 10px; color: #aaa; font-size: 0.9em; }
+        /* 控制按鈕 */
+        .controls { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 20; display: flex; gap: 10px; }
+        button { padding: 15px 30px; font-size: 18px; border-radius: 50px; border: none; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+        #scanBtn { background: #28a745; color: white; font-weight: bold; }
+        #scanBtn:disabled { background: #555; }
+        #retryBtn { background: #dc3545; color: white; display: none; }
+
+        #status { position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.6); padding: 5px 10px; border-radius: 5px; font-size: 12px; z-index: 20; }
     </style>
 </head>
 <body>
 
-    <h2>📷 智能文件掃描儀 (Smart Scanner)</h2>
-    <p>請將文件放在深色背景上，系統會自動偵測邊緣</p>
-
-    <div id="status">正在載入 OpenCV.js...</div>
-
-    <div class="controls">
-        <button id="scanBtn" disabled>📸 拍照並掃描</button>
-    </div>
+    <div id="status">載入系統中...</div>
 
     <div class="container">
-        <!-- 左邊：即時預覽與紅框 -->
-        <div class="video-wrapper">
-            <video id="videoInput" width="640" height="480" muted playsinline></video>
-            <canvas id="canvasOverlay" width="640" height="480" class="overlay"></canvas>
-        </div>
+        <video id="videoInput" playsinline muted></video>
+        <canvas id="canvasOverlay" class="overlay"></canvas>
+    </div>
 
-        <!-- 右邊：掃描結果 -->
-        <div class="result-wrapper">
-            <h3>掃描結果</h3>
-            <canvas id="canvasResult" class="result"></canvas>
-        </div>
+    <div class="controls">
+        <button id="scanBtn" disabled>📸 掃描</button>
+        <button id="retryBtn">🔄 重來</button>
+    </div>
+
+    <div id="resultContainer">
+        <h3>掃描結果</h3>
+        <canvas id="canvasResult" class="result"></canvas>
     </div>
 
     <script async src="https://docs.opencv.org/4.x/opencv.js" onload="onOpenCvReady();"></script>
@@ -61,106 +55,121 @@
         let ctxOverlay = canvasOverlay.getContext("2d");
         let canvasResult = document.getElementById("canvasResult");
         let scanBtn = document.getElementById("scanBtn");
+        let retryBtn = document.getElementById("retryBtn");
         let status = document.getElementById("status");
+        let resultContainer = document.getElementById("resultContainer");
 
         let streaming = false;
-        let src, gray, blur, edge, contours, hierarchy, poly, approx;
-        let detectedContour = null; // 儲存找到的最佳輪廓
+        let src = null;       // 原始高解析度圖
+        let dstSmall = null;  // 縮小後的圖 (給運算用)
+        let gray = null;
+        let cap = null;
+        let detectedContour = null; // 儲存的是「小圖」的座標
+        let scaleRatio = 1;   // 縮放倍率
 
         function onOpenCvReady() {
-            status.innerText = "系統就緒，請允許攝影機權限。";
+            status.innerText = "系統就緒，啟動相機...";
             startCamera();
         }
 
         function startCamera() {
-            navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false })
+            // 關鍵修改：請求高解析度 (HD/FHD)，這通常會叫出廣角模式
+            const constraints = {
+                video: {
+                    facingMode: "environment", // 後鏡頭
+                    width: { ideal: 1920 },    // 請求 1920 (盡量寬)
+                    height: { ideal: 1080 }    // 請求 1080
+                },
+                audio: false
+            };
+
+            navigator.mediaDevices.getUserMedia(constraints)
                 .then(function(stream) {
                     video.srcObject = stream;
                     video.play();
                     video.oncanplay = function() {
                         if (!streaming) {
                             streaming = true;
-                            video.width = 640;
-                            video.height = 480;
+                            // 設定 Canvas 尺寸與 Video 實際尺寸一致
+                            canvasOverlay.width = video.videoWidth;
+                            canvasOverlay.height = video.videoHeight;
+                            
                             initOpenCV();
                             requestAnimationFrame(processVideo);
                             scanBtn.disabled = false;
-                            status.innerText = "偵測中... 按下按鈕鎖定掃描。";
+                            status.innerText = `解析度: ${video.videoWidth}x${video.videoHeight} (廣角模式)`;
                         }
                     };
                 })
                 .catch(err => {
-                    status.innerText = "錯誤: 無法開啟攝影機";
+                    status.innerText = "無法開啟相機";
                     console.error(err);
                 });
         }
 
         function initOpenCV() {
-            src = new cv.Mat(video.height, video.width, cv.CV_8UC4);
+            src = new cv.Mat(video.videoHeight, video.videoWidth, cv.CV_8UC4);
+            dstSmall = new cv.Mat(); // 這裡不指定大小，後面 resize 會自動分配
             gray = new cv.Mat();
-            blur = new cv.Mat();
-            edge = new cv.Mat();
-            contours = new cv.MatVector();
-            hierarchy = new cv.Mat();
-            poly = new cv.MatVector();
-            approx = new cv.Mat();
+            cap = new cv.VideoCapture(video);
         }
 
         function processVideo() {
             if (!streaming) return;
 
             try {
-                // 1. 讀取影像
-                let cap = new cv.VideoCapture(video);
+                // 1. 讀取原始高畫質影像
                 cap.read(src);
 
-                // 2. 預處理：灰階 -> 高斯模糊 -> Canny 邊緣檢測
-                cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
-                cv.GaussianBlur(gray, blur, new cv.Size(5, 5), 0);
-                cv.Canny(blur, edge, 75, 200);
+                // 2. 🌟 縮小影像來運算 (效能關鍵)
+                // 我們把寬度固定縮到 500px，這樣運算超快，也不影響大圖
+                let targetWidth = 500;
+                scaleRatio = video.videoWidth / targetWidth; // 計算倍率 (例如 1920/500 = 3.84倍)
+                let targetHeight = video.videoHeight / scaleRatio;
+                let dsize = new cv.Size(targetWidth, targetHeight);
+                
+                cv.resize(src, dstSmall, dsize, 0, 0, cv.INTER_AREA);
 
-                // 3. 尋找輪廓
-                // RETR_EXTERNAL 只找最外層輪廓, CHAIN_APPROX_SIMPLE 壓縮點
-                cv.findContours(edge, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+                // 3. 在「小圖」上做處理
+                cv.cvtColor(dstSmall, gray, cv.COLOR_RGBA2GRAY);
+                cv.GaussianBlur(gray, gray, new cv.Size(5, 5), 0);
+                // 使用較低閥值與膨脹來適應不同環境
+                cv.Canny(gray, gray, 30, 100); 
+                let kernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(3, 3));
+                cv.dilate(gray, gray, kernel);
 
-                // 4. 找出最大的四邊形
+                // 4. 找輪廓 (在小圖上找)
+                let contours = new cv.MatVector();
+                let hierarchy = new cv.Mat();
+                cv.findContours(gray, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+
                 let maxArea = 0;
-                let maxContourIndex = -1;
-                detectedContour = null; // 重置
+                detectedContour = null;
+                let approx = new cv.Mat();
 
                 for (let i = 0; i < contours.size(); ++i) {
                     let cnt = contours.get(i);
                     let area = cv.contourArea(cnt);
-
-                    // 過濾掉太小的雜訊
-                    if (area > 2000) {
-                        // 計算輪廓周長
+                    if (area > 1000) { // 小圖上的面積閥值
                         let peri = cv.arcLength(cnt, true);
-                        
-                        // 多邊形擬合 (把崎嶇的邊緣簡化成直線)
                         cv.approxPolyDP(cnt, approx, 0.02 * peri, true);
-
-                        // 如果擬合出來剛好是 4 個點，且面積最大，就是它了
-                        if (approx.rows === 4 && area > maxArea) {
+                        if (approx.rows === 4 && area > maxArea && cv.isContourConvex(approx)) {
                             maxArea = area;
-                            maxContourIndex = i;
-                            // 深拷貝這個輪廓點
+                            if (detectedContour) detectedContour.delete();
                             detectedContour = approx.clone();
                         }
                     }
                 }
 
-                // 5. 繪製紅框 (在 Overlay Canvas 上)
+                // 5. 畫框 (要把小圖座標 放大回 大圖顯示)
                 ctxOverlay.clearRect(0, 0, canvasOverlay.width, canvasOverlay.height);
                 if (detectedContour) {
-                    drawContour(detectedContour);
-                    detectedContour.delete(); // 畫完後釋放，因為我們只存座標
-                    detectedContour = approx.clone(); // 重新存一份給按鈕用
+                    drawScaledContour(detectedContour, scaleRatio);
                 }
 
-                // 釋放記憶體 (迴圈內的物件)
-                // 注意：contours, hierarchy 這裡不需要 delete，因為是重複使用的容器
-                // 但是 contours 內的資料會在下次 findContours 時被覆蓋
+                // 釋放記憶體
+                contours.delete(); hierarchy.delete(); approx.delete(); 
+                // kernel 也可以釋放，或者拉到外面變全域變數
 
                 requestAnimationFrame(processVideo);
             } catch (err) {
@@ -168,103 +177,93 @@
             }
         }
 
-        // 輔助函式：在 Canvas 上畫出找到的四邊形
-        function drawContour(cnt) {
+        // 輔助：畫出放大後的框
+        function drawScaledContour(cnt, scale) {
             ctxOverlay.beginPath();
-            ctxOverlay.lineWidth = 4;
-            ctxOverlay.strokeStyle = "red";
+            ctxOverlay.lineWidth = 5; // 線條粗一點
+            ctxOverlay.strokeStyle = "#00FF00";
             
-            let data = cnt.data32S; // 取得座標數據 [x1, y1, x2, y2...]
-            ctxOverlay.moveTo(data[0], data[1]);
+            let data = cnt.data32S;
+            // 每個座標都要乘上 scaleRatio
+            ctxOverlay.moveTo(data[0] * scale, data[1] * scale);
             for (let i = 2; i < data.length; i += 2) {
-                ctxOverlay.lineTo(data[i], data[i + 1]);
+                ctxOverlay.lineTo(data[i] * scale, data[i + 1] * scale);
             }
             ctxOverlay.closePath();
             ctxOverlay.stroke();
         }
 
-        // === 核心功能：掃描與拉直 ===
+        // === 掃描按鈕 ===
         scanBtn.addEventListener('click', () => {
             if (!detectedContour) {
-                alert("未偵測到文件！請調整角度或背景。");
+                alert("未偵測到邊緣");
                 return;
             }
+            
+            // 暫停畫面
+            streaming = false;
+            scanBtn.style.display = 'none';
+            retryBtn.style.display = 'inline-block';
+            resultContainer.style.display = 'block';
 
-            // 1. 取得四個角點座標
-            let points = [];
+            // 1. 還原座標到原始解析度
             let data = detectedContour.data32S;
-            for(let i=0; i<data.length; i+=2){
-                points.push({ x: data[i], y: data[i+1] });
-            }
+            let points = [
+                { x: data[0] * scaleRatio, y: data[1] * scaleRatio },
+                { x: data[2] * scaleRatio, y: data[3] * scaleRatio },
+                { x: data[4] * scaleRatio, y: data[5] * scaleRatio },
+                { x: data[6] * scaleRatio, y: data[7] * scaleRatio }
+            ];
+            
+            // 2. 排序座標
+            let sorted = sortCorners(points);
 
-            // 2. 排序角點 (左上, 右上, 右下, 左下)
-            // 這一步是數學關鍵，亂排會導致圖片扭曲
-            let sortedPoints = sortCorners(points);
+            // 3. 計算大圖的寬高
+            let w1 = Math.hypot(sorted[1].x - sorted[0].x, sorted[1].y - sorted[0].y);
+            let w2 = Math.hypot(sorted[2].x - sorted[3].x, sorted[2].y - sorted[3].y);
+            let maxWidth = Math.max(w1, w2);
+            let h1 = Math.hypot(sorted[3].x - sorted[0].x, sorted[3].y - sorted[0].y);
+            let h2 = Math.hypot(sorted[2].x - sorted[1].x, sorted[2].y - sorted[1].y);
+            let maxHeight = Math.max(h1, h2);
 
-            // 3. 計算目標圖片的寬高 (取最長邊)
-            let widthTop = Math.hypot(sortedPoints[1].x - sortedPoints[0].x, sortedPoints[1].y - sortedPoints[0].y);
-            let widthBottom = Math.hypot(sortedPoints[2].x - sortedPoints[3].x, sortedPoints[2].y - sortedPoints[3].y);
-            let maxWidth = Math.max(widthTop, widthBottom);
-
-            let heightLeft = Math.hypot(sortedPoints[3].x - sortedPoints[0].x, sortedPoints[3].y - sortedPoints[0].y);
-            let heightRight = Math.hypot(sortedPoints[2].x - sortedPoints[1].x, sortedPoints[2].y - sortedPoints[1].y);
-            let maxHeight = Math.max(heightLeft, heightRight);
-
-            // 4. 設定透視變換矩陣
+            // 4. 透視變換 (在原始 src 上操作，畫質最棒)
             let srcTri = cv.matFromArray(4, 1, cv.CV_32FC2, [
-                sortedPoints[0].x, sortedPoints[0].y, // TL
-                sortedPoints[1].x, sortedPoints[1].y, // TR
-                sortedPoints[2].x, sortedPoints[2].y, // BR
-                sortedPoints[3].x, sortedPoints[3].y  // BL
+                sorted[0].x, sorted[0].y, sorted[1].x, sorted[1].y,
+                sorted[2].x, sorted[2].y, sorted[3].x, sorted[3].y
             ]);
-
-            let dstTri = cv.matFromArray(4, 1, cv.CV_32FC2, [
-                0, 0,
-                maxWidth, 0,
-                maxWidth, maxHeight,
-                0, maxHeight
-            ]);
-
-            // 5. 執行透視變換 (拉直)
+            let dstTri = cv.matFromArray(4, 1, cv.CV_32FC2, [0,0, maxWidth,0, maxWidth,maxHeight, 0,maxHeight]);
+            
             let M = cv.getPerspectiveTransform(srcTri, dstTri);
             let dst = new cv.Mat();
             let dsize = new cv.Size(maxWidth, maxHeight);
-            cv.warpPerspective(src, dst, M, dsize, cv.INTER_LINEAR, cv.BORDER_CONSTANT, new cv.Scalar());
+            
+            cv.warpPerspective(src, dst, M, dsize);
 
-            // 6. 影像增強 (掃描風格)
-            // 轉灰階 -> 自適應二值化 (Adaptive Threshold)
+            // 5. 影像增強 (二值化)
             cv.cvtColor(dst, dst, cv.COLOR_RGBA2GRAY);
-            // 參數說明: 255(最大值), ADAPTIVE_THRESH_GAUSSIAN_C(演算法), THRESH_BINARY(類型), 11(區塊大小), 2(常數C)
-            // 想要保留更多灰階細節，可以略過這行，改用亮度/對比調整
-            cv.adaptiveThreshold(dst, dst, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, 11, 2);
+            cv.adaptiveThreshold(dst, dst, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, 21, 10);
 
-            // 7. 顯示結果
+            // 6. 顯示
             cv.imshow('canvasResult', dst);
 
             // 清理
             srcTri.delete(); dstTri.delete(); M.delete(); dst.delete();
         });
 
-        // 數學魔法：將四個點排序為 [左上, 右上, 右下, 左下]
-        function sortCorners(points) {
-            // 先根據 Y 軸排序，分成上半部兩個和下半部兩個
-            points.sort((a, b) => a.y - b.y);
-            
-            // 拿出前兩個 (Top) 和後兩個 (Bottom)
-            let top = points.slice(0, 2);
-            let bottom = points.slice(2, 4);
+        retryBtn.addEventListener('click', () => {
+            streaming = true;
+            scanBtn.style.display = 'inline-block';
+            retryBtn.style.display = 'none';
+            resultContainer.style.display = 'none';
+            requestAnimationFrame(processVideo);
+        });
 
-            // 上半部：X 小的是左上，X 大的是右上
-            let tl = top[0].x < top[1].x ? top[0] : top[1];
-            let tr = top[0].x > top[1].x ? top[0] : top[1];
-
-            // 下半部：X 小的是左下，X 大的是右下
-            let bl = bottom[0].x < bottom[1].x ? bottom[0] : bottom[1];
-            let br = bottom[0].x > bottom[1].x ? bottom[0] : bottom[1];
-
-            return [tl, tr, br, bl];
+        function sortCorners(pts) {
+            pts.sort((a, b) => a.y - b.y);
+            let top = pts.slice(0, 2).sort((a, b) => a.x - b.x);
+            let bot = pts.slice(2, 4).sort((a, b) => a.x - b.x);
+            return [top[0], top[1], bot[1], bot[0]]; 
         }
-
     </script>
 </body>
 </html>
