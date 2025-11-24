@@ -30,8 +30,7 @@
     <style>
         /* --- 全域設定 --- */
         body { margin: 0; background-color: #F8FAFC; overflow: hidden; touch-action: none; user-select: none; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-        * { box-sizing: border-box; }
-
+        
         /* 視圖切換容器 */
         #view-home { position: absolute; inset: 0; z-index: 10; background: #F8FAFC; overflow-y: auto; display: flex; flex-direction: column; transition: opacity 0.3s; }
         #view-editor { position: absolute; inset: 0; z-index: 20; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
@@ -39,66 +38,20 @@
         body.mode-editor #view-home { opacity: 0; pointer-events: none; }
         body.mode-editor #view-editor { opacity: 1; pointer-events: auto; }
 
-        /* --- 自製通用彈窗 (Custom Modal) --- */
-        #global-modal {
-            position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9999;
-            display: none; align-items: center; justify-content: center; backdrop-filter: blur(4px);
-            opacity: 0; transition: opacity 0.2s;
-        }
-        #global-modal.visible { opacity: 1; }
-        .modal-box {
-            background: white; width: 90%; max-width: 400px; border-radius: 20px;
-            padding: 24px; box-shadow: 0 20px 50px rgba(0,0,0,0.2);
-            transform: scale(0.95); transition: transform 0.2s;
-        }
-        #global-modal.visible .modal-box { transform: scale(1); }
-        .modal-header { font-size: 18px; font-weight: 700; color: #1E293B; margin-bottom: 8px; }
-        .modal-body { font-size: 15px; color: #64748B; margin-bottom: 24px; line-height: 1.5; }
-        .modal-footer { display: flex; justify-content: flex-end; gap: 12px; }
-        .m-btn {
-            padding: 10px 20px; border-radius: 10px; border: none; font-size: 14px; font-weight: 600; cursor: pointer; transition: 0.2s;
-        }
-        .m-btn.cancel { background: #F1F5F9; color: #64748B; }
-        .m-btn.cancel:hover { background: #E2E8F0; color: #334155; }
-        .m-btn.confirm { background: #2563EB; color: white; }
-        .m-btn.confirm:hover { background: #1D4ED8; }
-        .m-btn.danger { background: #EF4444; color: white; }
-        .m-btn.danger:hover { background: #DC2626; }
-
         /* --- 首頁樣式 (Home) --- */
         .home-header { padding: 24px; display: flex; align-items: center; justify-content: space-between; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
         .home-title { font-size: 24px; font-weight: 700; color: #1E293B; display: flex; align-items: center; gap: 10px; }
-        .gallery-container { padding: 24px; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 24px; max-width: 1200px; margin: 0 auto; width: 100%; }
+        .gallery-container { padding: 24px; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 24px; max-width: 1200px; margin: 0 auto; width: 100%; box-sizing: border-box; }
         
-        .canvas-card { background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05); transition: transform 0.2s, box-shadow 0.2s; border: 1px solid #E2E8F0; display: flex; flex-direction: column; position: relative;}
+        .canvas-card { background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05); transition: transform 0.2s, box-shadow 0.2s; cursor: pointer; position: relative; border: 1px solid #E2E8F0; display: flex; flex-direction: column; }
         .canvas-card:hover { transform: translateY(-4px); box-shadow: 0 10px 15px rgba(0,0,0,0.1); }
-        
-        /* 縮圖區域 */
-        .card-thumb-container { 
-            width: 100%; height: 160px; background: #F8FAFC; border-bottom: 1px solid #f1f5f9; 
-            display:flex; justify-content:center; align-items:center; cursor: pointer;
-            overflow:hidden;
-        }
-        .card-thumb { width: 100%; height: 100%; object-fit: contain; }
-        
+        .card-thumb { width: 100%; height: 140px; background: white; object-fit: contain; display: block; border-bottom: 1px solid #f1f5f9; }
         .card-body { padding: 12px; flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
-        
-        /* 標題與編輯區 */
-        .card-header-row { display: flex; justify-content: space-between; align-items: center; height: 32px; margin-bottom: 4px; }
-        .card-title-display { font-weight: 600; color: #334155; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; cursor: pointer;}
-        .card-title-input { 
-            width: 100%; font-size: 16px; font-weight: 600; color: #334155; 
-            border: 2px solid #3B82F6; border-radius: 4px; padding: 2px 4px; outline: none; display: none;
-        }
-        .card-title-input.active { display: block; }
-        
+        .card-title { font-weight: 600; color: #334155; margin-bottom: 4px; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .card-date { font-size: 12px; color: #94A3B8; }
-        
-        /* 卡片操作按鈕 */
-        .card-actions { margin-top: 10px; display: flex; justify-content: flex-end; gap: 4px; }
-        .icon-btn { padding: 6px; border-radius: 6px; border: none; background: transparent; color: #94A3B8; cursor: pointer; transition: 0.2s; display: flex; align-items: center; }
-        .icon-btn:hover { background: #F1F5F9; color: #64748B; }
-        .icon-btn.danger:hover { background: #FEE2E2; color: #EF4444; }
+        .card-actions { margin-top: 10px; display: flex; justify-content: flex-end; }
+        .icon-btn { padding: 6px; border-radius: 6px; border: none; background: transparent; color: #94A3B8; cursor: pointer; transition: 0.2s; }
+        .icon-btn:hover { background: #FEE2E2; color: #EF4444; }
 
         .empty-state { grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 0; color: #64748B; gap: 16px; }
         
@@ -109,21 +62,24 @@
         /* --- 編輯器樣式 (Editor) --- */
         #canvas { width: 100vw; height: 100vh; display: block; cursor: crosshair; }
         
-        /* 編輯器頂部區塊 */
+        /* UI 容器與排版優化 */
         .editor-header-row {
             position: absolute; top: 16px; left: 16px; right: 16px; z-index: 101;
             display: flex; justify-content: space-between; align-items: center; pointer-events: none;
         }
+
         .editor-nav { 
             display: flex; align-items: center; gap: 12px; pointer-events: auto; 
-            max-width: calc(100% - 60px); 
+            max-width: calc(100% - 60px); /* 留位子給設定按鈕 */
         }
+
         .nav-back { 
             width: 40px; height: 40px; flex-shrink: 0;
             background: white; border-radius: 10px; border: 1px solid #E2E8F0; 
             display: flex; align-items: center; justify-content: center; 
             cursor: pointer; color: #64748B; box-shadow: 0 2px 5px rgba(0,0,0,0.05); 
         }
+
         .nav-title-input { 
             height: 40px; padding: 0 12px; border-radius: 10px; border: 1px solid #E2E8F0; 
             font-size: 16px; font-weight: 600; color: #334155; 
@@ -132,16 +88,17 @@
         }
         .nav-title-input:focus { border-color: #2563EB; }
 
-        /* 設定按鈕 */
+        /* 設定按鈕區塊 */
         .ui-top-right { pointer-events: auto; }
 
-        /* 工具列 */
+        /* 工具列容器 */
         .ui-top-center {
             position: absolute; top: 16px; left: 50%; transform: translateX(-50%);
             display: flex; flex-direction: column; align-items: center; gap: 8px; z-index: 100;
             width: 90%; max-width: 650px; pointer-events: none;
             transition: top 0.3s ease;
         }
+        
         .panel { 
             background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(8px); 
             border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); padding: 6px; 
@@ -149,36 +106,49 @@
             pointer-events: auto; border: 1px solid rgba(0,0,0,0.05); 
         }
 
-        /* 手機版排版優化 */
+        /* --- 手機版響應式設計 (Mobile Layout) --- */
         @media (max-width: 600px) {
-            .ui-top-center { top: 70px; width: 96%; }
-            .nav-title-input { width: 100%; min-width: 0; font-size: 14px; }
-            .editor-nav { width: 100%; }
+            /* 讓工具列下移，不擋住標題 */
+            .ui-top-center {
+                top: 70px; 
+                width: 96%;
+            }
+            
+            /* 標題輸入框自適應寬度 */
+            .nav-title-input {
+                width: 100%;
+                min-width: 0; /* 允許縮小 */
+                font-size: 14px;
+            }
+
+            .editor-nav {
+                width: 100%;
+            }
+
+            /* 面板稍微縮小內距 */
             .panel { padding: 4px; gap: 4px; }
+            
+            /* 按鈕稍微縮小 */
             .btn { width: 36px; height: 36px; }
             .btn i { transform: scale(0.9); }
         }
 
-        /* 按鈕與元件樣式 */
         .btn { width: 40px; height: 40px; border-radius: 10px; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; background: transparent; color: #64748B; transition: all 0.2s; }
         .btn:hover { background: #F1F5F9; color: #334155; }
         .btn.active { background: #EFF6FF; color: #2563EB; box-shadow: inset 0 0 0 1px #BFDBFE; }
         .btn.danger:hover { background: #FEF2F2; color: #EF4444; }
         .btn:disabled { opacity: 0.3; cursor: not-allowed; }
         .divider { width: 1px; height: 24px; background: #CBD5E1; margin: 0 4px; }
-        
-        .sub-tools { font-size: 13px; padding: 8px 16px; min-height: 40px; }
+        .sub-tools { font-size: 13px; padding: 8px 16px; min-height: 40px; transition: opacity 0.2s, transform 0.2s; }
         .opt-group { display: flex; background: #F1F5F9; border-radius: 8px; padding: 2px; }
         .opt-btn { padding: 4px 12px; border-radius: 6px; cursor: pointer; color: #64748B; transition: 0.2s; font-weight: 500; }
         .opt-btn.selected { background: white; color: #0F172A; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
         .setting-item { display: flex; align-items: center; gap: 8px; margin-left: 12px; color: #64748B; }
         input[type="range"] { width: 80px; accent-color: #2563EB; cursor: pointer; }
-        
-        .color-trigger { width: 28px; height: 28px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px #CBD5E1; cursor: pointer; }
+        .color-trigger { width: 28px; height: 28px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px #CBD5E1; cursor: pointer; transition: transform 0.1s; }
+        .color-trigger:active { transform: scale(0.9); }
         #color-popover { position: absolute; top: 140px; left: 50%; transform: translateX(-50%); background: white; padding: 16px; border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.15); z-index: 200; display: none; flex-direction: column; align-items: center; border: 1px solid rgba(0,0,0,0.05); }
         #color-popover.visible { display: flex; animation: fadeIn 0.2s; }
-
-        /* 設定模態框 */
         .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 998; display: none; justify-content: center; align-items: center; backdrop-filter: blur(2px); }
         .modal-content { background: white; width: 340px; border-radius: 20px; padding: 24px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); z-index: 999; font-size: 14px; color: #334155; max-height: 85vh; overflow-y: auto; }
         .modal-title { font-size: 18px; font-weight: bold; margin-bottom: 16px; color: #0F172A; display:flex; justify-content:space-between; align-items:center; }
@@ -191,15 +161,12 @@
         input:checked + .toggle-track { background: #2563EB; }
         input:checked + .toggle-track .toggle-thumb { transform: translateX(20px); }
         hr.modal-divider { border:0; border-top:1px solid #E2E8F0; margin: 16px 0; }
-        
         #lasso-actions { position: absolute; display: none; background: #1E293B; padding: 6px; border-radius: 10px; gap: 8px; z-index: 200; transform: translate(-50%, -100%); margin-top: -15px; }
         #lasso-actions.visible { display: flex; animation: popIn 0.2s; }
         .action-btn { color: white; background: transparent; border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 4px; font-size: 13px; }
         .action-btn:hover { background: rgba(255,255,255,0.15); }
-        
         @keyframes popIn { from { transform: translate(-50%, -90%) scale(0.9); opacity: 0; } to { opacity: 1; } }
         @keyframes fadeIn { from { opacity: 0; transform: translateX(-50%) translateY(10px); } to { opacity: 1; } }
-        
         #loading { position: fixed; inset:0; background:white; z-index:9999; display:flex; justify-content:center; align-items:center; transition: opacity 0.5s; flex-direction: column; gap:12px; color:#64748B; font-weight:500;}
     </style>
 </head>
@@ -210,17 +177,6 @@
         <i data-lucide="loader-2" class="animate-spin" style="animation: spin 1s linear infinite;"></i>
         <span>載入白板系統中...</span>
         <style>@keyframes spin { 100% { transform: rotate(360deg); } }</style>
-    </div>
-
-    <!-- 自製通用模態框 (Custom Modal) -->
-    <div id="global-modal">
-        <div class="modal-box">
-            <div class="modal-header" id="g-modal-title">標題</div>
-            <div class="modal-body" id="g-modal-msg">內容訊息</div>
-            <div class="modal-footer" id="g-modal-actions">
-                <!-- 按鈕由 JS 動態生成 -->
-            </div>
-        </div>
     </div>
 
     <!-- View 1: Home Gallery -->
@@ -241,6 +197,7 @@
     <!-- View 2: Editor -->
     <div id="view-editor">
         
+        <!-- Top Row: Back, Title, Settings -->
         <div class="editor-header-row">
             <div class="editor-nav">
                 <button class="nav-back" id="btn-back-home" title="儲存並返回"><i data-lucide="arrow-left"></i></button>
@@ -254,6 +211,7 @@
             </div>
         </div>
 
+        <!-- Toolbars (Centered) -->
         <div class="ui-top-center">
             <div class="panel main-tools">
                 <button class="btn active" id="tool-pen" title="畫筆"><i data-lucide="pen-tool"></i></button>
@@ -268,6 +226,7 @@
             <div class="panel sub-tools" id="sub-toolbar"></div>
         </div>
 
+        <!-- 原 UI 元件 -->
         <div id="color-popover">
             <div id="iro-picker-container"></div>
             <div style="font-size:12px; color:#94A3B8; margin-top:8px;">點擊外部關閉</div>
@@ -312,6 +271,7 @@
                 <hr class="modal-divider">
 
                 <div style="font-weight:bold; color:#64748B; margin-bottom:12px;">Redmi靈感觸控筆按鍵</div>
+
                 <div class="modal-row">
                     <span class="modal-label">速記鍵(下鍵)</span>
                     <select class="modal-select" id="btn-34-action">
@@ -322,6 +282,7 @@
                         <option value="redo">重做</option>
                     </select>
                 </div>
+
                 <div class="modal-row">
                     <span class="modal-label">截圖鍵(上鍵)</span>
                     <select class="modal-select" id="btn-33-action">
@@ -344,57 +305,10 @@
         <canvas id="canvas" resize></canvas>
     </div>
 
-    <!-- App Logic -->
+    <!-- IndexedDB Logic & App Logic -->
     <script type="module">
         import { getStroke } from 'https://esm.sh/perfect-freehand';
         paper.install(window);
-
-        // --- Custom Modal Manager ---
-        const CustomModal = {
-            el: document.getElementById('global-modal'),
-            title: document.getElementById('g-modal-title'),
-            msg: document.getElementById('g-modal-msg'),
-            actions: document.getElementById('g-modal-actions'),
-            
-            show(title, msg, buttons) {
-                this.title.innerText = title;
-                this.msg.innerText = msg;
-                this.actions.innerHTML = '';
-                
-                buttons.forEach(btn => {
-                    const b = document.createElement('button');
-                    b.className = `m-btn ${btn.type || 'confirm'}`;
-                    b.innerText = btn.text;
-                    b.onclick = () => {
-                        this.close();
-                        if (btn.onClick) btn.onClick();
-                    };
-                    this.actions.appendChild(b);
-                });
-                
-                this.el.style.display = 'flex';
-                requestAnimationFrame(() => this.el.classList.add('visible'));
-            },
-            
-            close() {
-                this.el.classList.remove('visible');
-                setTimeout(() => this.el.style.display = 'none', 200);
-            },
-
-            confirm(title, msg, onConfirm) {
-                this.show(title, msg, [
-                    { text: '取消', type: 'cancel' },
-                    { text: '確定', type: 'confirm', onClick: onConfirm }
-                ]);
-            },
-
-            delete(title, msg, onConfirm) {
-                this.show(title, msg, [
-                    { text: '取消', type: 'cancel' },
-                    { text: '刪除', type: 'danger', onClick: onConfirm }
-                ]);
-            }
-        };
 
         // --- Database Layer ---
         const DB = {
@@ -438,7 +352,12 @@
                 list.sort((a, b) => b.updatedAt - a.updatedAt);
 
                 if (list.length === 0) {
-                    container.innerHTML = `<div class="empty-state"><i data-lucide="file-plus" size="48"></i><div>還沒有畫布，點擊右下角按鈕建立一個吧！</div></div>`;
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <i data-lucide="file-plus" size="48"></i>
+                            <div>還沒有畫布，點擊右下角按鈕建立一個吧！</div>
+                        </div>
+                    `;
                     lucide.createIcons();
                     return;
                 }
@@ -447,71 +366,19 @@
                     const card = document.createElement('div');
                     card.className = 'canvas-card';
                     card.innerHTML = `
-                        <div class="card-thumb-container">
-                            <img class="card-thumb" src="${item.thumbnail || ''}" alt="thumbnail">
-                        </div>
+                        <img class="card-thumb" src="${item.thumbnail || ''}" alt="thumbnail">
                         <div class="card-body">
                             <div>
-                                <div class="card-header-row">
-                                    <div class="card-title-display">${item.name}</div>
-                                    <input type="text" class="card-title-input" value="${item.name}">
-                                </div>
-                                <div class="card-date">${new Date(item.updatedAt).toLocaleDateString()}</div>
+                                <div class="card-title">${item.name}</div>
+                                <div class="card-date">${new Date(item.updatedAt).toLocaleDateString()} ${new Date(item.updatedAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</div>
                             </div>
                             <div class="card-actions">
-                                <button class="icon-btn btn-edit-name" title="重新命名"><i data-lucide="pencil" size="16"></i></button>
-                                <button class="icon-btn danger btn-del" title="刪除"><i data-lucide="trash-2" size="16"></i></button>
+                                <button class="icon-btn btn-del" title="刪除"><i data-lucide="trash-2" size="16"></i></button>
                             </div>
                         </div>
                     `;
-
-                    // 事件綁定
-                    const thumb = card.querySelector('.card-thumb-container');
-                    const titleDisplay = card.querySelector('.card-title-display');
-                    const titleInput = card.querySelector('.card-title-input');
-                    const btnEdit = card.querySelector('.btn-edit-name');
-                    const btnDel = card.querySelector('.btn-del');
-
-                    const openFn = () => this.openCanvas(item.id);
-                    thumb.onclick = openFn;
-                    titleDisplay.onclick = openFn;
-
-                    // 重新命名邏輯
-                    const enableEdit = (e) => {
-                        e.stopPropagation();
-                        titleDisplay.style.display = 'none';
-                        titleInput.classList.add('active');
-                        titleInput.focus();
-                    };
-
-                    const saveEdit = async () => {
-                        const newName = titleInput.value.trim();
-                        if (newName && newName !== item.name) {
-                            item.name = newName;
-                            item.updatedAt = Date.now();
-                            await DB.save(item);
-                            this.renderGallery();
-                        } else {
-                            titleInput.value = item.name;
-                            titleInput.classList.remove('active');
-                            titleDisplay.style.display = 'block';
-                        }
-                    };
-
-                    btnEdit.onclick = enableEdit;
-                    titleInput.onblur = saveEdit;
-                    titleInput.onkeydown = (e) => { if(e.key === 'Enter') titleInput.blur(); };
-                    titleInput.onclick = (e) => e.stopPropagation(); // 防止點擊輸入框時觸發卡片點擊
-
-                    // 刪除邏輯 (使用自製彈窗)
-                    btnDel.onclick = (e) => { 
-                        e.stopPropagation();
-                        CustomModal.delete('刪除畫布', `確定要刪除「${item.name}」嗎？此動作無法復原。`, async () => {
-                            await DB.delete(item.id);
-                            this.renderGallery();
-                        });
-                    };
-
+                    card.onclick = (e) => { if (e.target.closest('.btn-del')) return; this.openCanvas(item.id); };
+                    card.querySelector('.btn-del').onclick = async (e) => { e.stopPropagation(); if(confirm(`確定要刪除「${item.name}」嗎？`)) { await DB.delete(item.id); this.renderGallery(); } };
                     container.appendChild(card);
                 });
                 lucide.createIcons();
@@ -539,38 +406,24 @@
             async saveAndExit() {
                 if (!this.currentCanvasId) return;
                 
-                // --- 智慧縮圖 (Fit-to-Content + White BG) ---
+                // --- 1. 產生白色縮圖 (修正黑色縮圖問題) ---
                 App.lassoPath?.remove(); App.lassoPath=null; 
                 if(App.eraserPreview) App.eraserPreview.visible = false;
-                
-                // 1. 記錄當前視圖狀態
-                const originalCenter = view.center.clone();
-                const originalZoom = view.zoom;
 
-                // 2. 計算內容範圍並縮放 (如果有內容)
-                if (!project.activeLayer.isEmpty()) {
-                    const contentBounds = project.activeLayer.bounds;
-                    // 增加 10% 邊距
-                    view.fitBounds(contentBounds.expand(Math.max(contentBounds.width, contentBounds.height) * 0.1));
-                }
-
-                // 3. 加入白色背景覆蓋整個視窗 (在最底層)
+                // 創建一個臨時的白色背景矩形覆蓋整個可視區域
                 const bgRect = new Path.Rectangle({
                     rectangle: view.bounds,
                     fillColor: 'white',
                     insert: true
                 });
-                bgRect.sendToBack();
-                view.update();
+                bgRect.sendToBack(); // 放到最下層
+                view.update(); // 強制重繪
 
-                // 4. 截圖
+                // 匯出縮圖 (現在有白色背景了)
                 const thumbData = view.element.toDataURL('image/jpeg', 0.5);
 
-                // 5. 清理並復原
-                bgRect.remove();
-                view.center = originalCenter;
-                view.zoom = originalZoom;
-                view.update();
+                // 移除白色背景，以免存進 JSON 數據
+                bgRect.remove(); 
                 // ------------------------------------------
 
                 const jsonData = project.exportJSON();
@@ -682,14 +535,7 @@
             canvas.addEventListener('pointerdown', onPointerDown); canvas.addEventListener('pointermove', onPointerMove); canvas.addEventListener('pointerup', onPointerUp); canvas.addEventListener('pointercancel', onPointerUp); canvas.addEventListener('wheel', onWheel, { passive: false });
             document.addEventListener('keydown', (e) => { if(!AppManager.currentCanvasId) return; if (e.keyCode === 34) { e.preventDefault(); executeStylusAction(Settings.stylusBtn34); return; } if (e.keyCode === 33) { e.preventDefault(); executeStylusAction(Settings.stylusBtn33); return; } if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); if (e.shiftKey) History.redo(); else History.undo(); } if ((e.ctrlKey || e.metaKey) && e.key === 'y') { e.preventDefault(); History.redo(); } });
             ['pen', 'eraser', 'eraser-rect', 'lasso'].forEach(m => document.getElementById(`tool-${m}`).onclick = () => setMode(m));
-            
-            // 使用自製彈窗清空
-            document.getElementById('tool-clear').onclick = () => { 
-                CustomModal.delete('清空畫布', '確定要清空所有內容嗎？', () => {
-                    project.activeLayer.removeChildren(); clearLasso(); History.saveState(); 
-                });
-            };
-            
+            document.getElementById('tool-clear').onclick = () => { if(confirm('確定清空畫布？')){ project.activeLayer.removeChildren(); clearLasso(); History.saveState(); }};
             document.getElementById('btn-undo').onclick = () => History.undo(); document.getElementById('btn-redo').onclick = () => History.redo();
             document.getElementById('lasso-dup').onclick = duplicateSelection; document.getElementById('lasso-del').onclick = deleteSelection;
         }
@@ -704,7 +550,7 @@
         }
 
         function onPointerDown(e) {
-            if (e.target.closest('.panel') || e.target.closest('#color-popover') || e.target.closest('.modal-content') || e.target.closest('.editor-nav') || e.target.closest('#global-modal')) return;
+            if (e.target.closest('.panel') || e.target.closest('#color-popover') || e.target.closest('.modal-content') || e.target.closest('.editor-nav')) return;
             canvas.setPointerCapture(e.pointerId); App.activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
             if (App.activePointers.size === 2) { startGesture(); return; }
             const p = view.viewToProject(new Point(e.clientX, e.clientY)); const pressure = getInputPressure(e, p, null, 0); if (pressure === -1) return;
