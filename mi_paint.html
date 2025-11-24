@@ -586,7 +586,7 @@
                 cw.onclick = (e) => { e.stopPropagation(); toggleColorPopover(); };
                 el.appendChild(cw);
 
-                addSlider(el,'粗細',1,40,App.strokeWidth,v=>App.strokeWidth=v); addSlider(el,'不透',1,100,App.strokeOpacity*100,v=>App.strokeOpacity=v/100);
+                addSlider(el,'粗細',1,40,App.strokeWidth,v=>App.strokeWidth=v); addSlider(el,'透明度',1,100,App.strokeOpacity*100,v=>App.strokeOpacity=v/100);
             } else if (App.mode.startsWith('eraser')) {
                 const g=document.createElement('div'); g.className='opt-group';
                 [{id:'standard',t:'擦部分'}, {id:'object',t:'擦整條'}].forEach(o=>{ const d=document.createElement('div'); d.className=`opt-btn ${App.eraserMode===o.id?'selected':''}`; d.innerText=o.t; d.onclick=()=>{App.eraserMode=o.id; updateSubToolbar();}; g.appendChild(d); }); el.appendChild(g);
