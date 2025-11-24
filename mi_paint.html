@@ -3,16 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>mi_paint --  小米白板</title>
+    <title>小米白板</title>
     
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/paper.js/0.12.17/paper-full.min.js"></script>
-    <!-- 引入 iro.js 色環庫 -->
     <script src="https://cdn.jsdelivr.net/npm/@jaames/iro@5"></script>
 
     <script type="module">
         import { getStroke } from 'https://esm.sh/perfect-freehand';
-        function getSvgPathFromStroke(stroke) {
+        window.getStroke = getStroke;
+        window.getSvgPathFromStroke = (stroke) => {
             if (!stroke.length) return "";
             const d = stroke.reduce(
                 (acc, [x0, y0], i, arr) => {
@@ -25,277 +25,591 @@
             d.push("Z");
             return d.join(" ");
         }
-        window.getStroke = getStroke;
-        window.getSvgPathFromStroke = getSvgPathFromStroke;
     </script>
 
     <style>
+        /* --- 全域設定 --- */
         body { margin: 0; background-color: #F8FAFC; overflow: hidden; touch-action: none; user-select: none; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-        #canvas { width: 100vw; height: 100vh; display: block; cursor: crosshair; touch-action: none; }
+        * { box-sizing: border-box; }
+
+        /* 視圖切換容器 */
+        #view-home { position: absolute; inset: 0; z-index: 10; background: #F8FAFC; overflow-y: auto; display: flex; flex-direction: column; transition: opacity 0.3s; }
+        #view-editor { position: absolute; inset: 0; z-index: 20; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
         
-        /* --- UI 容器 --- */
+        body.mode-editor #view-home { opacity: 0; pointer-events: none; }
+        body.mode-editor #view-editor { opacity: 1; pointer-events: auto; }
+
+        /* --- 自製通用彈窗 (Custom Modal) --- */
+        #global-modal {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9999;
+            display: none; align-items: center; justify-content: center; backdrop-filter: blur(4px);
+            opacity: 0; transition: opacity 0.2s;
+        }
+        #global-modal.visible { opacity: 1; }
+        .modal-box {
+            background: white; width: 90%; max-width: 400px; border-radius: 20px;
+            padding: 24px; box-shadow: 0 20px 50px rgba(0,0,0,0.2);
+            transform: scale(0.95); transition: transform 0.2s;
+        }
+        #global-modal.visible .modal-box { transform: scale(1); }
+        .modal-header { font-size: 18px; font-weight: 700; color: #1E293B; margin-bottom: 8px; }
+        .modal-body { font-size: 15px; color: #64748B; margin-bottom: 24px; line-height: 1.5; }
+        .modal-footer { display: flex; justify-content: flex-end; gap: 12px; }
+        .m-btn {
+            padding: 10px 20px; border-radius: 10px; border: none; font-size: 14px; font-weight: 600; cursor: pointer; transition: 0.2s;
+        }
+        .m-btn.cancel { background: #F1F5F9; color: #64748B; }
+        .m-btn.cancel:hover { background: #E2E8F0; color: #334155; }
+        .m-btn.confirm { background: #2563EB; color: white; }
+        .m-btn.confirm:hover { background: #1D4ED8; }
+        .m-btn.danger { background: #EF4444; color: white; }
+        .m-btn.danger:hover { background: #DC2626; }
+
+        /* --- 首頁樣式 (Home) --- */
+        .home-header { padding: 24px; display: flex; align-items: center; justify-content: space-between; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .home-title { font-size: 24px; font-weight: 700; color: #1E293B; display: flex; align-items: center; gap: 10px; }
+        .gallery-container { padding: 24px; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 24px; max-width: 1200px; margin: 0 auto; width: 100%; }
+        
+        .canvas-card { background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05); transition: transform 0.2s, box-shadow 0.2s; border: 1px solid #E2E8F0; display: flex; flex-direction: column; position: relative;}
+        .canvas-card:hover { transform: translateY(-4px); box-shadow: 0 10px 15px rgba(0,0,0,0.1); }
+        
+        /* 縮圖區域 */
+        .card-thumb-container { 
+            width: 100%; height: 160px; background: #F8FAFC; border-bottom: 1px solid #f1f5f9; 
+            display:flex; justify-content:center; align-items:center; cursor: pointer;
+            overflow:hidden;
+        }
+        .card-thumb { width: 100%; height: 100%; object-fit: contain; }
+        
+        .card-body { padding: 12px; flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
+        
+        /* 標題與編輯區 */
+        .card-header-row { display: flex; justify-content: space-between; align-items: center; height: 32px; margin-bottom: 4px; }
+        .card-title-display { font-weight: 600; color: #334155; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; cursor: pointer;}
+        .card-title-input { 
+            width: 100%; font-size: 16px; font-weight: 600; color: #334155; 
+            border: 2px solid #3B82F6; border-radius: 4px; padding: 2px 4px; outline: none; display: none;
+        }
+        .card-title-input.active { display: block; }
+        
+        .card-date { font-size: 12px; color: #94A3B8; }
+        
+        /* 卡片操作按鈕 */
+        .card-actions { margin-top: 10px; display: flex; justify-content: flex-end; gap: 4px; }
+        .icon-btn { padding: 6px; border-radius: 6px; border: none; background: transparent; color: #94A3B8; cursor: pointer; transition: 0.2s; display: flex; align-items: center; }
+        .icon-btn:hover { background: #F1F5F9; color: #64748B; }
+        .icon-btn.danger:hover { background: #FEE2E2; color: #EF4444; }
+
+        .empty-state { grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 0; color: #64748B; gap: 16px; }
+        
+        .fab-add { position: fixed; bottom: 32px; right: 32px; width: 64px; height: 64px; background: #2563EB; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 25px rgba(37, 99, 235, 0.4); cursor: pointer; border: none; transition: transform 0.2s; z-index: 50; }
+        .fab-add:hover { transform: scale(1.05); background: #1D4ED8; }
+        .fab-add:active { transform: scale(0.95); }
+
+        /* --- 編輯器樣式 (Editor) --- */
+        #canvas { width: 100vw; height: 100vh; display: block; cursor: crosshair; }
+        
+        /* 編輯器頂部區塊 */
+        .editor-header-row {
+            position: absolute; top: 16px; left: 16px; right: 16px; z-index: 101;
+            display: flex; justify-content: space-between; align-items: center; pointer-events: none;
+        }
+        .editor-nav { 
+            display: flex; align-items: center; gap: 12px; pointer-events: auto; 
+            max-width: calc(100% - 60px); 
+        }
+        .nav-back { 
+            width: 40px; height: 40px; flex-shrink: 0;
+            background: white; border-radius: 10px; border: 1px solid #E2E8F0; 
+            display: flex; align-items: center; justify-content: center; 
+            cursor: pointer; color: #64748B; box-shadow: 0 2px 5px rgba(0,0,0,0.05); 
+        }
+        .nav-title-input { 
+            height: 40px; padding: 0 12px; border-radius: 10px; border: 1px solid #E2E8F0; 
+            font-size: 16px; font-weight: 600; color: #334155; 
+            width: 200px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); outline: none; 
+            transition: width 0.2s;
+        }
+        .nav-title-input:focus { border-color: #2563EB; }
+
+        /* 設定按鈕 */
+        .ui-top-right { pointer-events: auto; }
+
+        /* 工具列 */
         .ui-top-center {
             position: absolute; top: 16px; left: 50%; transform: translateX(-50%);
             display: flex; flex-direction: column; align-items: center; gap: 8px; z-index: 100;
             width: 90%; max-width: 650px; pointer-events: none;
+            transition: top 0.3s ease;
+        }
+        .panel { 
+            background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(8px); 
+            border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); padding: 6px; 
+            display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px; 
+            pointer-events: auto; border: 1px solid rgba(0,0,0,0.05); 
         }
 
-        .ui-top-right {
-            position: absolute; top: 16px; right: 16px; z-index: 101;
-            display: flex; gap: 8px;
-        }
-        
-        /* 面板樣式 */
-        .panel {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(8px);
-            border-radius: 16px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.05);
-            padding: 6px;
-            display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px;
-            pointer-events: auto;
-            border: 1px solid rgba(0,0,0,0.05);
+        /* 手機版排版優化 */
+        @media (max-width: 600px) {
+            .ui-top-center { top: 70px; width: 96%; }
+            .nav-title-input { width: 100%; min-width: 0; font-size: 14px; }
+            .editor-nav { width: 100%; }
+            .panel { padding: 4px; gap: 4px; }
+            .btn { width: 36px; height: 36px; }
+            .btn i { transform: scale(0.9); }
         }
 
-        /* 按鈕樣式 */
-        .btn {
-            width: 40px; height: 40px; border-radius: 10px; border: none;
-            display: flex; align-items: center; justify-content: center;
-            cursor: pointer; background: transparent; color: #64748B;
-            transition: all 0.2s;
-        }
+        /* 按鈕與元件樣式 */
+        .btn { width: 40px; height: 40px; border-radius: 10px; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; background: transparent; color: #64748B; transition: all 0.2s; }
         .btn:hover { background: #F1F5F9; color: #334155; }
         .btn.active { background: #EFF6FF; color: #2563EB; box-shadow: inset 0 0 0 1px #BFDBFE; }
         .btn.danger:hover { background: #FEF2F2; color: #EF4444; }
         .btn:disabled { opacity: 0.3; cursor: not-allowed; }
-
         .divider { width: 1px; height: 24px; background: #CBD5E1; margin: 0 4px; }
-
-        /* 次級工具列 */
-        .sub-tools { 
-            font-size: 13px; padding: 8px 16px; min-height: 40px;
-            transition: opacity 0.2s, transform 0.2s;
-        }
         
-        /* 選項與滑桿 */
+        .sub-tools { font-size: 13px; padding: 8px 16px; min-height: 40px; }
         .opt-group { display: flex; background: #F1F5F9; border-radius: 8px; padding: 2px; }
-        .opt-btn { 
-            padding: 4px 12px; border-radius: 6px; cursor: pointer; color: #64748B; 
-            transition: 0.2s; font-weight: 500;
-        }
+        .opt-btn { padding: 4px 12px; border-radius: 6px; cursor: pointer; color: #64748B; transition: 0.2s; font-weight: 500; }
         .opt-btn.selected { background: white; color: #0F172A; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
         .setting-item { display: flex; align-items: center; gap: 8px; margin-left: 12px; color: #64748B; }
         input[type="range"] { width: 80px; accent-color: #2563EB; cursor: pointer; }
         
-        /* 顏色按鈕 (觸發色環) */
-        .color-trigger {
-            width: 28px; height: 28px; border-radius: 50%; 
-            border: 2px solid #fff; box-shadow: 0 0 0 1px #CBD5E1; 
-            cursor: pointer; transition: transform 0.1s;
-        }
-        .color-trigger:active { transform: scale(0.9); }
-
-        /* 色環 Popover */
-        #color-popover {
-            position: absolute; top: 140px; left: 50%; transform: translateX(-50%);
-            background: white; padding: 16px; border-radius: 16px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.15); z-index: 200;
-            display: none; flex-direction: column; align-items: center;
-            border: 1px solid rgba(0,0,0,0.05);
-        }
+        .color-trigger { width: 28px; height: 28px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px #CBD5E1; cursor: pointer; }
+        #color-popover { position: absolute; top: 140px; left: 50%; transform: translateX(-50%); background: white; padding: 16px; border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.15); z-index: 200; display: none; flex-direction: column; align-items: center; border: 1px solid rgba(0,0,0,0.05); }
         #color-popover.visible { display: flex; animation: fadeIn 0.2s; }
 
         /* 設定模態框 */
-        .modal-overlay {
-            position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 998;
-            display: none; justify-content: center; align-items: center; backdrop-filter: blur(2px);
-        }
-        .modal-content {
-            background: white; width: 340px; border-radius: 20px; padding: 24px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2); z-index: 999;
-            font-size: 14px; color: #334155;
-            max-height: 85vh; overflow-y: auto;
-        }
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 998; display: none; justify-content: center; align-items: center; backdrop-filter: blur(2px); }
+        .modal-content { background: white; width: 340px; border-radius: 20px; padding: 24px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); z-index: 999; font-size: 14px; color: #334155; max-height: 85vh; overflow-y: auto; }
         .modal-title { font-size: 18px; font-weight: bold; margin-bottom: 16px; color: #0F172A; display:flex; justify-content:space-between; align-items:center; }
         .modal-row { margin-bottom: 16px; }
         .modal-label { display: block; margin-bottom: 6px; font-weight: 500; }
         .modal-select { width: 100%; padding: 8px; border-radius: 8px; border: 1px solid #CBD5E1; background: #F8FAFC; color: #334155; }
-        
         .toggle-switch { display: flex; align-items: center; justify-content: space-between; cursor: pointer; }
         .toggle-track { width: 44px; height: 24px; background: #E2E8F0; border-radius: 12px; position: relative; transition: 0.2s; }
         .toggle-thumb { width: 20px; height: 20px; background: white; border-radius: 50%; position: absolute; top: 2px; left: 2px; transition: 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
         input:checked + .toggle-track { background: #2563EB; }
         input:checked + .toggle-track .toggle-thumb { transform: translateX(20px); }
         hr.modal-divider { border:0; border-top:1px solid #E2E8F0; margin: 16px 0; }
-
-        /* 索套選單 */
-        #lasso-actions {
-            position: absolute; display: none;
-            background: #1E293B; padding: 6px; border-radius: 10px;
-            gap: 8px; z-index: 200; transform: translate(-50%, -100%); margin-top: -15px;
-        }
+        
+        #lasso-actions { position: absolute; display: none; background: #1E293B; padding: 6px; border-radius: 10px; gap: 8px; z-index: 200; transform: translate(-50%, -100%); margin-top: -15px; }
         #lasso-actions.visible { display: flex; animation: popIn 0.2s; }
         .action-btn { color: white; background: transparent; border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 4px; font-size: 13px; }
         .action-btn:hover { background: rgba(255,255,255,0.15); }
+        
         @keyframes popIn { from { transform: translate(-50%, -90%) scale(0.9); opacity: 0; } to { opacity: 1; } }
         @keyframes fadeIn { from { opacity: 0; transform: translateX(-50%) translateY(10px); } to { opacity: 1; } }
-
-        #loading { position: fixed; inset:0; background:white; z-index:9999; display:flex; justify-content:center; align-items:center; transition: opacity 0.5s;}
+        
+        #loading { position: fixed; inset:0; background:white; z-index:9999; display:flex; justify-content:center; align-items:center; transition: opacity 0.5s; flex-direction: column; gap:12px; color:#64748B; font-weight:500;}
     </style>
 </head>
 <body>
 
-    <div id="loading">載入引擎中...</div>
-
-    <!-- 色環 Popover (獨立層) -->
-    <div id="color-popover">
-        <div id="iro-picker-container"></div>
-        <div style="font-size:12px; color:#94A3B8; margin-top:8px;">點擊外部關閉</div>
+    <!-- Loading Screen -->
+    <div id="loading">
+        <i data-lucide="loader-2" class="animate-spin" style="animation: spin 1s linear infinite;"></i>
+        <span>載入白板系統中...</span>
+        <style>@keyframes spin { 100% { transform: rotate(360deg); } }</style>
     </div>
 
-    <!-- 設定模態框 -->
-    <div class="modal-overlay" id="settings-modal">
-        <div class="modal-content">
-            <div class="modal-title">
-                <span>設定</span>
-                <button class="btn" id="close-settings" style="width:32px;height:32px"><i data-lucide="x"></i></button>
+    <!-- 自製通用模態框 (Custom Modal) -->
+    <div id="global-modal">
+        <div class="modal-box">
+            <div class="modal-header" id="g-modal-title">標題</div>
+            <div class="modal-body" id="g-modal-msg">內容訊息</div>
+            <div class="modal-footer" id="g-modal-actions">
+                <!-- 按鈕由 JS 動態生成 -->
             </div>
-            
-            <div style="font-weight:bold; color:#64748B; margin-bottom:12px;">觸控與壓力</div>
-            <div class="modal-row">
-                <label class="toggle-switch">
-                    <span>防誤觸 (僅觸控筆)</span>
-                    <label>
-                        <input type="checkbox" id="palm-check" style="display:none">
-                        <div class="toggle-track"><div class="toggle-thumb"></div></div>
+        </div>
+    </div>
+
+    <!-- View 1: Home Gallery -->
+    <div id="view-home">
+        <header class="home-header">
+            <div class="home-title"><i data-lucide="layout-grid"></i> 小米白板</div>
+        </header>
+
+        <div class="gallery-container" id="gallery-list">
+            <!-- JS 生成卡片 -->
+        </div>
+
+        <button class="fab-add" id="btn-create-new" title="建立新畫布">
+            <i data-lucide="plus" size="32"></i>
+        </button>
+    </div>
+
+    <!-- View 2: Editor -->
+    <div id="view-editor">
+        
+        <div class="editor-header-row">
+            <div class="editor-nav">
+                <button class="nav-back" id="btn-back-home" title="儲存並返回"><i data-lucide="arrow-left"></i></button>
+                <input type="text" id="canvas-title-input" class="nav-title-input" placeholder="未命名畫布">
+            </div>
+
+            <div class="ui-top-right">
+                <div class="panel">
+                    <button class="btn" id="btn-settings"><i data-lucide="settings"></i></button>
+                </div>
+            </div>
+        </div>
+
+        <div class="ui-top-center">
+            <div class="panel main-tools">
+                <button class="btn active" id="tool-pen" title="畫筆"><i data-lucide="pen-tool"></i></button>
+                <button class="btn" id="tool-eraser" title="橡皮擦"><i data-lucide="eraser"></i></button>
+                <button class="btn" id="tool-eraser-rect" title="方框擦除"><i data-lucide="box-select"></i></button>
+                <button class="btn" id="tool-lasso" title="索套"><i data-lucide="lasso"></i></button>
+                <div class="divider"></div>
+                <button class="btn" id="btn-undo" title="復原" disabled><i data-lucide="undo-2"></i></button>
+                <button class="btn" id="btn-redo" title="重做" disabled><i data-lucide="redo-2"></i></button>
+                <button class="btn danger" id="tool-clear" title="清空畫布"><i data-lucide="trash-2"></i></button>
+            </div>
+            <div class="panel sub-tools" id="sub-toolbar"></div>
+        </div>
+
+        <div id="color-popover">
+            <div id="iro-picker-container"></div>
+            <div style="font-size:12px; color:#94A3B8; margin-top:8px;">點擊外部關閉</div>
+        </div>
+
+        <div class="modal-overlay" id="settings-modal">
+            <div class="modal-content">
+                <div class="modal-title">
+                    <span>設定</span>
+                    <button class="btn" id="close-settings" style="width:32px;height:32px"><i data-lucide="x"></i></button>
+                </div>
+                
+                <div style="font-weight:bold; color:#64748B; margin-bottom:12px;">觸控與壓力</div>
+                <div class="modal-row">
+                    <label class="toggle-switch">
+                        <span>防誤觸 (僅觸控筆)</span>
+                        <label>
+                            <input type="checkbox" id="palm-check" style="display:none">
+                            <div class="toggle-track"><div class="toggle-thumb"></div></div>
+                        </label>
                     </label>
-                </label>
-                <div style="font-size:12px; color:#94A3B8; margin-top:4px;">開啟後，手指無法繪圖。</div>
-            </div>
+                    <div style="font-size:12px; color:#94A3B8; margin-top:4px;">開啟後，手指無法繪圖。</div>
+                </div>
 
-            <div class="modal-row">
-                <span class="modal-label">手指/滑鼠 壓力模擬</span>
-                <select class="modal-select" id="finger-pressure-mode">
-                    <option value="speed">依速度 (快粗慢細)</option>
-                    <option value="none">無變化 (固定粗細)</option>
-                </select>
-            </div>
+                <div class="modal-row">
+                    <span class="modal-label">手指/滑鼠 壓力模擬</span>
+                    <select class="modal-select" id="finger-pressure-mode">
+                        <option value="speed">依速度 (快粗慢細)</option>
+                        <option value="none">無變化 (固定粗細)</option>
+                    </select>
+                </div>
 
-            <div class="modal-row">
-                <span class="modal-label">觸控筆 壓力來源</span>
-                <select class="modal-select" id="stylus-pressure-mode">
-                    <option value="pressure">真實壓力感應 (推薦)</option>
-                    <option value="speed">依速度 (快粗慢細)</option>
-                    <option value="none">無變化 (固定粗細)</option>
-                </select>
-            </div>
+                <div class="modal-row">
+                    <span class="modal-label">觸控筆 壓力來源</span>
+                    <select class="modal-select" id="stylus-pressure-mode">
+                        <option value="pressure">真實壓力感應 (推薦)</option>
+                        <option value="speed">依速度 (快粗慢細)</option>
+                        <option value="none">無變化 (固定粗細)</option>
+                    </select>
+                </div>
 
-            <hr class="modal-divider">
+                <hr class="modal-divider">
 
-            <div style="font-weight:bold; color:#64748B; margin-bottom:12px;">Redmi靈感觸控筆按鍵</div>
-
-            <div class="modal-row">
-                <span class="modal-label">速記鍵(下鍵)</span>
-                <select class="modal-select" id="btn-34-action">
-                    <option value="none">無功能 (預設)</option>
-                    <option value="toggle-eraser">切換橡皮擦/畫筆</option>
-                    <option value="toggle-lasso">切換索套/畫筆</option>
-                    <option value="undo">復原</option>
-                    <option value="redo">重做 (取消復原)</option>
-                    <option value="next-tool">下一個工具</option>
-                </select>
-            </div>
-
-            <div class="modal-row">
-                <span class="modal-label">截圖鍵(上鍵)</span>
-                <select class="modal-select" id="btn-33-action">
-                    <option value="none">無功能 (預設)</option>
-                    <option value="toggle-lasso">切換索套/畫筆</option>
-                    <option value="toggle-eraser">切換橡皮擦/畫筆</option>
-                    <option value="undo">復原</option>
-                    <option value="redo">重做 (取消復原)</option>
-                    <option value="next-tool">下一個工具</option>
-                </select>
+                <div style="font-weight:bold; color:#64748B; margin-bottom:12px;">Redmi靈感觸控筆按鍵</div>
+                <div class="modal-row">
+                    <span class="modal-label">速記鍵(下鍵)</span>
+                    <select class="modal-select" id="btn-34-action">
+                        <option value="none">無功能 (預設)</option>
+                        <option value="toggle-eraser">切換橡皮擦/畫筆</option>
+                        <option value="toggle-lasso">切換索套/畫筆</option>
+                        <option value="undo">復原</option>
+                        <option value="redo">重做</option>
+                    </select>
+                </div>
+                <div class="modal-row">
+                    <span class="modal-label">截圖鍵(上鍵)</span>
+                    <select class="modal-select" id="btn-33-action">
+                        <option value="none">無功能 (預設)</option>
+                        <option value="toggle-lasso">切換索套/畫筆</option>
+                        <option value="toggle-eraser">切換橡皮擦/畫筆</option>
+                        <option value="undo">復原</option>
+                        <option value="redo">重做</option>
+                    </select>
+                </div>
             </div>
         </div>
-    </div>
 
-    <!-- 右上角設定鈕 -->
-    <div class="ui-top-right">
-        <div class="panel">
-            <button class="btn" id="btn-settings"><i data-lucide="settings"></i></button>
-        </div>
-    </div>
-
-    <!-- 中央工具列 -->
-    <div class="ui-top-center">
-        <div class="panel main-tools">
-            <button class="btn active" id="tool-pen" title="畫筆"><i data-lucide="pen-tool"></i></button>
-            <button class="btn" id="tool-eraser" title="橡皮擦"><i data-lucide="eraser"></i></button>
-            <button class="btn" id="tool-eraser-rect" title="方框擦除"><i data-lucide="box-select"></i></button>
-            <button class="btn" id="tool-lasso" title="索套"><i data-lucide="lasso"></i></button>
-            <div class="divider"></div>
-            <button class="btn" id="btn-undo" title="復原 (Ctrl+Z)" disabled><i data-lucide="undo-2"></i></button>
-            <button class="btn" id="btn-redo" title="重做 (Ctrl+Y)" disabled><i data-lucide="redo-2"></i></button>
-            <button class="btn danger" id="tool-clear" title="清空畫布"><i data-lucide="trash-2"></i></button>
+        <div id="lasso-actions">
+            <button class="action-btn" id="lasso-dup"><i data-lucide="copy" size="14"></i> 複製</button>
+            <div style="width:1px; background:#475569; height:16px;"></div>
+            <button class="action-btn text-red-400" id="lasso-del" style="color:#FCA5A5"><i data-lucide="trash" size="14"></i> 刪除</button>
         </div>
 
-        <div class="panel sub-tools" id="sub-toolbar">
-            <!-- JS 動態生成 -->
-        </div>
+        <canvas id="canvas" resize></canvas>
     </div>
 
-    <!-- 索套選單 -->
-    <div id="lasso-actions">
-        <button class="action-btn" id="lasso-dup"><i data-lucide="copy" size="14"></i> 複製</button>
-        <div style="width:1px; background:#475569; height:16px;"></div>
-        <button class="action-btn text-red-400" id="lasso-del" style="color:#FCA5A5"><i data-lucide="trash" size="14"></i> 刪除</button>
-    </div>
-
-    <canvas id="canvas" resize></canvas>
-
+    <!-- App Logic -->
     <script type="module">
         import { getStroke } from 'https://esm.sh/perfect-freehand';
         paper.install(window);
 
-        // --- 設定與狀態 ---
-        const Settings = {
-            palmRejection: false,
-            fingerMode: 'speed',
-            stylusMode: 'pressure',
-            // 改為預設無功能
-            stylusBtn34: 'none', 
-            stylusBtn33: 'none'
+        // --- Custom Modal Manager ---
+        const CustomModal = {
+            el: document.getElementById('global-modal'),
+            title: document.getElementById('g-modal-title'),
+            msg: document.getElementById('g-modal-msg'),
+            actions: document.getElementById('g-modal-actions'),
+            
+            show(title, msg, buttons) {
+                this.title.innerText = title;
+                this.msg.innerText = msg;
+                this.actions.innerHTML = '';
+                
+                buttons.forEach(btn => {
+                    const b = document.createElement('button');
+                    b.className = `m-btn ${btn.type || 'confirm'}`;
+                    b.innerText = btn.text;
+                    b.onclick = () => {
+                        this.close();
+                        if (btn.onClick) btn.onClick();
+                    };
+                    this.actions.appendChild(b);
+                });
+                
+                this.el.style.display = 'flex';
+                requestAnimationFrame(() => this.el.classList.add('visible'));
+            },
+            
+            close() {
+                this.el.classList.remove('visible');
+                setTimeout(() => this.el.style.display = 'none', 200);
+            },
+
+            confirm(title, msg, onConfirm) {
+                this.show(title, msg, [
+                    { text: '取消', type: 'cancel' },
+                    { text: '確定', type: 'confirm', onClick: onConfirm }
+                ]);
+            },
+
+            delete(title, msg, onConfirm) {
+                this.show(title, msg, [
+                    { text: '取消', type: 'cancel' },
+                    { text: '刪除', type: 'danger', onClick: onConfirm }
+                ]);
+            }
         };
 
-        const App = {
-            mode: 'pen',
-            penType: 'fountain',
-            strokeColor: '#1E293B',
-            strokeWidth: 8,
-            strokeOpacity: 1.0,
-            eraserMode: 'standard',
-            eraserSize: 20,
-            
-            // 繪圖狀態
-            currentPath: null,      
-            currentPoints: [],
-            lastPointTime: 0,
-            
-            eraserPreview: null,
-            rectStart: null, rectPath: null,
-            lassoPath: null, lassoItems: [], lassoState: 'idle', lassoPrevPoint: null,
-            
-            activePointers: new Map(), 
-            isGesturing: false
+        // --- Database Layer ---
+        const DB = {
+            name: 'MiWhiteboardDB', version: 1, storeName: 'canvases', db: null,
+            async init() {
+                return new Promise((resolve, reject) => {
+                    const req = indexedDB.open(this.name, this.version);
+                    req.onupgradeneeded = (e) => { const db = e.target.result; if (!db.objectStoreNames.contains(this.storeName)) db.createObjectStore(this.storeName, { keyPath: 'id' }); };
+                    req.onsuccess = (e) => { this.db = e.target.result; resolve(); };
+                    req.onerror = (e) => reject(e);
+                });
+            },
+            async getAll() { return new Promise((resolve) => { const tx = this.db.transaction(this.storeName, 'readonly'); const req = tx.objectStore(this.storeName).getAll(); req.onsuccess = () => resolve(req.result || []); }); },
+            async get(id) { return new Promise((resolve) => { const tx = this.db.transaction(this.storeName, 'readonly'); const req = tx.objectStore(this.storeName).get(id); req.onsuccess = () => resolve(req.result); }); },
+            async save(data) { return new Promise((resolve) => { const tx = this.db.transaction(this.storeName, 'readwrite'); tx.objectStore(this.storeName).put(data); tx.oncomplete = () => resolve(); }); },
+            async delete(id) { return new Promise((resolve) => { const tx = this.db.transaction(this.storeName, 'readwrite'); tx.objectStore(this.storeName).delete(id); tx.oncomplete = () => resolve(); }); }
         };
 
-        // iro.js 實體
+        // --- App Management ---
+        const AppManager = {
+            currentCanvasId: null,
+
+            async init() {
+                await DB.init();
+                this.renderGallery();
+                
+                document.getElementById('btn-create-new').onclick = () => this.createNew();
+                document.getElementById('btn-back-home').onclick = () => this.saveAndExit();
+                document.getElementById('canvas-title-input').onchange = (e) => {
+                    if(this.currentCanvasId) this.autoSave(e.target.value);
+                };
+                
+                document.getElementById('loading').style.opacity = 0;
+                setTimeout(() => document.getElementById('loading').remove(), 500);
+            },
+
+            async renderGallery() {
+                const list = await DB.getAll();
+                const container = document.getElementById('gallery-list');
+                container.innerHTML = '';
+                list.sort((a, b) => b.updatedAt - a.updatedAt);
+
+                if (list.length === 0) {
+                    container.innerHTML = `<div class="empty-state"><i data-lucide="file-plus" size="48"></i><div>還沒有畫布，點擊右下角按鈕建立一個吧！</div></div>`;
+                    lucide.createIcons();
+                    return;
+                }
+
+                list.forEach(item => {
+                    const card = document.createElement('div');
+                    card.className = 'canvas-card';
+                    card.innerHTML = `
+                        <div class="card-thumb-container">
+                            <img class="card-thumb" src="${item.thumbnail || ''}" alt="thumbnail">
+                        </div>
+                        <div class="card-body">
+                            <div>
+                                <div class="card-header-row">
+                                    <div class="card-title-display">${item.name}</div>
+                                    <input type="text" class="card-title-input" value="${item.name}">
+                                </div>
+                                <div class="card-date">${new Date(item.updatedAt).toLocaleDateString()}</div>
+                            </div>
+                            <div class="card-actions">
+                                <button class="icon-btn btn-edit-name" title="重新命名"><i data-lucide="pencil" size="16"></i></button>
+                                <button class="icon-btn danger btn-del" title="刪除"><i data-lucide="trash-2" size="16"></i></button>
+                            </div>
+                        </div>
+                    `;
+
+                    // 事件綁定
+                    const thumb = card.querySelector('.card-thumb-container');
+                    const titleDisplay = card.querySelector('.card-title-display');
+                    const titleInput = card.querySelector('.card-title-input');
+                    const btnEdit = card.querySelector('.btn-edit-name');
+                    const btnDel = card.querySelector('.btn-del');
+
+                    const openFn = () => this.openCanvas(item.id);
+                    thumb.onclick = openFn;
+                    titleDisplay.onclick = openFn;
+
+                    // 重新命名邏輯
+                    const enableEdit = (e) => {
+                        e.stopPropagation();
+                        titleDisplay.style.display = 'none';
+                        titleInput.classList.add('active');
+                        titleInput.focus();
+                    };
+
+                    const saveEdit = async () => {
+                        const newName = titleInput.value.trim();
+                        if (newName && newName !== item.name) {
+                            item.name = newName;
+                            item.updatedAt = Date.now();
+                            await DB.save(item);
+                            this.renderGallery();
+                        } else {
+                            titleInput.value = item.name;
+                            titleInput.classList.remove('active');
+                            titleDisplay.style.display = 'block';
+                        }
+                    };
+
+                    btnEdit.onclick = enableEdit;
+                    titleInput.onblur = saveEdit;
+                    titleInput.onkeydown = (e) => { if(e.key === 'Enter') titleInput.blur(); };
+                    titleInput.onclick = (e) => e.stopPropagation(); // 防止點擊輸入框時觸發卡片點擊
+
+                    // 刪除邏輯 (使用自製彈窗)
+                    btnDel.onclick = (e) => { 
+                        e.stopPropagation();
+                        CustomModal.delete('刪除畫布', `確定要刪除「${item.name}」嗎？此動作無法復原。`, async () => {
+                            await DB.delete(item.id);
+                            this.renderGallery();
+                        });
+                    };
+
+                    container.appendChild(card);
+                });
+                lucide.createIcons();
+            },
+
+            async createNew() {
+                const id = Date.now().toString();
+                const newCanvas = { id: id, name: `未命名畫布`, data: null, createdAt: Date.now(), updatedAt: Date.now(), thumbnail: '' };
+                await DB.save(newCanvas);
+                this.openCanvas(id);
+            },
+
+            async openCanvas(id) {
+                this.currentCanvasId = id;
+                const data = await DB.get(id);
+                document.body.classList.add('mode-editor');
+                document.getElementById('canvas-title-input').value = data.name;
+                project.clear();
+                project.activeLayer.removeChildren();
+                if (data.data) project.importJSON(data.data);
+                view.update();
+                History.stack = []; History.pointer = -1; History.saveState(); 
+            },
+
+            async saveAndExit() {
+                if (!this.currentCanvasId) return;
+                
+                // --- 智慧縮圖 (Fit-to-Content + White BG) ---
+                App.lassoPath?.remove(); App.lassoPath=null; 
+                if(App.eraserPreview) App.eraserPreview.visible = false;
+                
+                // 1. 記錄當前視圖狀態
+                const originalCenter = view.center.clone();
+                const originalZoom = view.zoom;
+
+                // 2. 計算內容範圍並縮放 (如果有內容)
+                if (!project.activeLayer.isEmpty()) {
+                    const contentBounds = project.activeLayer.bounds;
+                    // 增加 10% 邊距
+                    view.fitBounds(contentBounds.expand(Math.max(contentBounds.width, contentBounds.height) * 0.1));
+                }
+
+                // 3. 加入白色背景覆蓋整個視窗 (在最底層)
+                const bgRect = new Path.Rectangle({
+                    rectangle: view.bounds,
+                    fillColor: 'white',
+                    insert: true
+                });
+                bgRect.sendToBack();
+                view.update();
+
+                // 4. 截圖
+                const thumbData = view.element.toDataURL('image/jpeg', 0.5);
+
+                // 5. 清理並復原
+                bgRect.remove();
+                view.center = originalCenter;
+                view.zoom = originalZoom;
+                view.update();
+                // ------------------------------------------
+
+                const jsonData = project.exportJSON();
+                const name = document.getElementById('canvas-title-input').value || "未命名畫布";
+
+                const record = {
+                    id: this.currentCanvasId,
+                    name: name,
+                    data: jsonData,
+                    thumbnail: thumbData,
+                    updatedAt: Date.now(),
+                    createdAt: (await DB.get(this.currentCanvasId))?.createdAt || Date.now()
+                };
+
+                await DB.save(record);
+                project.clear();
+                this.currentCanvasId = null;
+                document.body.classList.remove('mode-editor');
+                this.renderGallery();
+            },
+
+            async autoSave(newName = null) {
+                if (!this.currentCanvasId) return;
+                const name = newName || document.getElementById('canvas-title-input').value;
+                const currentRec = await DB.get(this.currentCanvasId);
+                currentRec.name = name;
+                currentRec.data = project.exportJSON();
+                currentRec.updatedAt = Date.now();
+                await DB.save(currentRec);
+            }
+        };
+
+        // --- Original Paint Logic ---
+        const Settings = { palmRejection: false, fingerMode: 'speed', stylusMode: 'pressure', stylusBtn34: 'none', stylusBtn33: 'none' };
+        const App = { mode: 'pen', penType: 'fountain', strokeColor: '#1E293B', strokeWidth: 8, strokeOpacity: 1.0, eraserMode: 'standard', eraserSize: 20, currentPath: null, currentPoints: [], lastPointTime: 0, eraserPreview: null, rectStart: null, rectPath: null, lassoPath: null, lassoItems: [], lassoState: 'idle', lassoPrevPoint: null, activePointers: new Map(), isGesturing: false, prevDist: 0, prevC: null };
         let colorPickerInstance = null;
 
         const History = {
             stack: [], pointer: -1, maxStates: 30,
-            init() { this.saveState(); },
             saveState() {
                 if (this.pointer < this.stack.length - 1) this.stack = this.stack.slice(0, this.pointer + 1);
                 this.stack.push(project.activeLayer.exportJSON());
@@ -304,74 +618,31 @@
             },
             undo() { if (this.pointer > 0) { this.pointer--; this.restoreState(); } },
             redo() { if (this.pointer < this.stack.length - 1) { this.pointer++; this.restoreState(); } },
-            restoreState() {
-                project.activeLayer.removeChildren(); project.activeLayer.importJSON(this.stack[this.pointer]);
-                this.updateButtons(); App.lassoPath = null; App.eraserPreview = null; view.update();
-            },
-            updateButtons() {
-                document.getElementById('btn-undo').disabled = this.pointer <= 0;
-                document.getElementById('btn-redo').disabled = this.pointer >= this.stack.length - 1;
-            }
+            restoreState() { project.activeLayer.removeChildren(); project.activeLayer.importJSON(this.stack[this.pointer]); this.updateButtons(); App.lassoPath = null; App.eraserPreview = null; view.update(); },
+            updateButtons() { document.getElementById('btn-undo').disabled = this.pointer <= 0; document.getElementById('btn-redo').disabled = this.pointer >= this.stack.length - 1; }
         };
 
         window.onload = function() {
             lucide.createIcons();
             paper.setup('canvas');
-            
-            // 初始化 iro.js
             initColorPicker();
-            
-            History.init();
             updateSubToolbar();
             initEvents();
             initSettingsUI();
-            
-            document.getElementById('loading').style.opacity = 0;
-            setTimeout(() => document.getElementById('loading').remove(), 500);
+            AppManager.init();
         };
 
         function initColorPicker() {
-            colorPickerInstance = new iro.ColorPicker("#iro-picker-container", {
-                width: 200,
-                color: App.strokeColor,
-                layout: [
-                    { component: iro.ui.Wheel, options: { wheelLightness: false } },
-                    { component: iro.ui.Slider, options: { sliderType: 'value' } }
-                ]
-            });
-            colorPickerInstance.on('color:change', function(color) {
-                App.strokeColor = color.hexString;
-                const trigger = document.getElementById('color-trigger-btn');
-                if (trigger) trigger.style.background = App.strokeColor;
-            });
+            colorPickerInstance = new iro.ColorPicker("#iro-picker-container", { width: 200, color: App.strokeColor, layout: [{ component: iro.ui.Wheel, options: { wheelLightness: false } }, { component: iro.ui.Slider, options: { sliderType: 'value' } }] });
+            colorPickerInstance.on('color:change', function(color) { App.strokeColor = color.hexString; const trigger = document.getElementById('color-trigger-btn'); if (trigger) trigger.style.background = App.strokeColor; });
         }
-
         function toggleColorPopover() {
             const pop = document.getElementById('color-popover');
             const isVisible = pop.classList.contains('visible');
-            
-            if (isVisible) {
-                pop.classList.remove('visible');
-                setTimeout(() => { if(!pop.classList.contains('visible')) pop.style.display = 'none'; }, 200);
-            } else {
-                pop.style.display = 'flex';
-                // 更新色盤到當前顏色
-                colorPickerInstance.color.hexString = App.strokeColor;
-                // 強制重繪以避免佈局問題
-                requestAnimationFrame(() => pop.classList.add('visible'));
-            }
+            if (isVisible) { pop.classList.remove('visible'); setTimeout(() => { if(!pop.classList.contains('visible')) pop.style.display = 'none'; }, 200); } 
+            else { pop.style.display = 'flex'; colorPickerInstance.color.hexString = App.strokeColor; requestAnimationFrame(() => pop.classList.add('visible')); }
         }
-
-        // 點擊畫布或其他地方關閉色盤
-        document.addEventListener('pointerdown', (e) => {
-            const pop = document.getElementById('color-popover');
-            const trigger = document.getElementById('color-trigger-btn');
-            if (pop.classList.contains('visible') && 
-                !pop.contains(e.target) && 
-                e.target !== trigger) {
-                toggleColorPopover();
-            }
-        });
+        document.addEventListener('pointerdown', (e) => { const pop = document.getElementById('color-popover'); const trigger = document.getElementById('color-trigger-btn'); if (pop && pop.classList.contains('visible') && !pop.contains(e.target) && e.target !== trigger) toggleColorPopover(); });
 
         function initSettingsUI() {
             const modal = document.getElementById('settings-modal');
@@ -380,39 +651,19 @@
             btn.onclick = () => modal.style.display = 'flex';
             close.onclick = () => modal.style.display = 'none';
             modal.onclick = (e) => { if(e.target === modal) modal.style.display = 'none'; };
-
-            const palmCheck = document.getElementById('palm-check');
-            const fingerSel = document.getElementById('finger-pressure-mode');
-            const stylusSel = document.getElementById('stylus-pressure-mode');
-            palmCheck.checked = Settings.palmRejection;
-            fingerSel.value = Settings.fingerMode;
-            stylusSel.value = Settings.stylusMode;
-            palmCheck.onchange = (e) => Settings.palmRejection = e.target.checked;
-            fingerSel.onchange = (e) => Settings.fingerMode = e.target.value;
-            stylusSel.onchange = (e) => Settings.stylusMode = e.target.value;
-
-            const btn34Sel = document.getElementById('btn-34-action');
-            const btn33Sel = document.getElementById('btn-33-action');
-            btn34Sel.value = Settings.stylusBtn34;
-            btn33Sel.value = Settings.stylusBtn33;
-            btn34Sel.onchange = (e) => Settings.stylusBtn34 = e.target.value;
-            btn33Sel.onchange = (e) => Settings.stylusBtn33 = e.target.value;
+            const palmCheck = document.getElementById('palm-check'); const fingerSel = document.getElementById('finger-pressure-mode'); const stylusSel = document.getElementById('stylus-pressure-mode');
+            palmCheck.checked = Settings.palmRejection; fingerSel.value = Settings.fingerMode; stylusSel.value = Settings.stylusMode;
+            palmCheck.onchange = (e) => Settings.palmRejection = e.target.checked; fingerSel.onchange = (e) => Settings.fingerMode = e.target.value; stylusSel.onchange = (e) => Settings.stylusMode = e.target.value;
+            const btn34Sel = document.getElementById('btn-34-action'); const btn33Sel = document.getElementById('btn-33-action');
+            btn34Sel.value = Settings.stylusBtn34; btn33Sel.value = Settings.stylusBtn33;
+            btn34Sel.onchange = (e) => Settings.stylusBtn34 = e.target.value; btn33Sel.onchange = (e) => Settings.stylusBtn33 = e.target.value;
         }
 
         function executeStylusAction(action) {
             switch(action) {
-                case 'undo': History.undo(); break;
-                case 'redo': History.redo(); break;
-                case 'toggle-eraser':
-                    if (App.mode === 'eraser' || App.mode === 'eraser-rect') setMode('pen'); else setMode('eraser');
-                    break;
-                case 'toggle-lasso':
-                    if (App.mode === 'lasso') setMode('pen'); else setMode('lasso');
-                    break;
-                case 'next-tool':
-                    const tools = ['pen', 'eraser', 'eraser-rect', 'lasso'];
-                    setMode(tools[(tools.indexOf(App.mode) + 1) % tools.length]);
-                    break;
+                case 'undo': History.undo(); break; case 'redo': History.redo(); break;
+                case 'toggle-eraser': if (App.mode === 'eraser' || App.mode === 'eraser-rect') setMode('pen'); else setMode('eraser'); break;
+                case 'toggle-lasso': if (App.mode === 'lasso') setMode('pen'); else setMode('lasso'); break;
                 case 'none': break;
             }
         }
@@ -423,35 +674,24 @@
             let mode = isStylus ? Settings.stylusMode : Settings.fingerMode;
             if (App.mode === 'pen' && (App.penType === 'ballpoint' || App.penType === 'highlighter')) return 0.5;
             if (mode === 'pressure') return (e.pressure !== undefined && e.pressure !== 0) ? e.pressure : 0.5;
-            else if (mode === 'speed') {
-                if (!prevPoint) return 0.5;
-                const dist = point.getDistance(prevPoint);
-                const velocity = (Date.now() - lastTime) > 0 ? dist / (Date.now() - lastTime) : 0;
-                return Math.max(0.1, Math.min(1, 1 - (velocity / 3)));
-            } else return 0.5;
+            else if (mode === 'speed') { if (!prevPoint) return 0.5; const dist = point.getDistance(prevPoint); const velocity = (Date.now() - lastTime) > 0 ? dist / (Date.now() - lastTime) : 0; return Math.max(0.1, Math.min(1, 1 - (velocity / 3))); } else return 0.5;
         }
 
         function initEvents() {
             const canvas = document.getElementById('canvas');
-            canvas.addEventListener('pointerdown', onPointerDown);
-            canvas.addEventListener('pointermove', onPointerMove);
-            canvas.addEventListener('pointerup', onPointerUp);
-            canvas.addEventListener('pointercancel', onPointerUp);
-            canvas.addEventListener('wheel', onWheel, { passive: false });
-
-            document.addEventListener('keydown', (e) => {
-                if (e.keyCode === 34) { e.preventDefault(); executeStylusAction(Settings.stylusBtn34); return; }
-                if (e.keyCode === 33) { e.preventDefault(); executeStylusAction(Settings.stylusBtn33); return; }
-                if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); if (e.shiftKey) History.redo(); else History.undo(); }
-                if ((e.ctrlKey || e.metaKey) && e.key === 'y') { e.preventDefault(); History.redo(); }
-            });
-
+            canvas.addEventListener('pointerdown', onPointerDown); canvas.addEventListener('pointermove', onPointerMove); canvas.addEventListener('pointerup', onPointerUp); canvas.addEventListener('pointercancel', onPointerUp); canvas.addEventListener('wheel', onWheel, { passive: false });
+            document.addEventListener('keydown', (e) => { if(!AppManager.currentCanvasId) return; if (e.keyCode === 34) { e.preventDefault(); executeStylusAction(Settings.stylusBtn34); return; } if (e.keyCode === 33) { e.preventDefault(); executeStylusAction(Settings.stylusBtn33); return; } if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); if (e.shiftKey) History.redo(); else History.undo(); } if ((e.ctrlKey || e.metaKey) && e.key === 'y') { e.preventDefault(); History.redo(); } });
             ['pen', 'eraser', 'eraser-rect', 'lasso'].forEach(m => document.getElementById(`tool-${m}`).onclick = () => setMode(m));
-            document.getElementById('tool-clear').onclick = () => { project.activeLayer.removeChildren(); clearLasso(); History.saveState(); };
-            document.getElementById('btn-undo').onclick = () => History.undo();
-            document.getElementById('btn-redo').onclick = () => History.redo();
-            document.getElementById('lasso-dup').onclick = duplicateSelection;
-            document.getElementById('lasso-del').onclick = deleteSelection;
+            
+            // 使用自製彈窗清空
+            document.getElementById('tool-clear').onclick = () => { 
+                CustomModal.delete('清空畫布', '確定要清空所有內容嗎？', () => {
+                    project.activeLayer.removeChildren(); clearLasso(); History.saveState(); 
+                });
+            };
+            
+            document.getElementById('btn-undo').onclick = () => History.undo(); document.getElementById('btn-redo').onclick = () => History.redo();
+            document.getElementById('lasso-dup').onclick = duplicateSelection; document.getElementById('lasso-del').onclick = deleteSelection;
         }
 
         function setMode(m) {
@@ -464,77 +704,30 @@
         }
 
         function onPointerDown(e) {
-            // 如果點擊的是 UI 元素 (例如色盤)，不觸發畫布邏輯
-            if (e.target.closest('.panel') || e.target.closest('#color-popover') || e.target.closest('.modal-content')) return;
-
-            canvas.setPointerCapture(e.pointerId);
-            App.activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+            if (e.target.closest('.panel') || e.target.closest('#color-popover') || e.target.closest('.modal-content') || e.target.closest('.editor-nav') || e.target.closest('#global-modal')) return;
+            canvas.setPointerCapture(e.pointerId); App.activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
             if (App.activePointers.size === 2) { startGesture(); return; }
-
-            const p = view.viewToProject(new Point(e.clientX, e.clientY));
-            const pressure = getInputPressure(e, p, null, 0);
-            if (pressure === -1) return;
-
-            if (App.activePointers.size === 1 && !App.isGesturing) {
-                if (App.mode === 'pen') startPenStroke(p, pressure);
-                else if (App.mode === 'eraser') eraseAt(p);
-                else if (App.mode === 'eraser-rect') startRectEraser(p);
-                else if (App.mode === 'lasso') handleLassoDown(p);
-                App.lastPointTime = Date.now();
-            }
+            const p = view.viewToProject(new Point(e.clientX, e.clientY)); const pressure = getInputPressure(e, p, null, 0); if (pressure === -1) return;
+            if (App.activePointers.size === 1 && !App.isGesturing) { if (App.mode === 'pen') startPenStroke(p, pressure); else if (App.mode === 'eraser') eraseAt(p); else if (App.mode === 'eraser-rect') startRectEraser(p); else if (App.mode === 'lasso') handleLassoDown(p); App.lastPointTime = Date.now(); }
         }
         function onPointerMove(e) {
             if (App.activePointers.has(e.pointerId)) App.activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
             if (App.activePointers.size === 2) { handleGesture(); return; }
             if (App.activePointers.size === 1 && !App.isGesturing && (e.buttons || e.pointerType === 'touch')) {
                 if (e.pointerType !== 'pen' && Settings.palmRejection) return;
-                const rawEvents = e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
-                const lastP = App.currentPoints.length > 0 ? new Point(App.currentPoints[App.currentPoints.length-1]) : null;
-                if (App.mode === 'pen' && App.currentPath) {
-                    rawEvents.forEach(evt => {
-                        const pt = view.viewToProject(new Point(evt.clientX, evt.clientY));
-                        const pressure = getInputPressure(evt, pt, lastP, App.lastPointTime);
-                        App.currentPoints.push({ x: pt.x, y: pt.y, pressure: pressure });
-                        App.lastPointTime = Date.now();
-                    });
-                    renderCurrentStroke();
-                } else {
-                    const p = view.viewToProject(new Point(e.clientX, e.clientY));
-                    if (App.mode === 'eraser') eraseAt(p);
-                    else if (App.mode === 'eraser-rect') updateRectEraser(p);
-                    else if (App.mode === 'lasso') handleLassoMove(p);
-                }
+                const rawEvents = e.getCoalescedEvents ? e.getCoalescedEvents() : [e]; const lastP = App.currentPoints.length > 0 ? new Point(App.currentPoints[App.currentPoints.length-1]) : null;
+                if (App.mode === 'pen' && App.currentPath) { rawEvents.forEach(evt => { const pt = view.viewToProject(new Point(evt.clientX, evt.clientY)); const pressure = getInputPressure(evt, pt, lastP, App.lastPointTime); App.currentPoints.push({ x: pt.x, y: pt.y, pressure: pressure }); App.lastPointTime = Date.now(); }); renderCurrentStroke(); } 
+                else { const p = view.viewToProject(new Point(e.clientX, e.clientY)); if (App.mode === 'eraser') eraseAt(p); else if (App.mode === 'eraser-rect') updateRectEraser(p); else if (App.mode === 'lasso') handleLassoMove(p); }
             }
         }
         function onPointerUp(e) {
-            const wasGesturing = App.isGesturing;
-            App.activePointers.delete(e.pointerId);
-            if (App.activePointers.size === 0) App.isGesturing = false;
-            if (wasGesturing) return;
-            if (App.mode === 'pen' && App.currentPath) finalizeStroke();
-            else if (App.mode === 'eraser') { if (App.eraserPreview) { App.eraserPreview.remove(); App.eraserPreview = null; } History.saveState(); }
-            else if (App.mode === 'eraser-rect') finalizeRectEraser();
-            else if (App.mode === 'lasso') handleLassoUp();
+            const wasGesturing = App.isGesturing; App.activePointers.delete(e.pointerId); if (App.activePointers.size === 0) App.isGesturing = false; if (wasGesturing) return;
+            if (App.mode === 'pen' && App.currentPath) finalizeStroke(); else if (App.mode === 'eraser') { if (App.eraserPreview) { App.eraserPreview.remove(); App.eraserPreview = null; } History.saveState(); } else if (App.mode === 'eraser-rect') finalizeRectEraser(); else if (App.mode === 'lasso') handleLassoUp();
         }
 
-        function startPenStroke(point, pressure) {
-            clearLasso(); App.currentPoints = [{ x: point.x, y: point.y, pressure: pressure }];
-            App.currentPath = new Path({ fillColor: App.strokeColor, opacity: App.strokeOpacity, blendMode: App.penType === 'highlighter' ? 'multiply' : 'normal', insert: true });
-        }
-        function renderCurrentStroke() {
-            if (!App.currentPath || App.currentPoints.length < 1) return;
-            let options = { size: App.strokeWidth, start: { taper: 0, cap: true }, end: { taper: 0, cap: true }, simulatePressure: false, streamline: 0.5 };
-            if (App.penType === 'fountain') { options.thinning = 0.8; options.smoothing = 0.5; } else options.thinning = 0;
-            const outline = getStroke(App.currentPoints, options);
-            App.currentPath.pathData = window.getSvgPathFromStroke(outline);
-        }
-        function finalizeStroke() {
-            renderCurrentStroke(); App.currentPath.simplify(1);
-            const normalized = App.currentPath.unite(App.currentPath); App.currentPath.remove();
-            normalized.fillColor = App.strokeColor; normalized.opacity = App.strokeOpacity; normalized.blendMode = App.penType === 'highlighter' ? 'multiply' : 'normal';
-            if (!normalized.parent) project.activeLayer.addChild(normalized);
-            App.currentPath = null; App.currentPoints = []; History.saveState();
-        }
+        function startPenStroke(point, pressure) { clearLasso(); App.currentPoints = [{ x: point.x, y: point.y, pressure: pressure }]; App.currentPath = new Path({ fillColor: App.strokeColor, opacity: App.strokeOpacity, blendMode: App.penType === 'highlighter' ? 'multiply' : 'normal', insert: true }); }
+        function renderCurrentStroke() { if (!App.currentPath || App.currentPoints.length < 1) return; let options = { size: App.strokeWidth, start: { taper: 0, cap: true }, end: { taper: 0, cap: true }, simulatePressure: false, streamline: 0.5 }; if (App.penType === 'fountain') { options.thinning = 0.8; options.smoothing = 0.5; } else options.thinning = 0; const outline = getStroke(App.currentPoints, options); App.currentPath.pathData = window.getSvgPathFromStroke(outline); }
+        function finalizeStroke() { renderCurrentStroke(); App.currentPath.simplify(1); const normalized = App.currentPath.unite(App.currentPath); App.currentPath.remove(); normalized.fillColor = App.strokeColor; normalized.opacity = App.strokeOpacity; normalized.blendMode = App.penType === 'highlighter' ? 'multiply' : 'normal'; if (!normalized.parent) project.activeLayer.addChild(normalized); App.currentPath = null; App.currentPoints = []; History.saveState(); }
         function eraseAt(point) { if (App.eraserPreview) App.eraserPreview.remove(); App.eraserPreview = new Path.Circle({ center: point, radius: App.eraserSize, strokeColor: '#EF4444', fillColor: new Color(1,0,0,0.2), strokeWidth: 1/view.zoom }); performErase(new Path.Circle({ center: point, radius: App.eraserSize, insert: false })); }
         function startRectEraser(point) { clearLasso(); App.rectStart = point; App.rectPath = new Path.Rectangle({ from: point, to: point, fillColor: new Color(1,0,0,0.1), strokeColor: '#EF4444', dashArray: [4,4], strokeWidth: 1/view.zoom }); }
         function updateRectEraser(point) { if (!App.rectPath) return; App.rectPath.remove(); App.rectPath = new Path.Rectangle({ from: App.rectStart, to: point, fillColor: new Color(1,0,0,0.1), strokeColor: '#EF4444', dashArray: [4,4], strokeWidth: 1/view.zoom }); }
@@ -545,23 +738,10 @@
                 let item = items[i];
                 if (!item.intersects(eraserItem) && !eraserItem.contains(item.position) && !item.contains(eraserItem.position)) continue;
                 if (App.eraserMode === 'object') item.remove();
-                else {
-                    const result = item.subtract(eraserItem); item.remove();
-                    const chunks = separateDisjointPaths(result);
-                    for (let c of chunks) { c.fillColor = item.fillColor; c.opacity = item.opacity; c.blendMode = item.blendMode; if (Math.abs(c.area) > 2) project.activeLayer.addChild(c); }
-                    if (result !== chunks[0] && result.parent) result.remove();
-                }
+                else { const result = item.subtract(eraserItem); item.remove(); const chunks = separateDisjointPaths(result); for (let c of chunks) { c.fillColor = item.fillColor; c.opacity = item.opacity; c.blendMode = item.blendMode; if (Math.abs(c.area) > 2) project.activeLayer.addChild(c); } if (result !== chunks[0] && result.parent) result.remove(); }
             }
         }
-        function separateDisjointPaths(item) {
-            if (item instanceof Path) return [item];
-            if (item instanceof CompoundPath) {
-                const children = item.removeChildren(); item.remove(); if (!children.length) return [];
-                children.sort((a,b)=>Math.abs(b.area)-Math.abs(a.area)); const islands = [];
-                for(let child of children){ let p = islands.find(isl => isl.body.bounds.contains(child.bounds) && isl.body.contains(child.firstSegment.point)); if(p) p.holes.push(child); else islands.push({body:child, holes:[]}); }
-                return islands.map(isl => isl.holes.length ? new CompoundPath({children:[isl.body, ...isl.holes]}) : isl.body);
-            } return [item];
-        }
+        function separateDisjointPaths(item) { if (item instanceof Path) return [item]; if (item instanceof CompoundPath) { const children = item.removeChildren(); item.remove(); if (!children.length) return []; children.sort((a,b)=>Math.abs(b.area)-Math.abs(a.area)); const islands = []; for(let child of children){ let p = islands.find(isl => isl.body.bounds.contains(child.bounds) && isl.body.contains(child.firstSegment.point)); if(p) p.holes.push(child); else islands.push({body:child, holes:[]}); } return islands.map(isl => isl.holes.length ? new CompoundPath({children:[isl.body, ...isl.holes]}) : isl.body); } return [item]; }
         function handleLassoDown(point) { if (App.lassoState === 'selected' && App.lassoPath.contains(point)) { App.lassoState = 'moving'; App.lassoPrevPoint = point; return; } clearLasso(); App.lassoState = 'drawing'; App.lassoPath = new Path({ strokeColor: '#3B82F6', strokeWidth: 2/view.zoom, dashArray: [5,5], data: {isLassoUI:true} }); App.lassoPath.add(point); }
         function handleLassoMove(point) { if (App.lassoState === 'drawing') App.lassoPath.add(point); else if (App.lassoState === 'moving') { const delta = point.subtract(App.lassoPrevPoint); App.lassoItems.forEach(i => i.position = i.position.add(delta)); App.lassoPath.position = App.lassoPath.position.add(delta); App.lassoPrevPoint = point; updateLassoMenu(); } }
         function handleLassoUp() { if (App.lassoState === 'drawing') { App.lassoPath.closed = true; App.lassoPath.simplify(10); const geo = App.lassoPath; App.lassoItems = project.activeLayer.children.filter(i => !i.data.isLassoUI && (geo.contains(i.bounds.center) || geo.intersects(i))); if (App.lassoItems.length > 0) { App.lassoState = 'selected'; const bounds = App.lassoItems.reduce((b,i)=>b.unite(i.bounds), App.lassoItems[0].bounds); App.lassoPath.remove(); App.lassoPath = new Path.Rectangle({ rectangle: bounds.expand(10), strokeColor: '#3B82F6', strokeWidth: 1/view.zoom, dashArray: [4,4], fillColor: new Color(0.23,0.51,0.96,0.05), data: {isLassoUI:true} }); showLassoMenu(bounds); } else clearLasso(); } else if (App.lassoState === 'moving') { App.lassoState = 'selected'; History.saveState(); } }
@@ -575,17 +755,8 @@
             const el = document.getElementById('sub-toolbar'); el.innerHTML = '';
             if (App.mode === 'pen') {
                 const g = document.createElement('div'); g.className='opt-group';
-                [{id:'fountain',t:'鋼筆'}, {id:'ballpoint',t:'圓珠筆'}, {id:'highlighter',t:'螢光筆'}].forEach(o=>{
-                    const d=document.createElement('div'); d.className=`opt-btn ${App.penType===o.id?'selected':''}`; d.innerText=o.t;
-                    d.onclick=()=>{ App.penType=o.id; if(o.id==='highlighter'){App.strokeColor='#FEF08A';App.strokeOpacity=0.5;App.strokeWidth=20;}else{if(App.strokeColor==='#FEF08A')App.strokeColor='#1E293B';App.strokeOpacity=1;App.strokeWidth=o.id==='ballpoint'?3:8;} updateSubToolbar();}; g.appendChild(d);
-                }); el.appendChild(g);
-                
-                // 顏色按鈕 (呼叫 iro.js)
-                const cw = document.createElement('div'); cw.className='setting-item'; 
-                cw.innerHTML=`<div id="color-trigger-btn" class="color-trigger" style="background:${App.strokeColor}"></div>`;
-                cw.onclick = (e) => { e.stopPropagation(); toggleColorPopover(); };
-                el.appendChild(cw);
-
+                [{id:'fountain',t:'鋼筆'}, {id:'ballpoint',t:'圓珠筆'}, {id:'highlighter',t:'螢光筆'}].forEach(o=>{ const d=document.createElement('div'); d.className=`opt-btn ${App.penType===o.id?'selected':''}`; d.innerText=o.t; d.onclick=()=>{ App.penType=o.id; if(o.id==='highlighter'){App.strokeColor='#FEF08A';App.strokeOpacity=0.5;App.strokeWidth=20;}else{if(App.strokeColor==='#FEF08A')App.strokeColor='#1E293B';App.strokeOpacity=1;App.strokeWidth=o.id==='ballpoint'?3:8;} updateSubToolbar();}; g.appendChild(d); }); el.appendChild(g);
+                const cw = document.createElement('div'); cw.className='setting-item'; cw.innerHTML=`<div id="color-trigger-btn" class="color-trigger" style="background:${App.strokeColor}"></div>`; cw.onclick = (e) => { e.stopPropagation(); toggleColorPopover(); }; el.appendChild(cw);
                 addSlider(el,'粗細',1,40,App.strokeWidth,v=>App.strokeWidth=v); addSlider(el,'透明度',1,100,App.strokeOpacity*100,v=>App.strokeOpacity=v/100);
             } else if (App.mode.startsWith('eraser')) {
                 const g=document.createElement('div'); g.className='opt-group';
