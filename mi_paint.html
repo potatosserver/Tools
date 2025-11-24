@@ -32,7 +32,8 @@
         body { margin: 0; background-color: #F8FAFC; overflow: hidden; touch-action: none; user-select: none; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
         
         /* 視圖切換容器 */
-        #view-home { position: absolute; inset: 0; z-index: 10; background: #F8FAFC; overflow-y: auto; display: flex; flex-direction: column; transition: opacity 0.3s; }
+        /* 修正：加入 touch-action: pan-y 讓首頁列表在手機上可以正常上下滑動，不會被 body 的 none 擋住 */
+        #view-home { position: absolute; inset: 0; z-index: 10; background: #F8FAFC; overflow-y: auto; display: flex; flex-direction: column; transition: opacity 0.3s; touch-action: pan-y; }
         #view-editor { position: absolute; inset: 0; z-index: 20; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
         
         body.mode-editor #view-home { opacity: 0; pointer-events: none; }
@@ -43,15 +44,25 @@
         .home-title { font-size: 24px; font-weight: 700; color: #1E293B; display: flex; align-items: center; gap: 10px; }
         .gallery-container { padding: 24px; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 24px; max-width: 1200px; margin: 0 auto; width: 100%; box-sizing: border-box; }
         
+        /* 卡片樣式 */
         .canvas-card { background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05); transition: transform 0.2s, box-shadow 0.2s; cursor: pointer; position: relative; border: 1px solid #E2E8F0; display: flex; flex-direction: column; }
         .canvas-card:hover { transform: translateY(-4px); box-shadow: 0 10px 15px rgba(0,0,0,0.1); }
-        .card-thumb { width: 100%; height: 140px; background: white; object-fit: contain; display: block; border-bottom: 1px solid #f1f5f9; }
+        
+        /* 縮圖樣式 - 確保點擊有效 */
+        .card-thumb { width: 100%; height: 140px; background: white; object-fit: contain; display: block; border-bottom: 1px solid #f1f5f9; pointer-events: none; /* 讓點擊事件穿透到 card 上，避免部分瀏覽器行為不一致 */ }
+        
         .card-body { padding: 12px; flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
-        .card-title { font-weight: 600; color: #334155; margin-bottom: 4px; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        
+        /* 標題樣式 */
+        .card-title-container { min-height: 24px; margin-bottom: 4px; display: flex; align-items: center; }
+        .card-title { font-weight: 600; color: #334155; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; }
+        .card-title-edit { width: 100%; font-size: 16px; padding: 2px 4px; border: 1px solid #2563EB; border-radius: 4px; outline: none; font-weight: 600; color: #334155; }
+
         .card-date { font-size: 12px; color: #94A3B8; }
-        .card-actions { margin-top: 10px; display: flex; justify-content: flex-end; }
-        .icon-btn { padding: 6px; border-radius: 6px; border: none; background: transparent; color: #94A3B8; cursor: pointer; transition: 0.2s; }
-        .icon-btn:hover { background: #FEE2E2; color: #EF4444; }
+        .card-actions { margin-top: 10px; display: flex; justify-content: flex-end; gap: 4px; }
+        .icon-btn { padding: 6px; border-radius: 6px; border: none; background: transparent; color: #94A3B8; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center;}
+        .icon-btn:hover { background: #F1F5F9; color: #475569; }
+        .icon-btn.btn-del:hover { background: #FEE2E2; color: #EF4444; }
 
         .empty-state { grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 0; color: #64748B; gap: 16px; }
         
@@ -62,7 +73,6 @@
         /* --- 編輯器樣式 (Editor) --- */
         #canvas { width: 100vw; height: 100vh; display: block; cursor: crosshair; }
         
-        /* UI 容器與排版優化 */
         .editor-header-row {
             position: absolute; top: 16px; left: 16px; right: 16px; z-index: 101;
             display: flex; justify-content: space-between; align-items: center; pointer-events: none;
@@ -70,7 +80,7 @@
 
         .editor-nav { 
             display: flex; align-items: center; gap: 12px; pointer-events: auto; 
-            max-width: calc(100% - 60px); /* 留位子給設定按鈕 */
+            max-width: calc(100% - 60px); 
         }
 
         .nav-back { 
@@ -88,10 +98,8 @@
         }
         .nav-title-input:focus { border-color: #2563EB; }
 
-        /* 設定按鈕區塊 */
         .ui-top-right { pointer-events: auto; }
 
-        /* 工具列容器 */
         .ui-top-center {
             position: absolute; top: 16px; left: 50%; transform: translateX(-50%);
             display: flex; flex-direction: column; align-items: center; gap: 8px; z-index: 100;
@@ -106,29 +114,11 @@
             pointer-events: auto; border: 1px solid rgba(0,0,0,0.05); 
         }
 
-        /* --- 手機版響應式設計 (Mobile Layout) --- */
         @media (max-width: 600px) {
-            /* 讓工具列下移，不擋住標題 */
-            .ui-top-center {
-                top: 70px; 
-                width: 96%;
-            }
-            
-            /* 標題輸入框自適應寬度 */
-            .nav-title-input {
-                width: 100%;
-                min-width: 0; /* 允許縮小 */
-                font-size: 14px;
-            }
-
-            .editor-nav {
-                width: 100%;
-            }
-
-            /* 面板稍微縮小內距 */
+            .ui-top-center { top: 70px; width: 96%; }
+            .nav-title-input { width: 100%; min-width: 0; font-size: 14px; }
+            .editor-nav { width: 100%; }
             .panel { padding: 4px; gap: 4px; }
-            
-            /* 按鈕稍微縮小 */
             .btn { width: 36px; height: 36px; }
             .btn i { transform: scale(0.9); }
         }
@@ -138,6 +128,10 @@
         .btn.active { background: #EFF6FF; color: #2563EB; box-shadow: inset 0 0 0 1px #BFDBFE; }
         .btn.danger:hover { background: #FEF2F2; color: #EF4444; }
         .btn:disabled { opacity: 0.3; cursor: not-allowed; }
+        .btn-text { width: auto; padding: 0 16px; font-weight: 500; font-size: 14px; }
+        .btn-primary { background: #2563EB; color: white; }
+        .btn-primary:hover { background: #1D4ED8; color: white; }
+        
         .divider { width: 1px; height: 24px; background: #CBD5E1; margin: 0 4px; }
         .sub-tools { font-size: 13px; padding: 8px 16px; min-height: 40px; transition: opacity 0.2s, transform 0.2s; }
         .opt-group { display: flex; background: #F1F5F9; border-radius: 8px; padding: 2px; }
@@ -147,11 +141,19 @@
         input[type="range"] { width: 80px; accent-color: #2563EB; cursor: pointer; }
         .color-trigger { width: 28px; height: 28px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px #CBD5E1; cursor: pointer; transition: transform 0.1s; }
         .color-trigger:active { transform: scale(0.9); }
+        
         #color-popover { position: absolute; top: 140px; left: 50%; transform: translateX(-50%); background: white; padding: 16px; border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.15); z-index: 200; display: none; flex-direction: column; align-items: center; border: 1px solid rgba(0,0,0,0.05); }
         #color-popover.visible { display: flex; animation: fadeIn 0.2s; }
+        
+        /* Modal 通用樣式 */
         .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 998; display: none; justify-content: center; align-items: center; backdrop-filter: blur(2px); }
-        .modal-content { background: white; width: 340px; border-radius: 20px; padding: 24px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); z-index: 999; font-size: 14px; color: #334155; max-height: 85vh; overflow-y: auto; }
+        .modal-content { background: white; width: 340px; border-radius: 20px; padding: 24px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); z-index: 999; font-size: 14px; color: #334155; max-height: 85vh; overflow-y: auto; display: flex; flex-direction: column; }
         .modal-title { font-size: 18px; font-weight: bold; margin-bottom: 16px; color: #0F172A; display:flex; justify-content:space-between; align-items:center; }
+        
+        /* Dialog 特有樣式 */
+        .dialog-msg { font-size: 15px; color: #475569; margin-bottom: 24px; line-height: 1.5; }
+        .dialog-actions { display: flex; justify-content: flex-end; gap: 12px; }
+        
         .modal-row { margin-bottom: 16px; }
         .modal-label { display: block; margin-bottom: 6px; font-weight: 500; }
         .modal-select { width: 100%; padding: 8px; border-radius: 8px; border: 1px solid #CBD5E1; background: #F8FAFC; color: #334155; }
@@ -161,6 +163,7 @@
         input:checked + .toggle-track { background: #2563EB; }
         input:checked + .toggle-track .toggle-thumb { transform: translateX(20px); }
         hr.modal-divider { border:0; border-top:1px solid #E2E8F0; margin: 16px 0; }
+        
         #lasso-actions { position: absolute; display: none; background: #1E293B; padding: 6px; border-radius: 10px; gap: 8px; z-index: 200; transform: translate(-50%, -100%); margin-top: -15px; }
         #lasso-actions.visible { display: flex; animation: popIn 0.2s; }
         .action-btn { color: white; background: transparent; border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 4px; font-size: 13px; }
@@ -177,6 +180,18 @@
         <i data-lucide="loader-2" class="animate-spin" style="animation: spin 1s linear infinite;"></i>
         <span>載入白板系統中...</span>
         <style>@keyframes spin { 100% { transform: rotate(360deg); } }</style>
+    </div>
+
+    <!-- Global Dialog (Replacing Confirm/Alert) -->
+    <div class="modal-overlay" id="global-dialog">
+        <div class="modal-content" style="width: 300px;">
+            <div class="modal-title" id="dialog-title">提示</div>
+            <div class="dialog-msg" id="dialog-msg">內容</div>
+            <div class="dialog-actions">
+                <button class="btn btn-text" id="dialog-cancel">取消</button>
+                <button class="btn btn-text btn-primary" id="dialog-ok">確定</button>
+            </div>
+        </div>
     </div>
 
     <!-- View 1: Home Gallery -->
@@ -310,6 +325,40 @@
         import { getStroke } from 'https://esm.sh/perfect-freehand';
         paper.install(window);
 
+        // --- Custom Dialog System (Replacing window.confirm) ---
+        const Dialog = {
+            overlay: document.getElementById('global-dialog'),
+            titleEl: document.getElementById('dialog-title'),
+            msgEl: document.getElementById('dialog-msg'),
+            okBtn: document.getElementById('dialog-ok'),
+            cancelBtn: document.getElementById('dialog-cancel'),
+            resolve: null,
+
+            init() {
+                this.okBtn.onclick = () => this.close(true);
+                this.cancelBtn.onclick = () => this.close(false);
+                this.overlay.onclick = (e) => { if (e.target === this.overlay) this.close(false); };
+            },
+
+            confirm(title, message) {
+                return new Promise((resolve) => {
+                    this.resolve = resolve;
+                    this.titleEl.innerText = title;
+                    this.msgEl.innerText = message;
+                    this.overlay.style.display = 'flex';
+                });
+            },
+
+            close(result) {
+                this.overlay.style.display = 'none';
+                if (this.resolve) {
+                    this.resolve(result);
+                    this.resolve = null;
+                }
+            }
+        };
+        Dialog.init();
+
         // --- Database Layer ---
         const DB = {
             name: 'MiWhiteboardDB', version: 1, storeName: 'canvases', db: null,
@@ -369,16 +418,73 @@
                         <img class="card-thumb" src="${item.thumbnail || ''}" alt="thumbnail">
                         <div class="card-body">
                             <div>
-                                <div class="card-title">${item.name}</div>
+                                <div class="card-title-container">
+                                    <div class="card-title">${item.name}</div>
+                                </div>
                                 <div class="card-date">${new Date(item.updatedAt).toLocaleDateString()} ${new Date(item.updatedAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</div>
                             </div>
                             <div class="card-actions">
+                                <button class="icon-btn btn-rename" title="編輯名稱"><i data-lucide="pencil" size="16"></i></button>
                                 <button class="icon-btn btn-del" title="刪除"><i data-lucide="trash-2" size="16"></i></button>
                             </div>
                         </div>
                     `;
-                    card.onclick = (e) => { if (e.target.closest('.btn-del')) return; this.openCanvas(item.id); };
-                    card.querySelector('.btn-del').onclick = async (e) => { e.stopPropagation(); if(confirm(`確定要刪除「${item.name}」嗎？`)) { await DB.delete(item.id); this.renderGallery(); } };
+
+                    // 打開畫布 (包含點擊圖片)
+                    card.onclick = (e) => { 
+                        // 確保點擊到的不是 按鈕(編輯/刪除) 或 輸入框(修改名稱中)
+                        if (e.target.closest('.icon-btn') || e.target.closest('input')) return; 
+                        this.openCanvas(item.id); 
+                    };
+
+                    // 刪除邏輯
+                    card.querySelector('.btn-del').onclick = async (e) => { 
+                        e.stopPropagation(); 
+                        const confirmed = await Dialog.confirm('刪除確認', `確定要刪除「${item.name}」嗎？此動作無法復原。`);
+                        if(confirmed) { 
+                            await DB.delete(item.id); 
+                            this.renderGallery(); 
+                        } 
+                    };
+
+                    // 重新命名邏輯 (Inline Edit)
+                    const renameBtn = card.querySelector('.btn-rename');
+                    const titleContainer = card.querySelector('.card-title-container');
+                    const titleEl = card.querySelector('.card-title');
+
+                    renameBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        const input = document.createElement('input');
+                        input.type = 'text';
+                        input.className = 'card-title-edit';
+                        input.value = item.name;
+                        
+                        // 取代原本的標題
+                        titleEl.style.display = 'none';
+                        titleContainer.appendChild(input);
+                        input.focus();
+
+                        // 儲存邏輯
+                        const saveName = async () => {
+                            const newName = input.value.trim();
+                            if (newName && newName !== item.name) {
+                                item.name = newName;
+                                item.updatedAt = Date.now();
+                                await DB.save(item);
+                            }
+                            // 重新渲染整個列表 (或只恢復 UI)
+                            this.renderGallery();
+                        };
+
+                        input.onclick = (evt) => evt.stopPropagation(); // 防止點擊輸入框觸發開啟畫布
+                        input.addEventListener('blur', saveName);
+                        input.addEventListener('keydown', (evt) => {
+                            if (evt.key === 'Enter') {
+                                input.blur();
+                            }
+                        });
+                    };
+
                     container.appendChild(card);
                 });
                 lucide.createIcons();
@@ -406,23 +512,19 @@
             async saveAndExit() {
                 if (!this.currentCanvasId) return;
                 
-                // --- 1. 產生白色縮圖 (修正黑色縮圖問題) ---
+                // --- 1. 產生白色縮圖 ---
                 App.lassoPath?.remove(); App.lassoPath=null; 
                 if(App.eraserPreview) App.eraserPreview.visible = false;
 
-                // 創建一個臨時的白色背景矩形覆蓋整個可視區域
                 const bgRect = new Path.Rectangle({
                     rectangle: view.bounds,
                     fillColor: 'white',
                     insert: true
                 });
-                bgRect.sendToBack(); // 放到最下層
-                view.update(); // 強制重繪
+                bgRect.sendToBack(); 
+                view.update(); 
 
-                // 匯出縮圖 (現在有白色背景了)
                 const thumbData = view.element.toDataURL('image/jpeg', 0.5);
-
-                // 移除白色背景，以免存進 JSON 數據
                 bgRect.remove(); 
                 // ------------------------------------------
 
@@ -535,7 +637,17 @@
             canvas.addEventListener('pointerdown', onPointerDown); canvas.addEventListener('pointermove', onPointerMove); canvas.addEventListener('pointerup', onPointerUp); canvas.addEventListener('pointercancel', onPointerUp); canvas.addEventListener('wheel', onWheel, { passive: false });
             document.addEventListener('keydown', (e) => { if(!AppManager.currentCanvasId) return; if (e.keyCode === 34) { e.preventDefault(); executeStylusAction(Settings.stylusBtn34); return; } if (e.keyCode === 33) { e.preventDefault(); executeStylusAction(Settings.stylusBtn33); return; } if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); if (e.shiftKey) History.redo(); else History.undo(); } if ((e.ctrlKey || e.metaKey) && e.key === 'y') { e.preventDefault(); History.redo(); } });
             ['pen', 'eraser', 'eraser-rect', 'lasso'].forEach(m => document.getElementById(`tool-${m}`).onclick = () => setMode(m));
-            document.getElementById('tool-clear').onclick = () => { if(confirm('確定清空畫布？')){ project.activeLayer.removeChildren(); clearLasso(); History.saveState(); }};
+            
+            // 修改：使用自訂 Dialog 替代 confirm
+            document.getElementById('tool-clear').onclick = async () => { 
+                const confirmed = await Dialog.confirm('清空確認', '確定清空整個畫布嗎？此動作可復原。');
+                if(confirmed){ 
+                    project.activeLayer.removeChildren(); 
+                    clearLasso(); 
+                    History.saveState(); 
+                }
+            };
+            
             document.getElementById('btn-undo').onclick = () => History.undo(); document.getElementById('btn-redo').onclick = () => History.redo();
             document.getElementById('lasso-dup').onclick = duplicateSelection; document.getElementById('lasso-del').onclick = deleteSelection;
         }
