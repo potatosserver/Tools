@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>小米白板 (雷射筆Pro版)</title>
+    <title>小米白板</title>
     
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/paper.js/0.12.17/paper-full.min.js"></script>
@@ -439,6 +439,7 @@
                 
                 // 清理雷射筆
                 App.laserPoints = [];
+                App.isLaserDrawing = false;
                 if(App.laserPathGlow) { App.laserPathGlow.remove(); App.laserPathGlow = null; }
                 if(App.laserPathCore) { App.laserPathCore.remove(); App.laserPathCore = null; }
                 
@@ -463,6 +464,7 @@
                 // 徹底移除雷射筆
                 if(App.laserPathGlow) App.laserPathGlow.remove(); 
                 if(App.laserPathCore) App.laserPathCore.remove(); 
+                App.laserPoints = [];
 
                 const jsonData = project.exportJSON();
                 const name = document.getElementById('canvas-title-input').value || "未命名畫布";
@@ -486,7 +488,7 @@
 
         const Settings = { palmRejection: false, fingerMode: 'speed', stylusMode: 'pressure', stylusBtn34: 'none', stylusBtn33: 'none' };
         
-        // App State 新增雙層雷射筆變數
+        // App State 新增雙層雷射筆變數與邏輯
         const App = { 
             mode: 'pen', penType: 'fountain', strokeColor: '#1E293B', strokeWidth: 8, strokeOpacity: 1.0, 
             eraserMode: 'standard', eraserSize: 20, 
@@ -494,8 +496,9 @@
             eraserPreview: null, rectStart: null, rectPath: null, 
             lassoPath: null, lassoItems: [], lassoState: 'idle', lassoPrevPoint: null, 
             activePointers: new Map(), isGesturing: false, prevDist: 0, prevC: null,
-            // 雷射筆狀態 (雙層)
-            laserPoints: [], laserPathGlow: null, laserPathCore: null
+            // 雷射筆狀態
+            laserPoints: [], laserPathGlow: null, laserPathCore: null,
+            isLaserDrawing: false, laserLiftTime: 0, laserTotalLen: 0
         };
         
         let colorPickerInstance = null;
@@ -530,69 +533,90 @@
         
         // Animation Loop for Laser Pointer
         function onFrame(event) {
-            if (App.laserPoints.length > 0) {
-                const now = Date.now();
-                const duration = 800; // 軌跡保留時間 (ms)
+            if (App.laserPoints.length === 0) return;
+
+            const now = Date.now();
+            const waitTime = 800;    // 畫完後等待 0.8s
+            const vanishDuration = 500; // 等待結束後，花 0.5s 將整條線平滑消失 (避免殘留太久)
+
+            // 清除舊路徑
+            if (App.laserPathGlow) { App.laserPathGlow.remove(); App.laserPathGlow = null; }
+            if (App.laserPathCore) { App.laserPathCore.remove(); App.laserPathCore = null; }
+
+            // 邏輯：基於「長度」來決定顯示範圍，而不是「時間」，以達成等速消失效果。
+            
+            let visiblePoints = App.laserPoints;
+
+            if (!App.isLaserDrawing) {
+                const timeSinceLift = now - App.laserLiftTime;
                 
-                // 移除過期點
-                App.laserPoints = App.laserPoints.filter(p => now - p.time < duration);
-
-                // 清除舊路徑
-                if (App.laserPathGlow) { App.laserPathGlow.remove(); App.laserPathGlow = null; }
-                if (App.laserPathCore) { App.laserPathCore.remove(); App.laserPathCore = null; }
-
-                if (App.laserPoints.length > 1) {
-                    // 取得用於繪圖的點陣列
-                    const strokePoints = App.laserPoints.map(p => {
-                        // 根據存活時間計算壓力 (讓尾巴變細)
-                        const age = now - p.time;
-                        const life = 1 - (age / duration); // 0 to 1
-                        return { x: p.x, y: p.y, pressure: p.pressure * life };
-                    });
-
-                    // 1. 底層光暈 (紅色, 縮小, 銳利, 高飽和)
-                    const glowOptions = {
-                        size: 16, // 從 30 縮小至 16 (Thinner)
-                        thinning: 0.5,
-                        smoothing: 0.5,
-                        streamline: 0.5,
-                        start: { taper: 0, cap: true },
-                        end: { taper: 0, cap: true }
-                    };
-                    const outlineGlow = getStroke(strokePoints, glowOptions);
-                    const pathDataGlow = window.getSvgPathFromStroke(outlineGlow);
+                if (timeSinceLift >= waitTime) {
+                    // 進入消失階段
+                    // 計算消失進度 (0 到 1)
+                    const vanishProgress = (timeSinceLift - waitTime) / vanishDuration;
                     
-                    App.laserPathGlow = new Path({
-                        pathData: pathDataGlow,
-                        fillColor: '#FF0000', // 純紅光暈
-                        shadowColor: '#FF0000',
-                        shadowBlur: 10, // 降低模糊度 (20 -> 10) 讓其更銳利
-                        opacity: 0.9, // 提高透明度 (0.6 -> 0.9) 讓其更亮
-                        insert: true
-                    });
-                    App.laserPathGlow.data = { isLaser: true };
+                    if (vanishProgress >= 1) {
+                        // 全部消失
+                        App.laserPoints = [];
+                        return; 
+                    }
 
-                    // 2. 上層核心 (白色, 銳利, 窄)
-                    const coreOptions = {
-                        size: 6, // 稍微縮小核心 (8 -> 6)
-                        thinning: 0.7,
-                        smoothing: 0.5,
-                        streamline: 0.5,
-                        start: { taper: 0, cap: true },
-                        end: { taper: 0, cap: true }
-                    };
-                    const outlineCore = getStroke(strokePoints, coreOptions);
-                    const pathDataCore = window.getSvgPathFromStroke(outlineCore);
-
-                    App.laserPathCore = new Path({
-                        pathData: pathDataCore,
-                        fillColor: '#FFFFFF', // 白色核心
-                        opacity: 1,
-                        insert: true
-                    });
-                    App.laserPathCore.data = { isLaser: true };
+                    // 計算當前應該從多長的地方開始顯示
+                    // 例如：總長 1000px，進度 0.5，則 cutoffLen = 500px (前500px消失)
+                    const cutoffLen = App.laserTotalLen * vanishProgress;
+                    
+                    // 過濾點：只保留 cumulative length > cutoffLen 的點
+                    visiblePoints = App.laserPoints.filter(p => p.len >= cutoffLen);
                 }
             }
+
+            if (visiblePoints.length < 2) return;
+
+            // 取得用於繪圖的點陣列
+            // mapping 回去原本 perfect-freehand 需要的格式 {x, y, pressure}
+            const strokePoints = visiblePoints.map(p => ({ x: p.x, y: p.y, pressure: p.pressure }));
+
+            // 1. 底層光暈 (紅色, 縮小, 銳利, 高飽和)
+            const glowOptions = {
+                size: 16, 
+                thinning: 0.5,
+                smoothing: 0.5,
+                streamline: 0.5,
+                start: { taper: 0, cap: true },
+                end: { taper: 0, cap: true }
+            };
+            const outlineGlow = getStroke(strokePoints, glowOptions);
+            const pathDataGlow = window.getSvgPathFromStroke(outlineGlow);
+            
+            App.laserPathGlow = new Path({
+                pathData: pathDataGlow,
+                fillColor: '#FF0000', // 純紅光暈
+                shadowColor: '#FF0000',
+                shadowBlur: 10, 
+                opacity: 0.9, 
+                insert: true
+            });
+            App.laserPathGlow.data = { isLaser: true };
+
+            // 2. 上層核心 (白色, 銳利, 窄)
+            const coreOptions = {
+                size: 6,
+                thinning: 0.7,
+                smoothing: 0.5,
+                streamline: 0.5,
+                start: { taper: 0, cap: true },
+                end: { taper: 0, cap: true }
+            };
+            const outlineCore = getStroke(strokePoints, coreOptions);
+            const pathDataCore = window.getSvgPathFromStroke(outlineCore);
+
+            App.laserPathCore = new Path({
+                pathData: pathDataCore,
+                fillColor: '#FFFFFF', // 白色核心
+                opacity: 1,
+                insert: true
+            });
+            App.laserPathCore.data = { isLaser: true };
         }
 
         function initColorPicker() {
@@ -706,7 +730,13 @@
                 else if (App.mode === 'eraser') eraseAt(p); 
                 else if (App.mode === 'eraser-rect') startRectEraser(p); 
                 else if (App.mode === 'lasso') handleLassoDown(p); 
-                else if (App.mode === 'laser') { App.laserPoints = [{x: p.x, y: p.y, pressure: pressure, time: Date.now()}]; }
+                else if (App.mode === 'laser') { 
+                    // 初始化雷射筆狀態
+                    App.isLaserDrawing = true;
+                    App.laserTotalLen = 0; // 重置長度
+                    // 紀錄點的時候，加入 len: 0
+                    App.laserPoints = [{x: p.x, y: p.y, pressure: pressure, len: 0}]; 
+                }
                 App.lastPointTime = Date.now(); 
             }
         }
@@ -723,12 +753,23 @@
                     rawEvents.forEach(evt => { const pt = view.viewToProject(new Point(evt.clientX, evt.clientY)); const pressure = getInputPressure(evt, pt, lastP, App.lastPointTime); App.currentPoints.push({ x: pt.x, y: pt.y, pressure: pressure }); App.lastPointTime = Date.now(); }); 
                     renderCurrentStroke(); 
                 } 
-                // Laser Logic (新增)
+                // Laser Logic (更新：計算長度)
                 else if (App.mode === 'laser') {
                     rawEvents.forEach(evt => {
                         const pt = view.viewToProject(new Point(evt.clientX, evt.clientY));
-                        // 雷射筆壓力影響較小，主要靠時間衰減
-                        App.laserPoints.push({ x: pt.x, y: pt.y, pressure: e.pressure || 0.5, time: Date.now() });
+                        
+                        // 計算與上一點的距離
+                        let dist = 0;
+                        if(App.laserPoints.length > 0) {
+                            const last = App.laserPoints[App.laserPoints.length - 1];
+                            // 簡單距離公式 (不用 PaperJS Point 也可以)
+                            const dx = pt.x - last.x;
+                            const dy = pt.y - last.y;
+                            dist = Math.sqrt(dx*dx + dy*dy);
+                        }
+                        App.laserTotalLen += dist;
+                        
+                        App.laserPoints.push({ x: pt.x, y: pt.y, pressure: e.pressure || 0.5, len: App.laserTotalLen });
                     });
                 }
                 // Other Tools
@@ -746,7 +787,11 @@
             else if (App.mode === 'eraser') { if (App.eraserPreview) { App.eraserPreview.remove(); App.eraserPreview = null; } History.saveState(); } 
             else if (App.mode === 'eraser-rect') finalizeRectEraser(); 
             else if (App.mode === 'lasso') handleLassoUp();
-            // Laser mode 不需要特別的 up 處理，因為它依賴 onFrame 自動消失
+            else if (App.mode === 'laser') {
+                // 標記雷射筆繪製結束，記錄時間
+                App.isLaserDrawing = false;
+                App.laserLiftTime = Date.now();
+            }
         }
 
         function startPenStroke(point, pressure) { clearLasso(); App.currentPoints = [{ x: point.x, y: point.y, pressure: pressure }]; App.currentPath = new Path({ fillColor: App.strokeColor, opacity: App.strokeOpacity, blendMode: App.penType === 'highlighter' ? 'multiply' : 'normal', insert: true }); }
@@ -793,7 +838,7 @@
             } else if (App.mode === 'lasso') {
                 el.innerHTML = '<span style="color:#64748B;font-size:12px">圈選後可移動、複製或刪除</span>';
             } else if (App.mode === 'laser') {
-                el.innerHTML = '<span style="color:#64748B;font-size:12px">軌跡會自動消失，不會儲存</span>';
+                el.innerHTML = '<span style="color:#64748B;font-size:12px">軌跡會保留 0.8 秒後快速消失，不會儲存</span>';
             }
         }
         function addSlider(p,l,min,max,v,cb){ const w=document.createElement('div'); w.className='setting-item'; w.innerHTML=`<span style="font-size:12px">${l}</span><input type="range" min="${min}" max="${max}" value="${v}">`; w.querySelector('input').oninput=(e)=>cb(parseInt(e.target.value)); p.appendChild(w); }
