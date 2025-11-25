@@ -62,7 +62,7 @@
         /* --- 編輯器佈局 (Editor Layout) --- */
         #canvas { width: 100vw; height: 100vh; display: block; cursor: crosshair; }
         
-        /* 頂部導航列 - 窄版、不可繪圖 */
+        /* 頂部導航列 */
         .editor-header-bar {
             position: absolute; top: 0; left: 0; right: 0; 
             height: 40px; 
@@ -146,6 +146,7 @@
             min-height: 36px; height: auto;
             animation: slideDown 0.2s ease-out;
             flex-wrap: wrap; /* 允許換行 */
+            justify-content: center; /* 居中 */
             max-width: 90vw; /* 防止超出螢幕 */
         }
         .sub-tools.visible { display: flex; }
@@ -160,11 +161,25 @@
         }
         .opt-btn.selected { background: white; color: #0F172A; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
         
+        /* 新增：滑桿群組容器，確保一起換行 */
+        .slider-group {
+            display: flex;
+            align-items: center;
+            margin: 2px 4px;
+            /* 如果螢幕真的小到連這組都放不下，內部才允許換行，否則保持一起 */
+            flex-wrap: wrap; 
+            justify-content: center;
+        }
+
         .setting-item { 
             display: flex; align-items: center; gap: 8px; 
-            margin: 4px 8px; /* 增加間距，換行時才不會擠在一起 */
+            margin: 4px 8px; 
             color: #64748B; white-space: nowrap; 
         }
+        .slider-group .setting-item {
+            margin: 4px 6px; /* 在群組內稍微緊湊一點 */
+        }
+
         input[type="range"] { width: 80px; accent-color: #2563EB; cursor: pointer; }
         
         /* 小螢幕適配 */
@@ -185,7 +200,6 @@
                 min-width: 32px; min-height: 32px;
             }
             .main-tools .btn svg { width: 65%; height: 65%; }
-            .main-tools .btn-text { display: none; }
         }
 
         @media (max-width: 320px) {
@@ -193,8 +207,32 @@
         }
 
         /* --- 彈窗修復 & 紅色按鈕 --- */
-        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 998; display: none; justify-content: center; align-items: center; backdrop-filter: blur(2px); }
-        .modal-content { background: white; width: 340px; border-radius: 20px; padding: 24px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); z-index: 999; font-size: 14px; color: #334155; max-height: 85vh; overflow-y: auto; display: flex; flex-direction: column; }
+        .modal-overlay { 
+            position: fixed; inset: 0; 
+            background: rgba(0,0,0,0.4); 
+            z-index: 998; 
+            display: none; 
+            justify-content: center; align-items: center; 
+            backdrop-filter: blur(2px); 
+        }
+        
+        /* 修改：確保彈窗在任何螢幕下都有間距 */
+        .modal-content { 
+            background: white; 
+            width: 340px; 
+            /* 關鍵修改：使用 calc 保留上下左右間距，並確保不會超出視窗 */
+            max-width: calc(100% - 32px);
+            max-height: calc(100% - 32px);
+            
+            border-radius: 20px; padding: 24px; 
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2); 
+            z-index: 999; 
+            font-size: 14px; color: #334155; 
+            overflow-y: auto; /* 內容過多時可捲動 */
+            display: flex; flex-direction: column; 
+            box-sizing: border-box; /* 確保 padding 不會撐大 */
+        }
+
         .modal-title { font-size: 18px; font-weight: bold; margin-bottom: 16px; color: #0F172A; display:flex; justify-content:space-between; align-items:center; }
         .dialog-msg { font-size: 15px; color: #475569; margin-bottom: 24px; line-height: 1.5; }
         .dialog-actions { display: flex; justify-content: flex-end; gap: 12px; }
@@ -883,10 +921,20 @@
         function updateSubToolbar() {
             const el = document.getElementById('sub-toolbar'); el.innerHTML = '';
             if (App.mode === 'pen') {
+                // 筆型選擇器 (獨立群組)
                 const g = document.createElement('div'); g.className='opt-group';
                 [{id:'fountain',t:'鋼筆'}, {id:'ballpoint',t:'圓珠筆'}, {id:'highlighter',t:'螢光筆'}].forEach(o=>{ const d=document.createElement('div'); d.className=`opt-btn ${App.penType===o.id?'selected':''}`; d.innerText=o.t; d.onclick=()=>{ App.penType=o.id; if(o.id==='highlighter'){App.strokeColor='#FEF08A';App.strokeOpacity=0.5;App.strokeWidth=20;}else{if(App.strokeColor==='#FEF08A')App.strokeColor='#1E293B';App.strokeOpacity=1;App.strokeWidth=o.id==='ballpoint'?3:8;} updateSubToolbar(); ToolSettings.save();}; g.appendChild(d); }); el.appendChild(g);
+                
+                // 顏色觸發器 (獨立，或可跟筆型一起)
                 const cw = document.createElement('div'); cw.className='setting-item'; cw.innerHTML=`<div id="color-trigger-btn" class="color-trigger" style="background:${App.strokeColor}"></div>`; cw.onclick = (e) => { e.stopPropagation(); toggleColorPopover(); }; el.appendChild(cw);
-                addSlider(el,'粗細',1,40,App.strokeWidth,v=>{App.strokeWidth=v; ToolSettings.save();}); addSlider(el,'透明度',1,100,App.strokeOpacity*100,v=>{App.strokeOpacity=v/100; ToolSettings.save();});
+                
+                // 滑桿群組 (確保一起換行)
+                const sliderGroup = document.createElement('div');
+                sliderGroup.className = 'slider-group';
+                addSlider(sliderGroup,'粗細',1,40,App.strokeWidth,v=>{App.strokeWidth=v; ToolSettings.save();}); 
+                addSlider(sliderGroup,'透明度',1,100,App.strokeOpacity*100,v=>{App.strokeOpacity=v/100; ToolSettings.save();});
+                el.appendChild(sliderGroup);
+
             } else if (App.mode.startsWith('eraser')) {
                 const g=document.createElement('div'); g.className='opt-group';
                 [{id:'standard',t:'擦部分'}, {id:'object',t:'擦整條'}].forEach(o=>{ const d=document.createElement('div'); d.className=`opt-btn ${App.eraserMode===o.id?'selected':''}`; d.innerText=o.t; d.onclick=()=>{App.eraserMode=o.id; updateSubToolbar(); ToolSettings.save();}; g.appendChild(d); }); el.appendChild(g);
