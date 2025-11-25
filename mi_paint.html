@@ -1,11 +1,11 @@
-<!-- START OF FILE ai_studio_code (final_fixed_v4).html -->
+<!-- START OF FILE ai_studio_code (final_fixed_v6).html -->
 
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>小米白板 (完美縮圖版)</title>
+    <title>小米白板</title>
     
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/paper.js/0.12.17/paper-full.min.js"></script>
@@ -49,7 +49,7 @@
         .gallery-container { padding: 24px; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 24px; max-width: 1200px; margin: 0 auto; width: 100%; box-sizing: border-box; }
         .canvas-card { background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05); transition: transform 0.2s, box-shadow 0.2s; cursor: pointer; position: relative; border: 1px solid #E2E8F0; display: flex; flex-direction: column; }
         .canvas-card:hover { transform: translateY(-4px); box-shadow: 0 10px 15px rgba(0,0,0,0.1); }
-        .card-thumb { width: 100%; height: 140px; background: #E2E8F0; object-fit: contain; display: block; border-bottom: 1px solid #f1f5f9; pointer-events: none; }
+        .card-thumb { width: 100%; height: 140px; background: #E2E8F0; object-fit: cover; display: block; border-bottom: 1px solid #f1f5f9; pointer-events: none; }
         .card-body { padding: 12px; flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
         .card-title-container { min-height: 24px; margin-bottom: 4px; display: flex; align-items: center; }
         .card-title { font-weight: 600; color: #334155; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; }
@@ -147,7 +147,6 @@
         .bg-option.selected { border-color: #2563EB; background: #EFF6FF; }
         .bg-preview { width: 24px; height: 24px; border-radius: 4px; border: 1px solid rgba(0,0,0,0.1); }
         
-        /* 修正網格預覽圖 */
         .bg-option[data-bg="grid-white"] .bg-preview {
             background-color: white;
             background-image: linear-gradient(#cbd5e1 1px, transparent 1px), linear-gradient(90deg, #cbd5e1 1px, transparent 1px);
@@ -167,7 +166,6 @@
         .page-list-item.active { background: #EFF6FF; color: #2563EB; font-weight: 600; }
         .page-list-item.dragging { opacity: 0.4; background: #E2E8F0; border: 1px dashed #94A3B8; }
         
-        /* 確保拖曳把手在左邊 */
         .page-info-group { display: flex; align-items: center; gap: 8px; flex: 1; pointer-events: none; }
         .drag-handle { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: grab; color: #CBD5E1; border-radius: 4px; flex-shrink: 0; pointer-events: auto; }
         .drag-handle:hover { color: #64748B; background: #F1F5F9; }
@@ -283,11 +281,11 @@
                     </div>
                     <div class="bg-option" data-bg="grid-white">
                         <div class="bg-preview"></div>
-                        <span>白網格</span>
+                        <span>白色網格</span>
                     </div>
                     <div class="bg-option" data-bg="grid-beige">
                         <div class="bg-preview"></div>
-                        <span>米網格</span>
+                        <span>米色網格</span>
                     </div>
                 </div>
             </div>
@@ -819,13 +817,16 @@
                 // 初始第一頁
                 const initialPages = [{ id: Date.now().toString(), data: null }];
                 
+                // 預設縮圖：1x1 白色像素
+                const defaultThumb = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAAXNSR0IArs4c6QAAAA1JREFUGFdj+P///38ACfsD/QVDRcoAAAAASUVORK5CYII=';
+
                 const newCanvas = { 
                     id: id, 
                     name: name, 
                     pages: initialPages,
                     createdAt: Date.now(), 
                     updatedAt: Date.now(), 
-                    thumbnail: '',
+                    thumbnail: defaultThumb, // 設定預設圖
                     config: { bgType, width, height } 
                 };
                 await DB.save(newCanvas);
@@ -970,37 +971,42 @@
             async saveAndExit() {
                 if (!this.currentCanvasId) return;
                 
-                // 1. 強制移除所有雷射筆跡
+                // 1. 移除介面元素與暫時性物件
                 project.getItems({ data: { isLaser: true } }).forEach(i => i.remove());
                 App.laserTrails = [];
                 App.activeLaserTrail = null;
-                
                 App.lassoPath?.remove(); App.lassoPath=null; 
                 App.eraserPreview?.remove();
 
                 this.serializePages();
 
-                // 2. 縮圖修復：建立一個暫時的最底層
-                const exportBgLayer = new Layer();
-                exportBgLayer.name = 'export-bg';
-                exportBgLayer.sendToBack();
+                // 2. 強制更新畫面，確保 Canvas 緩衝區是最新的
+                view.update();
 
-                // 根據模式決定底色
-                let bgFill = '#E2E8F0'; // 有限畫布的外部是灰色
+                // 3. 使用 Off-screen Canvas 進行縮圖合成 (解決透明背景變黑問題)
+                const sourceCanvas = document.getElementById('canvas');
+                const tempCanvas = document.createElement('canvas');
+                // 使用實際的像素大小
+                tempCanvas.width = sourceCanvas.width;
+                tempCanvas.height = sourceCanvas.height;
+                const ctx = tempCanvas.getContext('2d');
+
+                // 4. 決定背景色 (所見即所得)
+                let bgFill = '#F8FAFC'; 
+                // 若是無限畫布，依照設定填色；若是有限畫布，視窗背景是灰色 #E2E8F0
                 if (!this.currentConfig.width) {
-                    // 無限畫布：直接填滿白/米色
                     bgFill = this.currentConfig.bgType.includes('beige') ? '#FFF8E1' : '#FFFFFF';
+                } else {
+                    bgFill = '#E2E8F0'; 
                 }
 
-                // 繪製一個填滿視窗的矩形
-                const bgRect = new Path.Rectangle({
-                    rectangle: view.bounds,
-                    fillColor: bgFill
-                });
+                // 5. 填滿背景色並繪製原始 Canvas
+                ctx.fillStyle = bgFill;
+                ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+                ctx.drawImage(sourceCanvas, 0, 0);
 
-                view.update(); 
-                const thumbData = view.element.toDataURL('image/jpeg', 0.5);
-                exportBgLayer.remove(); // 移除暫時圖層
+                // 6. 生成 JPEG 縮圖 (品質 0.5)
+                const thumbData = tempCanvas.toDataURL('image/jpeg', 0.5);
 
                 const record = { 
                     id: this.currentCanvasId, 
