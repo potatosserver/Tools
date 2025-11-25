@@ -1,4 +1,4 @@
-<!-- START OF FILE ai_studio_code (final_fixed_v6).html -->
+<!-- START OF FILE mi_paint_fixed_lasso.html -->
 
 <!DOCTYPE html>
 <html lang="zh-TW">
@@ -1497,14 +1497,95 @@
         }
         function separateDisjointPaths(item) { if (item instanceof Path) return [item]; if (item instanceof CompoundPath) { const children = item.removeChildren(); item.remove(); if (!children.length) return []; children.sort((a,b)=>Math.abs(b.area)-Math.abs(a.area)); const islands = []; for(let child of children){ let p = islands.find(isl => isl.body.bounds.contains(child.bounds) && isl.body.contains(child.firstSegment.point)); if(p) p.holes.push(child); else islands.push({body:child, holes:[]}); } return islands.map(isl => isl.holes.length ? new CompoundPath({children:[isl.body, ...isl.holes]}) : isl.body); } return [item]; }
         
-        function handleLassoDown(point) { if (App.lassoState === 'selected' && App.lassoPath.contains(point)) { App.lassoState = 'moving'; App.lassoPrevPoint = point; return; } clearLasso(); App.lassoState = 'drawing'; App.lassoPath = new Path({ strokeColor: '#3B82F6', strokeWidth: 2/view.zoom, dashArray: [5,5], data: {isLassoUI:true} }); App.lassoPath.add(point); }
-        function handleLassoMove(point) { if (App.lassoState === 'drawing') App.lassoPath.add(point); else if (App.lassoState === 'moving') { const delta = point.subtract(App.lassoPrevPoint); App.lassoItems.forEach(i => i.position = i.position.add(delta)); App.lassoPath.position = App.lassoPath.position.add(delta); App.lassoPrevPoint = point; updateLassoMenu(); } }
-        function handleLassoUp() { if (App.lassoState === 'drawing') { App.lassoPath.closed = true; App.lassoPath.simplify(10); const geo = App.lassoPath; App.lassoItems = ensurePaintLayer().children.filter(i => !i.data.isLassoUI && !i.data.isLaser && (geo.contains(i.bounds.center) || geo.intersects(i))); if (App.lassoItems.length > 0) { App.lassoState = 'selected'; const bounds = App.lassoItems.reduce((b,i)=>b.unite(i.bounds), App.lassoItems[0].bounds); App.lassoPath.remove(); App.lassoPath = new Path.Rectangle({ rectangle: bounds.expand(10), strokeColor: '#3B82F6', strokeWidth: 1/view.zoom, dashArray: [4,4], fillColor: new Color(0.23,0.51,0.96,0.05), data: {isLassoUI:true} }); showLassoMenu(bounds); } else clearLasso(); } else if (App.lassoState === 'moving') { App.lassoState = 'selected'; History.saveState(); } }
+        function handleLassoDown(point) { 
+            // 如果已經在選取狀態，且點擊在選取路徑內（支援不規則形狀判定）
+            if (App.lassoState === 'selected' && App.lassoPath.contains(point)) { 
+                App.lassoState = 'moving'; 
+                App.lassoPrevPoint = point; 
+                return; 
+            } 
+            
+            // 否則重新開始畫
+            clearLasso(); 
+            App.lassoState = 'drawing'; 
+            App.lassoPath = new Path({ 
+                strokeColor: '#3B82F6', 
+                strokeWidth: 2/view.zoom, 
+                dashArray: [5,5], 
+                data: {isLassoUI:true} 
+            }); 
+            App.lassoPath.add(point); 
+        }
+
+        function handleLassoMove(point) { 
+            if (App.lassoState === 'drawing') {
+                App.lassoPath.add(point); 
+            } else if (App.lassoState === 'moving') { 
+                const delta = point.subtract(App.lassoPrevPoint); 
+                App.lassoItems.forEach(i => i.position = i.position.add(delta)); 
+                App.lassoPath.position = App.lassoPath.position.add(delta); 
+                App.lassoPrevPoint = point; 
+                updateLassoMenu(); 
+            } 
+        }
+
+        function handleLassoUp() { 
+            if (App.lassoState === 'drawing') { 
+                App.lassoPath.closed = true; 
+                App.lassoPath.simplify(10); // 讓線條平滑一點
+                const geo = App.lassoPath; 
+                
+                App.lassoItems = ensurePaintLayer().children.filter(i => 
+                    !i.data.isLassoUI && 
+                    !i.data.isLaser && 
+                    (geo.contains(i.bounds.center) || geo.intersects(i))
+                ); 
+                
+                if (App.lassoItems.length > 0) { 
+                    App.lassoState = 'selected'; 
+                    // [修改] 不轉換為 Rectangle，保留原始路徑作為 UI
+                    App.lassoPath.strokeColor = '#3B82F6';
+                    App.lassoPath.strokeWidth = 1/view.zoom;
+                    App.lassoPath.dashArray = [5,5];
+                    App.lassoPath.fillColor = new Color(0.23,0.51,0.96,0.05); // 淡藍色填充方便選取
+                    
+                    showLassoMenu(App.lassoPath.bounds); 
+                } else { 
+                    clearLasso(); 
+                } 
+            } else if (App.lassoState === 'moving') { 
+                App.lassoState = 'selected'; 
+                History.saveState(); 
+            } 
+        }
+
         function clearLasso() { if(App.lassoPath) { App.lassoPath.remove(); App.lassoPath = null; } App.lassoItems = []; App.lassoState = 'idle'; document.getElementById('lasso-actions').classList.remove('visible'); }
         function showLassoMenu(bounds) { const m = document.getElementById('lasso-actions'); const p = view.projectToView(bounds.topCenter); m.style.left = p.x + 'px'; m.style.top = (p.y - 10) + 'px'; m.classList.add('visible'); }
         function updateLassoMenu() { if(App.lassoPath) showLassoMenu(App.lassoPath.bounds); }
         function deleteSelection() { App.lassoItems.forEach(i => i.remove()); clearLasso(); History.saveState(); }
-        function duplicateSelection() { const cs = App.lassoItems.map(i => { const c = i.clone(); c.position = c.position.add([20,20]); ensurePaintLayer().addChild(c); return c; }); clearLasso(); History.saveState(); }
+        
+        function duplicateSelection() { 
+            const offset = new Point(20,20);
+            const newItems = [];
+            
+            App.lassoItems.forEach(i => { 
+                const c = i.clone(); 
+                c.position = c.position.add(offset); 
+                ensurePaintLayer().addChild(c); 
+                newItems.push(c);
+            }); 
+            
+            // [修改] 複製後，將選取狀態轉移到新物件上，且不清除選取框
+            App.lassoItems = newItems;
+            if(App.lassoPath) {
+                App.lassoPath.position = App.lassoPath.position.add(offset);
+                App.lassoPath.bringToFront();
+                updateLassoMenu();
+            }
+            // 移除 clearLasso();
+            
+            History.saveState(); 
+        }
 
         function updateSubToolbar() {
             const el = document.getElementById('sub-toolbar'); el.innerHTML = '';
