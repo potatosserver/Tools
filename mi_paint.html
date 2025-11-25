@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>小米白板</title>
+    <title>小米白板 (雷射筆Pro版)</title>
     
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/paper.js/0.12.17/paper-full.min.js"></script>
@@ -32,7 +32,6 @@
         body { margin: 0; background-color: #F8FAFC; overflow: hidden; touch-action: none; user-select: none; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
         
         /* 視圖切換容器 */
-        /* 修正：加入 touch-action: pan-y 讓首頁列表在手機上可以正常上下滑動，不會被 body 的 none 擋住 */
         #view-home { position: absolute; inset: 0; z-index: 10; background: #F8FAFC; overflow-y: auto; display: flex; flex-direction: column; transition: opacity 0.3s; touch-action: pan-y; }
         #view-editor { position: absolute; inset: 0; z-index: 20; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
         
@@ -47,17 +46,11 @@
         /* 卡片樣式 */
         .canvas-card { background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05); transition: transform 0.2s, box-shadow 0.2s; cursor: pointer; position: relative; border: 1px solid #E2E8F0; display: flex; flex-direction: column; }
         .canvas-card:hover { transform: translateY(-4px); box-shadow: 0 10px 15px rgba(0,0,0,0.1); }
-        
-        /* 縮圖樣式 - 確保點擊有效 */
-        .card-thumb { width: 100%; height: 140px; background: white; object-fit: contain; display: block; border-bottom: 1px solid #f1f5f9; pointer-events: none; /* 讓點擊事件穿透到 card 上，避免部分瀏覽器行為不一致 */ }
-        
+        .card-thumb { width: 100%; height: 140px; background: white; object-fit: contain; display: block; border-bottom: 1px solid #f1f5f9; pointer-events: none; }
         .card-body { padding: 12px; flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
-        
-        /* 標題樣式 */
         .card-title-container { min-height: 24px; margin-bottom: 4px; display: flex; align-items: center; }
         .card-title { font-weight: 600; color: #334155; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; }
         .card-title-edit { width: 100%; font-size: 16px; padding: 2px 4px; border: 1px solid #2563EB; border-radius: 4px; outline: none; font-weight: 600; color: #334155; }
-
         .card-date { font-size: 12px; color: #94A3B8; }
         .card-actions { margin-top: 10px; display: flex; justify-content: flex-end; gap: 4px; }
         .icon-btn { padding: 6px; border-radius: 6px; border: none; background: transparent; color: #94A3B8; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center;}
@@ -128,9 +121,6 @@
         .btn.active { background: #EFF6FF; color: #2563EB; box-shadow: inset 0 0 0 1px #BFDBFE; }
         .btn.danger:hover { background: #FEF2F2; color: #EF4444; }
         .btn:disabled { opacity: 0.3; cursor: not-allowed; }
-        .btn-text { width: auto; padding: 0 16px; font-weight: 500; font-size: 14px; }
-        .btn-primary { background: #2563EB; color: white; }
-        .btn-primary:hover { background: #1D4ED8; color: white; }
         
         .divider { width: 1px; height: 24px; background: #CBD5E1; margin: 0 4px; }
         .sub-tools { font-size: 13px; padding: 8px 16px; min-height: 40px; transition: opacity 0.2s, transform 0.2s; }
@@ -145,15 +135,11 @@
         #color-popover { position: absolute; top: 140px; left: 50%; transform: translateX(-50%); background: white; padding: 16px; border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.15); z-index: 200; display: none; flex-direction: column; align-items: center; border: 1px solid rgba(0,0,0,0.05); }
         #color-popover.visible { display: flex; animation: fadeIn 0.2s; }
         
-        /* Modal 通用樣式 */
         .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 998; display: none; justify-content: center; align-items: center; backdrop-filter: blur(2px); }
         .modal-content { background: white; width: 340px; border-radius: 20px; padding: 24px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); z-index: 999; font-size: 14px; color: #334155; max-height: 85vh; overflow-y: auto; display: flex; flex-direction: column; }
         .modal-title { font-size: 18px; font-weight: bold; margin-bottom: 16px; color: #0F172A; display:flex; justify-content:space-between; align-items:center; }
-        
-        /* Dialog 特有樣式 */
         .dialog-msg { font-size: 15px; color: #475569; margin-bottom: 24px; line-height: 1.5; }
         .dialog-actions { display: flex; justify-content: flex-end; gap: 12px; }
-        
         .modal-row { margin-bottom: 16px; }
         .modal-label { display: block; margin-bottom: 6px; font-weight: 500; }
         .modal-select { width: 100%; padding: 8px; border-radius: 8px; border: 1px solid #CBD5E1; background: #F8FAFC; color: #334155; }
@@ -171,18 +157,22 @@
         @keyframes popIn { from { transform: translate(-50%, -90%) scale(0.9); opacity: 0; } to { opacity: 1; } }
         @keyframes fadeIn { from { opacity: 0; transform: translateX(-50%) translateY(10px); } to { opacity: 1; } }
         #loading { position: fixed; inset:0; background:white; z-index:9999; display:flex; justify-content:center; align-items:center; transition: opacity 0.5s; flex-direction: column; gap:12px; color:#64748B; font-weight:500;}
+        
+        /* 快速鍵提示 Toast */
+        #shortcut-toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: rgba(30,41,59,0.9); color: white; padding: 8px 16px; border-radius: 20px; font-size: 13px; z-index: 300; pointer-events: none; opacity: 0; transition: opacity 0.3s; }
     </style>
 </head>
 <body>
 
-    <!-- Loading Screen -->
     <div id="loading">
         <i data-lucide="loader-2" class="animate-spin" style="animation: spin 1s linear infinite;"></i>
         <span>載入白板系統中...</span>
         <style>@keyframes spin { 100% { transform: rotate(360deg); } }</style>
     </div>
 
-    <!-- Global Dialog (Replacing Confirm/Alert) -->
+    <!-- 快速鍵提示 -->
+    <div id="shortcut-toast"></div>
+
     <div class="modal-overlay" id="global-dialog">
         <div class="modal-content" style="width: 300px;">
             <div class="modal-title" id="dialog-title">提示</div>
@@ -194,25 +184,20 @@
         </div>
     </div>
 
-    <!-- View 1: Home Gallery -->
     <div id="view-home">
         <header class="home-header">
             <div class="home-title"><i data-lucide="layout-grid"></i> 小米白板</div>
         </header>
 
-        <div class="gallery-container" id="gallery-list">
-            <!-- JS 生成卡片 -->
-        </div>
+        <div class="gallery-container" id="gallery-list"></div>
 
         <button class="fab-add" id="btn-create-new" title="建立新畫布">
             <i data-lucide="plus" size="32"></i>
         </button>
     </div>
 
-    <!-- View 2: Editor -->
     <div id="view-editor">
         
-        <!-- Top Row: Back, Title, Settings -->
         <div class="editor-header-row">
             <div class="editor-nav">
                 <button class="nav-back" id="btn-back-home" title="儲存並返回"><i data-lucide="arrow-left"></i></button>
@@ -226,22 +211,22 @@
             </div>
         </div>
 
-        <!-- Toolbars (Centered) -->
         <div class="ui-top-center">
             <div class="panel main-tools">
-                <button class="btn active" id="tool-pen" title="畫筆"><i data-lucide="pen-tool"></i></button>
-                <button class="btn" id="tool-eraser" title="橡皮擦"><i data-lucide="eraser"></i></button>
-                <button class="btn" id="tool-eraser-rect" title="方框擦除"><i data-lucide="box-select"></i></button>
-                <button class="btn" id="tool-lasso" title="索套"><i data-lucide="lasso"></i></button>
+                <button class="btn active" id="tool-pen" title="畫筆 (B)"><i data-lucide="pen-tool"></i></button>
+                <button class="btn" id="tool-eraser" title="橡皮擦 (E)"><i data-lucide="eraser"></i></button>
+                <button class="btn" id="tool-eraser-rect" title="方框擦除 (R)"><i data-lucide="box-select"></i></button>
+                <button class="btn" id="tool-lasso" title="索套 (L)"><i data-lucide="lasso"></i></button>
                 <div class="divider"></div>
-                <button class="btn" id="btn-undo" title="復原" disabled><i data-lucide="undo-2"></i></button>
-                <button class="btn" id="btn-redo" title="重做" disabled><i data-lucide="redo-2"></i></button>
+                <button class="btn" id="tool-laser" title="雷射筆 (Z)"><i data-lucide="wand-2"></i></button>
+                <div class="divider"></div>
+                <button class="btn" id="btn-undo" title="復原 (Ctrl+Z)" disabled><i data-lucide="undo-2"></i></button>
+                <button class="btn" id="btn-redo" title="重做 (Ctrl+Y)" disabled><i data-lucide="redo-2"></i></button>
                 <button class="btn danger" id="tool-clear" title="清空畫布"><i data-lucide="trash-2"></i></button>
             </div>
             <div class="panel sub-tools" id="sub-toolbar"></div>
         </div>
 
-        <!-- 原 UI 元件 -->
         <div id="color-popover">
             <div id="iro-picker-container"></div>
             <div style="font-size:12px; color:#94A3B8; margin-top:8px;">點擊外部關閉</div>
@@ -292,6 +277,7 @@
                     <select class="modal-select" id="btn-34-action">
                         <option value="none">無功能 (預設)</option>
                         <option value="toggle-eraser">切換橡皮擦/畫筆</option>
+                        <option value="toggle-laser">切換雷射筆/畫筆</option>
                         <option value="toggle-lasso">切換索套/畫筆</option>
                         <option value="undo">復原</option>
                         <option value="redo">重做</option>
@@ -303,10 +289,24 @@
                     <select class="modal-select" id="btn-33-action">
                         <option value="none">無功能 (預設)</option>
                         <option value="toggle-lasso">切換索套/畫筆</option>
+                        <option value="toggle-laser">切換雷射筆/畫筆</option>
                         <option value="toggle-eraser">切換橡皮擦/畫筆</option>
                         <option value="undo">復原</option>
                         <option value="redo">重做</option>
                     </select>
+                </div>
+
+                <hr class="modal-divider">
+
+                <div style="font-weight:bold; color:#64748B; margin-bottom:12px;">快速鍵說明</div>
+                <div style="font-size:12px; color:#64748B; line-height: 1.8;">
+                    <b>B / P</b> : 畫筆<br>
+                    <b>E</b> : 橡皮擦<br>
+                    <b>R</b> : 方框擦除<br>
+                    <b>L / S</b> : 索套工具<br>
+                    <b>Z</b> : 雷射筆<br>
+                    <b>Ctrl+Z</b> : 復原<br>
+                    <b>Ctrl+Y</b> : 重做
                 </div>
             </div>
         </div>
@@ -320,12 +320,10 @@
         <canvas id="canvas" resize></canvas>
     </div>
 
-    <!-- IndexedDB Logic & App Logic -->
     <script type="module">
         import { getStroke } from 'https://esm.sh/perfect-freehand';
         paper.install(window);
 
-        // --- Custom Dialog System (Replacing window.confirm) ---
         const Dialog = {
             overlay: document.getElementById('global-dialog'),
             titleEl: document.getElementById('dialog-title'),
@@ -333,13 +331,11 @@
             okBtn: document.getElementById('dialog-ok'),
             cancelBtn: document.getElementById('dialog-cancel'),
             resolve: null,
-
             init() {
                 this.okBtn.onclick = () => this.close(true);
                 this.cancelBtn.onclick = () => this.close(false);
                 this.overlay.onclick = (e) => { if (e.target === this.overlay) this.close(false); };
             },
-
             confirm(title, message) {
                 return new Promise((resolve) => {
                     this.resolve = resolve;
@@ -348,18 +344,24 @@
                     this.overlay.style.display = 'flex';
                 });
             },
-
             close(result) {
                 this.overlay.style.display = 'none';
-                if (this.resolve) {
-                    this.resolve(result);
-                    this.resolve = null;
-                }
+                if (this.resolve) { this.resolve(result); this.resolve = null; }
             }
         };
         Dialog.init();
 
-        // --- Database Layer ---
+        const Toast = {
+            el: document.getElementById('shortcut-toast'),
+            timer: null,
+            show(msg) {
+                this.el.innerText = msg;
+                this.el.style.opacity = 1;
+                clearTimeout(this.timer);
+                this.timer = setTimeout(() => { this.el.style.opacity = 0; }, 1500);
+            }
+        };
+
         const DB = {
             name: 'MiWhiteboardDB', version: 1, storeName: 'canvases', db: null,
             async init() {
@@ -376,127 +378,56 @@
             async delete(id) { return new Promise((resolve) => { const tx = this.db.transaction(this.storeName, 'readwrite'); tx.objectStore(this.storeName).delete(id); tx.oncomplete = () => resolve(); }); }
         };
 
-        // --- App Management ---
         const AppManager = {
             currentCanvasId: null,
-
             async init() {
                 await DB.init();
                 this.renderGallery();
-                
                 document.getElementById('btn-create-new').onclick = () => this.createNew();
                 document.getElementById('btn-back-home').onclick = () => this.saveAndExit();
-                document.getElementById('canvas-title-input').onchange = (e) => {
-                    if(this.currentCanvasId) this.autoSave(e.target.value);
-                };
-                
+                document.getElementById('canvas-title-input').onchange = (e) => { if(this.currentCanvasId) this.autoSave(e.target.value); };
                 document.getElementById('loading').style.opacity = 0;
                 setTimeout(() => document.getElementById('loading').remove(), 500);
             },
-
             async renderGallery() {
                 const list = await DB.getAll();
                 const container = document.getElementById('gallery-list');
                 container.innerHTML = '';
                 list.sort((a, b) => b.updatedAt - a.updatedAt);
-
                 if (list.length === 0) {
-                    container.innerHTML = `
-                        <div class="empty-state">
-                            <i data-lucide="file-plus" size="48"></i>
-                            <div>還沒有畫布，點擊右下角按鈕建立一個吧！</div>
-                        </div>
-                    `;
+                    container.innerHTML = `<div class="empty-state"><i data-lucide="file-plus" size="48"></i><div>還沒有畫布，點擊右下角按鈕建立一個吧！</div></div>`;
                     lucide.createIcons();
                     return;
                 }
-
                 list.forEach(item => {
                     const card = document.createElement('div');
                     card.className = 'canvas-card';
-                    card.innerHTML = `
-                        <img class="card-thumb" src="${item.thumbnail || ''}" alt="thumbnail">
-                        <div class="card-body">
-                            <div>
-                                <div class="card-title-container">
-                                    <div class="card-title">${item.name}</div>
-                                </div>
-                                <div class="card-date">${new Date(item.updatedAt).toLocaleDateString()} ${new Date(item.updatedAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</div>
-                            </div>
-                            <div class="card-actions">
-                                <button class="icon-btn btn-rename" title="編輯名稱"><i data-lucide="pencil" size="16"></i></button>
-                                <button class="icon-btn btn-del" title="刪除"><i data-lucide="trash-2" size="16"></i></button>
-                            </div>
-                        </div>
-                    `;
-
-                    // 打開畫布 (包含點擊圖片)
-                    card.onclick = (e) => { 
-                        // 確保點擊到的不是 按鈕(編輯/刪除) 或 輸入框(修改名稱中)
-                        if (e.target.closest('.icon-btn') || e.target.closest('input')) return; 
-                        this.openCanvas(item.id); 
-                    };
-
-                    // 刪除邏輯
-                    card.querySelector('.btn-del').onclick = async (e) => { 
-                        e.stopPropagation(); 
-                        const confirmed = await Dialog.confirm('刪除確認', `確定要刪除「${item.name}」嗎？此動作無法復原。`);
-                        if(confirmed) { 
-                            await DB.delete(item.id); 
-                            this.renderGallery(); 
-                        } 
-                    };
-
-                    // 重新命名邏輯 (Inline Edit)
+                    card.innerHTML = `<img class="card-thumb" src="${item.thumbnail || ''}" alt="thumbnail"><div class="card-body"><div><div class="card-title-container"><div class="card-title">${item.name}</div></div><div class="card-date">${new Date(item.updatedAt).toLocaleDateString()} ${new Date(item.updatedAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</div></div><div class="card-actions"><button class="icon-btn btn-rename" title="編輯名稱"><i data-lucide="pencil" size="16"></i></button><button class="icon-btn btn-del" title="刪除"><i data-lucide="trash-2" size="16"></i></button></div></div>`;
+                    card.onclick = (e) => { if (e.target.closest('.icon-btn') || e.target.closest('input')) return; this.openCanvas(item.id); };
+                    card.querySelector('.btn-del').onclick = async (e) => { e.stopPropagation(); const confirmed = await Dialog.confirm('刪除確認', `確定要刪除「${item.name}」嗎？此動作無法復原。`); if(confirmed) { await DB.delete(item.id); this.renderGallery(); } };
                     const renameBtn = card.querySelector('.btn-rename');
                     const titleContainer = card.querySelector('.card-title-container');
                     const titleEl = card.querySelector('.card-title');
-
                     renameBtn.onclick = (e) => {
                         e.stopPropagation();
                         const input = document.createElement('input');
-                        input.type = 'text';
-                        input.className = 'card-title-edit';
-                        input.value = item.name;
-                        
-                        // 取代原本的標題
-                        titleEl.style.display = 'none';
-                        titleContainer.appendChild(input);
-                        input.focus();
-
-                        // 儲存邏輯
-                        const saveName = async () => {
-                            const newName = input.value.trim();
-                            if (newName && newName !== item.name) {
-                                item.name = newName;
-                                item.updatedAt = Date.now();
-                                await DB.save(item);
-                            }
-                            // 重新渲染整個列表 (或只恢復 UI)
-                            this.renderGallery();
-                        };
-
-                        input.onclick = (evt) => evt.stopPropagation(); // 防止點擊輸入框觸發開啟畫布
+                        input.type = 'text'; input.className = 'card-title-edit'; input.value = item.name;
+                        titleEl.style.display = 'none'; titleContainer.appendChild(input); input.focus();
+                        const saveName = async () => { const newName = input.value.trim(); if (newName && newName !== item.name) { item.name = newName; item.updatedAt = Date.now(); await DB.save(item); } this.renderGallery(); };
+                        input.onclick = (evt) => evt.stopPropagation();
                         input.addEventListener('blur', saveName);
-                        input.addEventListener('keydown', (evt) => {
-                            if (evt.key === 'Enter') {
-                                input.blur();
-                            }
-                        });
+                        input.addEventListener('keydown', (evt) => { if (evt.key === 'Enter') input.blur(); });
                     };
-
                     container.appendChild(card);
                 });
                 lucide.createIcons();
             },
-
             async createNew() {
                 const id = Date.now().toString();
                 const newCanvas = { id: id, name: `未命名畫布`, data: null, createdAt: Date.now(), updatedAt: Date.now(), thumbnail: '' };
                 await DB.save(newCanvas);
                 this.openCanvas(id);
             },
-
             async openCanvas(id) {
                 this.currentCanvasId = id;
                 const data = await DB.get(id);
@@ -505,48 +436,43 @@
                 project.clear();
                 project.activeLayer.removeChildren();
                 if (data.data) project.importJSON(data.data);
+                
+                // 清理雷射筆
+                App.laserPoints = [];
+                if(App.laserPathGlow) { App.laserPathGlow.remove(); App.laserPathGlow = null; }
+                if(App.laserPathCore) { App.laserPathCore.remove(); App.laserPathCore = null; }
+                
                 view.update();
                 History.stack = []; History.pointer = -1; History.saveState(); 
             },
-
             async saveAndExit() {
                 if (!this.currentCanvasId) return;
-                
-                // --- 1. 產生白色縮圖 ---
                 App.lassoPath?.remove(); App.lassoPath=null; 
                 if(App.eraserPreview) App.eraserPreview.visible = false;
+                
+                // 確保儲存時沒有雷射筆
+                if(App.laserPathGlow) App.laserPathGlow.visible = false;
+                if(App.laserPathCore) App.laserPathCore.visible = false;
 
-                const bgRect = new Path.Rectangle({
-                    rectangle: view.bounds,
-                    fillColor: 'white',
-                    insert: true
-                });
+                const bgRect = new Path.Rectangle({ rectangle: view.bounds, fillColor: 'white', insert: true });
                 bgRect.sendToBack(); 
                 view.update(); 
-
                 const thumbData = view.element.toDataURL('image/jpeg', 0.5);
                 bgRect.remove(); 
-                // ------------------------------------------
+                
+                // 徹底移除雷射筆
+                if(App.laserPathGlow) App.laserPathGlow.remove(); 
+                if(App.laserPathCore) App.laserPathCore.remove(); 
 
                 const jsonData = project.exportJSON();
                 const name = document.getElementById('canvas-title-input').value || "未命名畫布";
-
-                const record = {
-                    id: this.currentCanvasId,
-                    name: name,
-                    data: jsonData,
-                    thumbnail: thumbData,
-                    updatedAt: Date.now(),
-                    createdAt: (await DB.get(this.currentCanvasId))?.createdAt || Date.now()
-                };
-
+                const record = { id: this.currentCanvasId, name: name, data: jsonData, thumbnail: thumbData, updatedAt: Date.now(), createdAt: (await DB.get(this.currentCanvasId))?.createdAt || Date.now() };
                 await DB.save(record);
                 project.clear();
                 this.currentCanvasId = null;
                 document.body.classList.remove('mode-editor');
                 this.renderGallery();
             },
-
             async autoSave(newName = null) {
                 if (!this.currentCanvasId) return;
                 const name = newName || document.getElementById('canvas-title-input').value;
@@ -558,9 +484,20 @@
             }
         };
 
-        // --- Original Paint Logic ---
         const Settings = { palmRejection: false, fingerMode: 'speed', stylusMode: 'pressure', stylusBtn34: 'none', stylusBtn33: 'none' };
-        const App = { mode: 'pen', penType: 'fountain', strokeColor: '#1E293B', strokeWidth: 8, strokeOpacity: 1.0, eraserMode: 'standard', eraserSize: 20, currentPath: null, currentPoints: [], lastPointTime: 0, eraserPreview: null, rectStart: null, rectPath: null, lassoPath: null, lassoItems: [], lassoState: 'idle', lassoPrevPoint: null, activePointers: new Map(), isGesturing: false, prevDist: 0, prevC: null };
+        
+        // App State 新增雙層雷射筆變數
+        const App = { 
+            mode: 'pen', penType: 'fountain', strokeColor: '#1E293B', strokeWidth: 8, strokeOpacity: 1.0, 
+            eraserMode: 'standard', eraserSize: 20, 
+            currentPath: null, currentPoints: [], lastPointTime: 0, 
+            eraserPreview: null, rectStart: null, rectPath: null, 
+            lassoPath: null, lassoItems: [], lassoState: 'idle', lassoPrevPoint: null, 
+            activePointers: new Map(), isGesturing: false, prevDist: 0, prevC: null,
+            // 雷射筆狀態 (雙層)
+            laserPoints: [], laserPathGlow: null, laserPathCore: null
+        };
+        
         let colorPickerInstance = null;
 
         const History = {
@@ -584,8 +521,79 @@
             updateSubToolbar();
             initEvents();
             initSettingsUI();
+            
+            // 啟動動畫迴圈，用於雷射筆淡出
+            view.onFrame = onFrame;
+            
             AppManager.init();
         };
+        
+        // Animation Loop for Laser Pointer
+        function onFrame(event) {
+            if (App.laserPoints.length > 0) {
+                const now = Date.now();
+                const duration = 800; // 軌跡保留時間 (ms)
+                
+                // 移除過期點
+                App.laserPoints = App.laserPoints.filter(p => now - p.time < duration);
+
+                // 清除舊路徑
+                if (App.laserPathGlow) { App.laserPathGlow.remove(); App.laserPathGlow = null; }
+                if (App.laserPathCore) { App.laserPathCore.remove(); App.laserPathCore = null; }
+
+                if (App.laserPoints.length > 1) {
+                    // 取得用於繪圖的點陣列
+                    const strokePoints = App.laserPoints.map(p => {
+                        // 根據存活時間計算壓力 (讓尾巴變細)
+                        const age = now - p.time;
+                        const life = 1 - (age / duration); // 0 to 1
+                        return { x: p.x, y: p.y, pressure: p.pressure * life };
+                    });
+
+                    // 1. 底層光暈 (紅色, 縮小, 銳利, 高飽和)
+                    const glowOptions = {
+                        size: 16, // 從 30 縮小至 16 (Thinner)
+                        thinning: 0.5,
+                        smoothing: 0.5,
+                        streamline: 0.5,
+                        start: { taper: 0, cap: true },
+                        end: { taper: 0, cap: true }
+                    };
+                    const outlineGlow = getStroke(strokePoints, glowOptions);
+                    const pathDataGlow = window.getSvgPathFromStroke(outlineGlow);
+                    
+                    App.laserPathGlow = new Path({
+                        pathData: pathDataGlow,
+                        fillColor: '#FF0000', // 純紅光暈
+                        shadowColor: '#FF0000',
+                        shadowBlur: 10, // 降低模糊度 (20 -> 10) 讓其更銳利
+                        opacity: 0.9, // 提高透明度 (0.6 -> 0.9) 讓其更亮
+                        insert: true
+                    });
+                    App.laserPathGlow.data = { isLaser: true };
+
+                    // 2. 上層核心 (白色, 銳利, 窄)
+                    const coreOptions = {
+                        size: 6, // 稍微縮小核心 (8 -> 6)
+                        thinning: 0.7,
+                        smoothing: 0.5,
+                        streamline: 0.5,
+                        start: { taper: 0, cap: true },
+                        end: { taper: 0, cap: true }
+                    };
+                    const outlineCore = getStroke(strokePoints, coreOptions);
+                    const pathDataCore = window.getSvgPathFromStroke(outlineCore);
+
+                    App.laserPathCore = new Path({
+                        pathData: pathDataCore,
+                        fillColor: '#FFFFFF', // 白色核心
+                        opacity: 1,
+                        insert: true
+                    });
+                    App.laserPathCore.data = { isLaser: true };
+                }
+            }
+        }
 
         function initColorPicker() {
             colorPickerInstance = new iro.ColorPicker("#iro-picker-container", { width: 200, color: App.strokeColor, layout: [{ component: iro.ui.Wheel, options: { wheelLightness: false } }, { component: iro.ui.Slider, options: { sliderType: 'value' } }] });
@@ -619,6 +627,8 @@
                 case 'undo': History.undo(); break; case 'redo': History.redo(); break;
                 case 'toggle-eraser': if (App.mode === 'eraser' || App.mode === 'eraser-rect') setMode('pen'); else setMode('eraser'); break;
                 case 'toggle-lasso': if (App.mode === 'lasso') setMode('pen'); else setMode('lasso'); break;
+                // 新增雷射筆切換
+                case 'toggle-laser': if (App.mode === 'laser') setMode('pen'); else setMode('laser'); break;
                 case 'none': break;
             }
         }
@@ -635,10 +645,34 @@
         function initEvents() {
             const canvas = document.getElementById('canvas');
             canvas.addEventListener('pointerdown', onPointerDown); canvas.addEventListener('pointermove', onPointerMove); canvas.addEventListener('pointerup', onPointerUp); canvas.addEventListener('pointercancel', onPointerUp); canvas.addEventListener('wheel', onWheel, { passive: false });
-            document.addEventListener('keydown', (e) => { if(!AppManager.currentCanvasId) return; if (e.keyCode === 34) { e.preventDefault(); executeStylusAction(Settings.stylusBtn34); return; } if (e.keyCode === 33) { e.preventDefault(); executeStylusAction(Settings.stylusBtn33); return; } if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); if (e.shiftKey) History.redo(); else History.undo(); } if ((e.ctrlKey || e.metaKey) && e.key === 'y') { e.preventDefault(); History.redo(); } });
-            ['pen', 'eraser', 'eraser-rect', 'lasso'].forEach(m => document.getElementById(`tool-${m}`).onclick = () => setMode(m));
             
-            // 修改：使用自訂 Dialog 替代 confirm
+            // --- 鍵盤快速鍵 ---
+            document.addEventListener('keydown', (e) => { 
+                if(!AppManager.currentCanvasId) return; 
+                // 忽略輸入框內的按鍵
+                if(e.target.tagName === 'INPUT') return;
+
+                const key = e.key.toLowerCase();
+
+                // Stylus Keys (PageUp/Down)
+                if (e.keyCode === 34) { e.preventDefault(); executeStylusAction(Settings.stylusBtn34); return; } 
+                if (e.keyCode === 33) { e.preventDefault(); executeStylusAction(Settings.stylusBtn33); return; } 
+                
+                // Ctrl+Z / Ctrl+Y
+                if ((e.ctrlKey || e.metaKey) && key === 'z') { e.preventDefault(); if (e.shiftKey) History.redo(); else History.undo(); return; } 
+                if ((e.ctrlKey || e.metaKey) && key === 'y') { e.preventDefault(); History.redo(); return; } 
+                
+                // Tools Shortcuts
+                if (key === 'b' || key === 'p') { setMode('pen'); Toast.show('畫筆'); }
+                else if (key === 'e') { setMode('eraser'); Toast.show('橡皮擦'); }
+                else if (key === 'r') { setMode('eraser-rect'); Toast.show('方框擦除'); }
+                else if (key === 'l' || key === 's') { setMode('lasso'); Toast.show('索套'); }
+                else if (key === 'z') { setMode('laser'); Toast.show('雷射筆'); }
+                else if (key === 'delete' || key === 'backspace') { if(App.lassoState === 'selected') deleteSelection(); }
+            });
+            
+            ['pen', 'eraser', 'eraser-rect', 'lasso', 'laser'].forEach(m => document.getElementById(`tool-${m}`).onclick = () => setMode(m));
+            
             document.getElementById('tool-clear').onclick = async () => { 
                 const confirmed = await Dialog.confirm('清空確認', '確定清空整個畫布嗎？此動作可復原。');
                 if(confirmed){ 
@@ -656,7 +690,8 @@
             if (App.mode === 'lasso' && m !== 'lasso') clearLasso();
             App.mode = m;
             document.querySelectorAll('.main-tools .btn').forEach(b => b.classList.remove('active'));
-            const map = {pen:'tool-pen', eraser:'tool-eraser', 'eraser-rect':'tool-eraser-rect', lasso:'tool-lasso'};
+            // 修正：包含 tool-laser
+            const map = {pen:'tool-pen', eraser:'tool-eraser', 'eraser-rect':'tool-eraser-rect', lasso:'tool-lasso', laser:'tool-laser'};
             if(map[m]) document.getElementById(map[m]).classList.add('active');
             updateSubToolbar();
         }
@@ -666,32 +701,66 @@
             canvas.setPointerCapture(e.pointerId); App.activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
             if (App.activePointers.size === 2) { startGesture(); return; }
             const p = view.viewToProject(new Point(e.clientX, e.clientY)); const pressure = getInputPressure(e, p, null, 0); if (pressure === -1) return;
-            if (App.activePointers.size === 1 && !App.isGesturing) { if (App.mode === 'pen') startPenStroke(p, pressure); else if (App.mode === 'eraser') eraseAt(p); else if (App.mode === 'eraser-rect') startRectEraser(p); else if (App.mode === 'lasso') handleLassoDown(p); App.lastPointTime = Date.now(); }
+            if (App.activePointers.size === 1 && !App.isGesturing) { 
+                if (App.mode === 'pen') startPenStroke(p, pressure); 
+                else if (App.mode === 'eraser') eraseAt(p); 
+                else if (App.mode === 'eraser-rect') startRectEraser(p); 
+                else if (App.mode === 'lasso') handleLassoDown(p); 
+                else if (App.mode === 'laser') { App.laserPoints = [{x: p.x, y: p.y, pressure: pressure, time: Date.now()}]; }
+                App.lastPointTime = Date.now(); 
+            }
         }
         function onPointerMove(e) {
             if (App.activePointers.has(e.pointerId)) App.activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
             if (App.activePointers.size === 2) { handleGesture(); return; }
             if (App.activePointers.size === 1 && !App.isGesturing && (e.buttons || e.pointerType === 'touch')) {
                 if (e.pointerType !== 'pen' && Settings.palmRejection) return;
-                const rawEvents = e.getCoalescedEvents ? e.getCoalescedEvents() : [e]; const lastP = App.currentPoints.length > 0 ? new Point(App.currentPoints[App.currentPoints.length-1]) : null;
-                if (App.mode === 'pen' && App.currentPath) { rawEvents.forEach(evt => { const pt = view.viewToProject(new Point(evt.clientX, evt.clientY)); const pressure = getInputPressure(evt, pt, lastP, App.lastPointTime); App.currentPoints.push({ x: pt.x, y: pt.y, pressure: pressure }); App.lastPointTime = Date.now(); }); renderCurrentStroke(); } 
-                else { const p = view.viewToProject(new Point(e.clientX, e.clientY)); if (App.mode === 'eraser') eraseAt(p); else if (App.mode === 'eraser-rect') updateRectEraser(p); else if (App.mode === 'lasso') handleLassoMove(p); }
+                const rawEvents = e.getCoalescedEvents ? e.getCoalescedEvents() : [e]; 
+                const lastP = App.currentPoints.length > 0 ? new Point(App.currentPoints[App.currentPoints.length-1]) : null;
+                
+                // Pen Logic
+                if (App.mode === 'pen' && App.currentPath) { 
+                    rawEvents.forEach(evt => { const pt = view.viewToProject(new Point(evt.clientX, evt.clientY)); const pressure = getInputPressure(evt, pt, lastP, App.lastPointTime); App.currentPoints.push({ x: pt.x, y: pt.y, pressure: pressure }); App.lastPointTime = Date.now(); }); 
+                    renderCurrentStroke(); 
+                } 
+                // Laser Logic (新增)
+                else if (App.mode === 'laser') {
+                    rawEvents.forEach(evt => {
+                        const pt = view.viewToProject(new Point(evt.clientX, evt.clientY));
+                        // 雷射筆壓力影響較小，主要靠時間衰減
+                        App.laserPoints.push({ x: pt.x, y: pt.y, pressure: e.pressure || 0.5, time: Date.now() });
+                    });
+                }
+                // Other Tools
+                else { 
+                    const p = view.viewToProject(new Point(e.clientX, e.clientY)); 
+                    if (App.mode === 'eraser') eraseAt(p); 
+                    else if (App.mode === 'eraser-rect') updateRectEraser(p); 
+                    else if (App.mode === 'lasso') handleLassoMove(p); 
+                }
             }
         }
         function onPointerUp(e) {
             const wasGesturing = App.isGesturing; App.activePointers.delete(e.pointerId); if (App.activePointers.size === 0) App.isGesturing = false; if (wasGesturing) return;
-            if (App.mode === 'pen' && App.currentPath) finalizeStroke(); else if (App.mode === 'eraser') { if (App.eraserPreview) { App.eraserPreview.remove(); App.eraserPreview = null; } History.saveState(); } else if (App.mode === 'eraser-rect') finalizeRectEraser(); else if (App.mode === 'lasso') handleLassoUp();
+            if (App.mode === 'pen' && App.currentPath) finalizeStroke(); 
+            else if (App.mode === 'eraser') { if (App.eraserPreview) { App.eraserPreview.remove(); App.eraserPreview = null; } History.saveState(); } 
+            else if (App.mode === 'eraser-rect') finalizeRectEraser(); 
+            else if (App.mode === 'lasso') handleLassoUp();
+            // Laser mode 不需要特別的 up 處理，因為它依賴 onFrame 自動消失
         }
 
         function startPenStroke(point, pressure) { clearLasso(); App.currentPoints = [{ x: point.x, y: point.y, pressure: pressure }]; App.currentPath = new Path({ fillColor: App.strokeColor, opacity: App.strokeOpacity, blendMode: App.penType === 'highlighter' ? 'multiply' : 'normal', insert: true }); }
         function renderCurrentStroke() { if (!App.currentPath || App.currentPoints.length < 1) return; let options = { size: App.strokeWidth, start: { taper: 0, cap: true }, end: { taper: 0, cap: true }, simulatePressure: false, streamline: 0.5 }; if (App.penType === 'fountain') { options.thinning = 0.8; options.smoothing = 0.5; } else options.thinning = 0; const outline = getStroke(App.currentPoints, options); App.currentPath.pathData = window.getSvgPathFromStroke(outline); }
         function finalizeStroke() { renderCurrentStroke(); App.currentPath.simplify(1); const normalized = App.currentPath.unite(App.currentPath); App.currentPath.remove(); normalized.fillColor = App.strokeColor; normalized.opacity = App.strokeOpacity; normalized.blendMode = App.penType === 'highlighter' ? 'multiply' : 'normal'; if (!normalized.parent) project.activeLayer.addChild(normalized); App.currentPath = null; App.currentPoints = []; History.saveState(); }
+        
         function eraseAt(point) { if (App.eraserPreview) App.eraserPreview.remove(); App.eraserPreview = new Path.Circle({ center: point, radius: App.eraserSize, strokeColor: '#EF4444', fillColor: new Color(1,0,0,0.2), strokeWidth: 1/view.zoom }); performErase(new Path.Circle({ center: point, radius: App.eraserSize, insert: false })); }
         function startRectEraser(point) { clearLasso(); App.rectStart = point; App.rectPath = new Path.Rectangle({ from: point, to: point, fillColor: new Color(1,0,0,0.1), strokeColor: '#EF4444', dashArray: [4,4], strokeWidth: 1/view.zoom }); }
         function updateRectEraser(point) { if (!App.rectPath) return; App.rectPath.remove(); App.rectPath = new Path.Rectangle({ from: App.rectStart, to: point, fillColor: new Color(1,0,0,0.1), strokeColor: '#EF4444', dashArray: [4,4], strokeWidth: 1/view.zoom }); }
         function finalizeRectEraser() { if (App.rectPath) { performErase(new Path.Rectangle(App.rectPath.bounds)); App.rectPath.remove(); App.rectPath = null; History.saveState(); } }
+        
         function performErase(eraserItem) {
-            const items = project.activeLayer.children.filter(i => i !== App.eraserPreview && i !== App.rectPath && !i.data.isLassoUI);
+            // 修正：過濾掉雷射筆 (isLaser)
+            const items = project.activeLayer.children.filter(i => i !== App.eraserPreview && i !== App.rectPath && !i.data.isLassoUI && !i.data.isLaser);
             for (let i = items.length - 1; i >= 0; i--) {
                 let item = items[i];
                 if (!item.intersects(eraserItem) && !eraserItem.contains(item.position) && !item.contains(eraserItem.position)) continue;
@@ -700,9 +769,10 @@
             }
         }
         function separateDisjointPaths(item) { if (item instanceof Path) return [item]; if (item instanceof CompoundPath) { const children = item.removeChildren(); item.remove(); if (!children.length) return []; children.sort((a,b)=>Math.abs(b.area)-Math.abs(a.area)); const islands = []; for(let child of children){ let p = islands.find(isl => isl.body.bounds.contains(child.bounds) && isl.body.contains(child.firstSegment.point)); if(p) p.holes.push(child); else islands.push({body:child, holes:[]}); } return islands.map(isl => isl.holes.length ? new CompoundPath({children:[isl.body, ...isl.holes]}) : isl.body); } return [item]; }
+        
         function handleLassoDown(point) { if (App.lassoState === 'selected' && App.lassoPath.contains(point)) { App.lassoState = 'moving'; App.lassoPrevPoint = point; return; } clearLasso(); App.lassoState = 'drawing'; App.lassoPath = new Path({ strokeColor: '#3B82F6', strokeWidth: 2/view.zoom, dashArray: [5,5], data: {isLassoUI:true} }); App.lassoPath.add(point); }
         function handleLassoMove(point) { if (App.lassoState === 'drawing') App.lassoPath.add(point); else if (App.lassoState === 'moving') { const delta = point.subtract(App.lassoPrevPoint); App.lassoItems.forEach(i => i.position = i.position.add(delta)); App.lassoPath.position = App.lassoPath.position.add(delta); App.lassoPrevPoint = point; updateLassoMenu(); } }
-        function handleLassoUp() { if (App.lassoState === 'drawing') { App.lassoPath.closed = true; App.lassoPath.simplify(10); const geo = App.lassoPath; App.lassoItems = project.activeLayer.children.filter(i => !i.data.isLassoUI && (geo.contains(i.bounds.center) || geo.intersects(i))); if (App.lassoItems.length > 0) { App.lassoState = 'selected'; const bounds = App.lassoItems.reduce((b,i)=>b.unite(i.bounds), App.lassoItems[0].bounds); App.lassoPath.remove(); App.lassoPath = new Path.Rectangle({ rectangle: bounds.expand(10), strokeColor: '#3B82F6', strokeWidth: 1/view.zoom, dashArray: [4,4], fillColor: new Color(0.23,0.51,0.96,0.05), data: {isLassoUI:true} }); showLassoMenu(bounds); } else clearLasso(); } else if (App.lassoState === 'moving') { App.lassoState = 'selected'; History.saveState(); } }
+        function handleLassoUp() { if (App.lassoState === 'drawing') { App.lassoPath.closed = true; App.lassoPath.simplify(10); const geo = App.lassoPath; App.lassoItems = project.activeLayer.children.filter(i => !i.data.isLassoUI && !i.data.isLaser && (geo.contains(i.bounds.center) || geo.intersects(i))); if (App.lassoItems.length > 0) { App.lassoState = 'selected'; const bounds = App.lassoItems.reduce((b,i)=>b.unite(i.bounds), App.lassoItems[0].bounds); App.lassoPath.remove(); App.lassoPath = new Path.Rectangle({ rectangle: bounds.expand(10), strokeColor: '#3B82F6', strokeWidth: 1/view.zoom, dashArray: [4,4], fillColor: new Color(0.23,0.51,0.96,0.05), data: {isLassoUI:true} }); showLassoMenu(bounds); } else clearLasso(); } else if (App.lassoState === 'moving') { App.lassoState = 'selected'; History.saveState(); } }
         function clearLasso() { if(App.lassoPath) { App.lassoPath.remove(); App.lassoPath = null; } App.lassoItems = []; App.lassoState = 'idle'; document.getElementById('lasso-actions').classList.remove('visible'); }
         function showLassoMenu(bounds) { const m = document.getElementById('lasso-actions'); const p = view.projectToView(bounds.topCenter); m.style.left = p.x + 'px'; m.style.top = (p.y - 10) + 'px'; m.classList.add('visible'); }
         function updateLassoMenu() { if(App.lassoPath) showLassoMenu(App.lassoPath.bounds); }
@@ -720,7 +790,11 @@
                 const g=document.createElement('div'); g.className='opt-group';
                 [{id:'standard',t:'擦部分'}, {id:'object',t:'擦整條'}].forEach(o=>{ const d=document.createElement('div'); d.className=`opt-btn ${App.eraserMode===o.id?'selected':''}`; d.innerText=o.t; d.onclick=()=>{App.eraserMode=o.id; updateSubToolbar();}; g.appendChild(d); }); el.appendChild(g);
                 if(App.mode==='eraser') addSlider(el,'大小',5,100,App.eraserSize,v=>App.eraserSize=v);
-            } else if (App.mode === 'lasso') el.innerHTML = '<span style="color:#64748B;font-size:12px">圈選後可移動、複製或刪除</span>';
+            } else if (App.mode === 'lasso') {
+                el.innerHTML = '<span style="color:#64748B;font-size:12px">圈選後可移動、複製或刪除</span>';
+            } else if (App.mode === 'laser') {
+                el.innerHTML = '<span style="color:#64748B;font-size:12px">軌跡會自動消失，不會儲存</span>';
+            }
         }
         function addSlider(p,l,min,max,v,cb){ const w=document.createElement('div'); w.className='setting-item'; w.innerHTML=`<span style="font-size:12px">${l}</span><input type="range" min="${min}" max="${max}" value="${v}">`; w.querySelector('input').oninput=(e)=>cb(parseInt(e.target.value)); p.appendChild(w); }
 
