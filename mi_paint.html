@@ -1,9 +1,11 @@
+<!-- START OF FILE ai_studio_code (final_fixed_v4).html -->
+
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>小米白板</title>
+    <title>小米白板 (完美縮圖版)</title>
     
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/paper.js/0.12.17/paper-full.min.js"></script>
@@ -31,20 +33,23 @@
         /* --- 全域設定 --- */
         body { margin: 0; background-color: #F8FAFC; overflow: hidden; touch-action: none; user-select: none; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
         
-        /* 視圖切換容器 */
         #view-home { position: absolute; inset: 0; z-index: 10; background: #F8FAFC; overflow-y: auto; display: flex; flex-direction: column; transition: opacity 0.3s; touch-action: pan-y; }
         #view-editor { position: absolute; inset: 0; z-index: 20; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
         
         body.mode-editor #view-home { opacity: 0; pointer-events: none; }
         body.mode-editor #view-editor { opacity: 1; pointer-events: auto; }
 
-        /* --- 首頁樣式 (Home) --- */
+        /* Cursor Styles */
+        body.cursor-hand #canvas { cursor: grab; }
+        body.cursor-hand-grabbing #canvas { cursor: grabbing; }
+
+        /* --- Home --- */
         .home-header { padding: 24px; display: flex; align-items: center; justify-content: space-between; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
         .home-title { font-size: 24px; font-weight: 700; color: #1E293B; display: flex; align-items: center; gap: 10px; }
         .gallery-container { padding: 24px; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 24px; max-width: 1200px; margin: 0 auto; width: 100%; box-sizing: border-box; }
         .canvas-card { background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05); transition: transform 0.2s, box-shadow 0.2s; cursor: pointer; position: relative; border: 1px solid #E2E8F0; display: flex; flex-direction: column; }
         .canvas-card:hover { transform: translateY(-4px); box-shadow: 0 10px 15px rgba(0,0,0,0.1); }
-        .card-thumb { width: 100%; height: 140px; background: white; object-fit: contain; display: block; border-bottom: 1px solid #f1f5f9; pointer-events: none; }
+        .card-thumb { width: 100%; height: 140px; background: #E2E8F0; object-fit: contain; display: block; border-bottom: 1px solid #f1f5f9; pointer-events: none; }
         .card-body { padding: 12px; flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
         .card-title-container { min-height: 24px; margin-bottom: 4px; display: flex; align-items: center; }
         .card-title { font-weight: 600; color: #334155; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; }
@@ -59,193 +64,115 @@
         .fab-add:hover { transform: scale(1.05); background: #1D4ED8; }
         .fab-add:active { transform: scale(0.95); }
 
-        /* --- 編輯器佈局 (Editor Layout) --- */
+        /* --- Editor --- */
         #canvas { width: 100vw; height: 100vh; display: block; cursor: crosshair; }
         
-        /* 頂部導航列 */
         .editor-header-bar {
-            position: absolute; top: 0; left: 0; right: 0; 
-            height: 40px; 
-            z-index: 101; 
-            pointer-events: auto; 
-            background: rgba(255,255,255,0.95); 
-            border-bottom: 1px solid #E2E8F0;
-            display: flex; align-items: center; justify-content: space-between;
-            padding: 0 4px;
+            position: absolute; top: 0; left: 0; right: 0; height: 40px; z-index: 101; 
+            pointer-events: auto; background: rgba(255,255,255,0.95); 
+            border-bottom: 1px solid #E2E8F0; display: flex; align-items: center; justify-content: space-between; padding: 0 4px;
         }
-        
-        .header-left, .header-right { 
-            display: flex; align-items: center; 
-            z-index: 102; 
-            min-width: 40px;
-        }
-        
-        .header-center {
-            position: absolute; left: 44px; right: 44px;
-            top: 0; bottom: 0;
-            display: flex; align-items: center; justify-content: center;
-        }
-
-        .nav-btn { 
-            width: 32px; height: 32px;
-            background: transparent;
-            border-radius: 6px; border: none; 
-            display: flex; align-items: center; justify-content: center; 
-            cursor: pointer; color: #64748B; 
-            transition: 0.2s;
-        }
+        .header-left, .header-right { display: flex; align-items: center; z-index: 102; min-width: 40px; gap: 4px; }
+        .header-center { position: absolute; left: 44px; right: 44px; top: 0; bottom: 0; display: flex; align-items: center; justify-content: center; }
+        .nav-btn { width: 32px; height: 32px; background: transparent; border-radius: 6px; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #64748B; transition: 0.2s; }
         .nav-btn:hover { background: #F1F5F9; color: #1E293B; }
         .nav-btn svg { width: 18px; height: 18px; }
-
-        .nav-title-display { 
-            font-size: 14px; font-weight: 600; color: #334155; 
-            text-align: center; 
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-            max-width: 100%;
-            pointer-events: none; 
-            user-select: none;
-        }
-
-        /* --- 工具列 UI (Center Top) --- */
-        .ui-top-center {
-            position: absolute; 
-            top: 48px; 
-            left: 50%; transform: translateX(-50%);
-            display: flex; flex-direction: column; align-items: center; gap: 8px; z-index: 100;
-            width: fit-content; max-width: 96%; pointer-events: none;
-            transition: top 0.3s ease;
-        }
+        .nav-title-display { font-size: 14px; font-weight: 600; color: #334155; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; pointer-events: none; user-select: none; }
         
-        .panel { 
-            background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(8px); 
-            border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); padding: 4px; 
-            display: flex; flex-wrap: nowrap; align-items: center; justify-content: center; gap: 4px; 
-            pointer-events: auto; border: 1px solid rgba(0,0,0,0.05); 
-        }
-
-        .btn { 
-            width: 44px; height: 44px; 
-            border-radius: 10px; border: none; 
-            display: flex; align-items: center; justify-content: center; 
-            cursor: pointer; background: transparent; color: #64748B; 
-            transition: all 0.2s; flex-shrink: 0; padding: 0;
-        }
+        /* --- Tools --- */
+        .ui-top-center { position: absolute; top: 48px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 8px; z-index: 100; width: fit-content; max-width: 96%; pointer-events: none; transition: top 0.3s ease; }
+        .panel { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(8px); border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); padding: 4px; display: flex; flex-wrap: nowrap; align-items: center; justify-content: center; gap: 4px; pointer-events: auto; border: 1px solid rgba(0,0,0,0.05); }
+        .btn { width: 44px; height: 44px; border-radius: 10px; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; background: transparent; color: #64748B; transition: all 0.2s; flex-shrink: 0; padding: 0; }
         .btn svg { width: 28px; height: 28px; stroke-width: 2px; } 
-
         .btn:hover { background: #F1F5F9; color: #334155; }
         .btn.active { background: #EFF6FF; color: #2563EB; box-shadow: inset 0 0 0 1px #BFDBFE; }
         .btn.danger:hover { background: #FEF2F2; color: #EF4444; }
         .btn:disabled { opacity: 0.3; cursor: not-allowed; }
-
         .divider { width: 1px; height: 24px; background: #CBD5E1; margin: 0 2px; }
-        
-        /* 次級工具列：支援換行 */
-        .sub-tools { 
-            display: none; 
-            font-size: 13px; padding: 6px 12px; 
-            min-height: 36px; height: auto;
-            animation: slideDown 0.2s ease-out;
-            flex-wrap: wrap; /* 允許換行 */
-            justify-content: center; /* 居中 */
-            max-width: 90vw; /* 防止超出螢幕 */
-        }
+        .sub-tools { display: none; font-size: 13px; padding: 6px 12px; min-height: 36px; height: auto; animation: slideDown 0.2s ease-out; flex-wrap: wrap; justify-content: center; max-width: 90vw; }
         .sub-tools.visible { display: flex; }
         @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-
         .opt-group { display: flex; background: #F1F5F9; border-radius: 8px; padding: 2px; margin: 2px 4px; }
-        
-        .opt-btn { 
-            padding: 4px 10px; border-radius: 6px; cursor: pointer; color: #64748B; 
-            transition: 0.2s; font-weight: 500; font-size: 13px; 
-            white-space: nowrap; 
-        }
+        .opt-btn { padding: 4px 10px; border-radius: 6px; cursor: pointer; color: #64748B; transition: 0.2s; font-weight: 500; font-size: 13px; white-space: nowrap; }
         .opt-btn.selected { background: white; color: #0F172A; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
-        
-        /* 新增：滑桿群組容器，確保一起換行 */
-        .slider-group {
-            display: flex;
-            align-items: center;
-            margin: 2px 4px;
-            /* 如果螢幕真的小到連這組都放不下，內部才允許換行，否則保持一起 */
-            flex-wrap: wrap; 
-            justify-content: center;
-        }
-
-        .setting-item { 
-            display: flex; align-items: center; gap: 8px; 
-            margin: 4px 8px; 
-            color: #64748B; white-space: nowrap; 
-        }
-        .slider-group .setting-item {
-            margin: 4px 6px; /* 在群組內稍微緊湊一點 */
-        }
-
+        .slider-group { display: flex; align-items: center; margin: 2px 4px; flex-wrap: wrap; justify-content: center; }
+        .setting-item { display: flex; align-items: center; gap: 8px; margin: 4px 8px; color: #64748B; white-space: nowrap; }
+        .slider-group .setting-item { margin: 4px 6px; }
         input[type="range"] { width: 80px; accent-color: #2563EB; cursor: pointer; }
-        
-        /* 小螢幕適配 */
+
+        /* Zoom Indicator */
+        #zoom-indicator {
+            position: fixed; bottom: 20px; right: 20px;
+            background: rgba(30, 41, 59, 0.8); backdrop-filter: blur(4px);
+            color: white; padding: 6px 12px; border-radius: 20px;
+            font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums;
+            z-index: 90; pointer-events: none; user-select: none;
+            opacity: 0; transition: opacity 0.3s;
+        }
+
         @media (max-width: 600px) {
             .nav-title-display { font-size: 13px; }
             .header-center { left: 40px; right: 40px; }
             .ui-top-center { top: 46px; width: 100%; padding: 0 4px; box-sizing: border-box; }
-            
-            .main-tools {
-                flex-wrap: nowrap; width: 100%; overflow-x: auto;
-                justify-content: space-between; gap: 2px; padding: 4px 6px;
-            }
-
-            .main-tools .btn {
-                flex-shrink: 1;
-                width: 11vw; height: 11vw;
-                max-width: 40px; max-height: 40px;
-                min-width: 32px; min-height: 32px;
-            }
+            .main-tools { flex-wrap: nowrap; width: 100%; overflow-x: auto; justify-content: space-between; gap: 2px; padding: 4px 6px; }
+            .main-tools .btn { flex-shrink: 1; width: 11vw; height: 11vw; max-width: 40px; max-height: 40px; min-width: 32px; min-height: 32px; }
             .main-tools .btn svg { width: 65%; height: 65%; }
         }
+        @media (max-width: 320px) { .header-center { display: none; } }
 
-        @media (max-width: 320px) {
-            .header-center { display: none; }
-        }
-
-        /* --- 彈窗修復 & 紅色按鈕 --- */
-        .modal-overlay { 
-            position: fixed; inset: 0; 
-            background: rgba(0,0,0,0.4); 
-            z-index: 998; 
-            display: none; 
-            justify-content: center; align-items: center; 
-            backdrop-filter: blur(2px); 
-        }
-        
-        /* 修改：確保彈窗在任何螢幕下都有間距 */
-        .modal-content { 
-            background: white; 
-            width: 340px; 
-            /* 關鍵修改：使用 calc 保留上下左右間距，並確保不會超出視窗 */
-            max-width: calc(100% - 32px);
-            max-height: calc(100% - 32px);
-            
-            border-radius: 20px; padding: 24px; 
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2); 
-            z-index: 999; 
-            font-size: 14px; color: #334155; 
-            overflow-y: auto; /* 內容過多時可捲動 */
-            display: flex; flex-direction: column; 
-            box-sizing: border-box; /* 確保 padding 不會撐大 */
-        }
-
+        /* --- 彈窗通用 --- */
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 998; display: none; justify-content: center; align-items: center; backdrop-filter: blur(2px); }
+        .modal-content { background: white; width: 340px; max-width: calc(100% - 32px); max-height: calc(100% - 32px); border-radius: 20px; padding: 24px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); z-index: 999; font-size: 14px; color: #334155; overflow-y: auto; display: flex; flex-direction: column; box-sizing: border-box; }
         .modal-title { font-size: 18px; font-weight: bold; margin-bottom: 16px; color: #0F172A; display:flex; justify-content:space-between; align-items:center; }
         .dialog-msg { font-size: 15px; color: #475569; margin-bottom: 24px; line-height: 1.5; }
-        .dialog-actions { display: flex; justify-content: flex-end; gap: 12px; }
-        
+        .dialog-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 16px; }
         .btn-text { padding: 8px 16px; font-weight: 600; color: #64748B; background: transparent; border: none; border-radius: 8px; cursor: pointer; width: auto; height: auto; display: inline-flex; }
         .btn-text:hover { background: #F1F5F9; color: #334155; }
-        
-        .btn-primary { background: #EF4444; color: white; }
-        .btn-primary:hover { background: #DC2626; color: white; }
-        
+        .btn-primary { background: #2563EB; color: white; }
+        .btn-primary:hover { background: #1D4ED8; color: white; }
         .modal-row { margin-bottom: 16px; }
         .modal-label { display: block; margin-bottom: 6px; font-weight: 500; }
-        .modal-select { width: 100%; padding: 8px; border-radius: 8px; border: 1px solid #CBD5E1; background: #F8FAFC; color: #334155; }
+        .modal-select, .modal-input { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #CBD5E1; background: #F8FAFC; color: #334155; box-sizing: border-box; font-size: 14px; }
+        .modal-input:focus, .modal-select:focus { outline: 2px solid #BFDBFE; border-color: #2563EB; }
+
+        /* 隱藏元素 */
+        .hidden { display: none !important; }
+
+        /* 新增畫布彈窗特定樣式 */
+        .bg-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px; }
+        .bg-option { 
+            border: 2px solid #E2E8F0; border-radius: 8px; padding: 8px; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: 0.2s; 
+        }
+        .bg-option:hover { border-color: #94A3B8; }
+        .bg-option.selected { border-color: #2563EB; background: #EFF6FF; }
+        .bg-preview { width: 24px; height: 24px; border-radius: 4px; border: 1px solid rgba(0,0,0,0.1); }
+        
+        /* 修正網格預覽圖 */
+        .bg-option[data-bg="grid-white"] .bg-preview {
+            background-color: white;
+            background-image: linear-gradient(#cbd5e1 1px, transparent 1px), linear-gradient(90deg, #cbd5e1 1px, transparent 1px);
+            background-size: 8px 8px;
+        }
+        .bg-option[data-bg="grid-beige"] .bg-preview {
+            background-color: #FFF8E1;
+            background-image: linear-gradient(#d4c5a9 1px, transparent 1px), linear-gradient(90deg, #d4c5a9 1px, transparent 1px);
+            background-size: 8px 8px;
+        }
+
+        .custom-size-row { display: flex; gap: 10px; }
+
+        /* 頁面管理列表 */
+        .page-list-item { display: flex; align-items: center; justify-content: space-between; padding: 8px; border-bottom: 1px solid #F1F5F9; cursor: pointer; transition: 0.1s; border-radius: 8px; background: white; margin-bottom: 4px; user-select: none; }
+        .page-list-item:hover { background: #F8FAFC; }
+        .page-list-item.active { background: #EFF6FF; color: #2563EB; font-weight: 600; }
+        .page-list-item.dragging { opacity: 0.4; background: #E2E8F0; border: 1px dashed #94A3B8; }
+        
+        /* 確保拖曳把手在左邊 */
+        .page-info-group { display: flex; align-items: center; gap: 8px; flex: 1; pointer-events: none; }
+        .drag-handle { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: grab; color: #CBD5E1; border-radius: 4px; flex-shrink: 0; pointer-events: auto; }
+        .drag-handle:hover { color: #64748B; background: #F1F5F9; }
+        .drag-handle:active { cursor: grabbing; }
+
         .toggle-switch { display: flex; align-items: center; justify-content: space-between; cursor: pointer; }
         .toggle-track { width: 44px; height: 24px; background: #E2E8F0; border-radius: 12px; position: relative; transition: 0.2s; }
         .toggle-thumb { width: 20px; height: 20px; background: white; border-radius: 50%; position: absolute; top: 2px; left: 2px; transition: 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
@@ -277,6 +204,7 @@
     </div>
 
     <div id="shortcut-toast"></div>
+    <div id="zoom-indicator">60%</div>
 
     <!-- 全域對話框 (Dialog) -->
     <div class="modal-overlay" id="global-dialog">
@@ -285,7 +213,88 @@
             <div class="dialog-msg" id="dialog-msg">內容</div>
             <div class="dialog-actions">
                 <button class="btn-text" id="dialog-cancel">取消</button>
-                <button class="btn-text btn-primary" id="dialog-ok">確定</button>
+                <button class="btn-text" style="color:#EF4444" id="dialog-ok">確定</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 頁面管理對話框 -->
+    <div class="modal-overlay" id="pages-modal">
+        <div class="modal-content">
+            <div class="modal-title">
+                <span>頁面管理</span>
+                <button class="btn" id="close-pages-modal" style="width:32px;height:32px"><i data-lucide="x"></i></button>
+            </div>
+            <div style="font-size:12px; color:#94A3B8; margin-bottom:8px;">長按左側把手拖曳可排序</div>
+            <div id="pages-list-container">
+                <!-- 頁面列表 -->
+            </div>
+            <div class="dialog-actions">
+                <button class="btn-text btn-primary" id="btn-add-page-modal" style="width:100%"><i data-lucide="plus" style="width:16px; margin-right:4px;"></i> 新增頁面</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 新增畫布對話框 -->
+    <div class="modal-overlay" id="new-canvas-modal">
+        <div class="modal-content">
+            <div class="modal-title">新建畫布</div>
+            
+            <div class="modal-row">
+                <span class="modal-label">畫布名稱</span>
+                <input type="text" id="new-canvas-name" class="modal-input" placeholder="例如：會議記錄、塗鴉...">
+            </div>
+
+            <div class="modal-row">
+                <span class="modal-label">畫布尺寸</span>
+                <select id="new-canvas-size" class="modal-select">
+                    <option value="infinite">無限畫布 (無分頁系統)</option>
+                    <option value="a4">A4 (垂直)</option>
+                    <option value="a4-l">A4 (水平)</option>
+                    <option value="a3">A3 (垂直)</option>
+                    <option value="custom">自訂尺寸</option>
+                </select>
+            </div>
+
+            <!-- 自訂尺寸輸入區 -->
+            <div class="modal-row hidden" id="custom-size-inputs">
+                <div class="custom-size-row">
+                    <div>
+                        <span class="modal-label" style="font-size:12px">寬度 (px)</span>
+                        <input type="number" id="custom-width" class="modal-input" value="1920">
+                    </div>
+                    <div>
+                        <span class="modal-label" style="font-size:12px">高度 (px)</span>
+                        <input type="number" id="custom-height" class="modal-input" value="1080">
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-row">
+                <span class="modal-label">背景樣式</span>
+                <div class="bg-grid">
+                    <div class="bg-option selected" data-bg="white">
+                        <div class="bg-preview" style="background:#ffffff; border:1px solid #ddd;"></div>
+                        <span>純白</span>
+                    </div>
+                    <div class="bg-option" data-bg="beige">
+                        <div class="bg-preview" style="background:#FFF8E1; border:1px solid #ddd;"></div>
+                        <span>米色</span>
+                    </div>
+                    <div class="bg-option" data-bg="grid-white">
+                        <div class="bg-preview"></div>
+                        <span>白網格</span>
+                    </div>
+                    <div class="bg-option" data-bg="grid-beige">
+                        <div class="bg-preview"></div>
+                        <span>米網格</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="dialog-actions">
+                <button class="btn-text" id="btn-cancel-create">取消</button>
+                <button class="btn-text btn-primary" id="btn-confirm-create">建立</button>
             </div>
         </div>
     </div>
@@ -308,13 +317,21 @@
                 <div id="canvas-title-display" class="nav-title-display">未命名畫布</div>
             </div>
             <div class="header-right">
+                <!-- 頁面管理區塊，僅在有限畫布顯示 -->
+                <div id="page-controls" class="hidden" style="display:flex; align-items:center; gap:4px;">
+                    <button class="nav-btn" id="btn-add-page" title="新增頁面"><i data-lucide="file-plus-2"></i></button>
+                    <button class="nav-btn" id="btn-pages" title="頁面管理"><i data-lucide="layers"></i></button>
+                    <div style="width:1px; height:20px; background:#E2E8F0; margin:0 4px;"></div>
+                </div>
+                
                 <button class="nav-btn" id="btn-settings" title="設定"><i data-lucide="settings"></i></button>
             </div>
         </div>
 
         <div class="ui-top-center">
             <div class="panel main-tools">
-                <button class="btn active" id="tool-pen" title="畫筆 (B)"><i data-lucide="pen-tool"></i></button>
+                <button class="btn active" id="tool-hand" title="抓手工具 (H)"><i data-lucide="hand"></i></button>
+                <button class="btn" id="tool-pen" title="畫筆 (B)"><i data-lucide="pen-tool"></i></button>
                 <button class="btn" id="tool-eraser" title="橡皮擦 (E)"><i data-lucide="eraser"></i></button>
                 <button class="btn" id="tool-eraser-rect" title="方框擦除 (R)"><i data-lucide="box-select"></i></button>
                 <div class="divider"></div>
@@ -392,6 +409,7 @@
                 <hr class="modal-divider">
                 <div style="font-weight:bold; color:#64748B; margin-bottom:12px;">快速鍵說明</div>
                 <div style="font-size:12px; color:#64748B; line-height: 1.8;">
+                    <b>H</b> : 抓手工具<br>
                     <b>B / P</b> : 畫筆<br>
                     <b>E</b> : 橡皮擦<br>
                     <b>R</b> : 方框擦除<br>
@@ -415,6 +433,8 @@
     <script type="module">
         import { getStroke } from 'https://esm.sh/perfect-freehand';
         paper.install(window);
+
+        const PAGE_GAP = 50; // 頁面間距
 
         const Dialog = {
             overlay: document.getElementById('global-dialog'),
@@ -470,17 +490,297 @@
             async delete(id) { return new Promise((resolve) => { const tx = this.db.transaction(this.storeName, 'readwrite'); tx.objectStore(this.storeName).delete(id); tx.oncomplete = () => resolve(); }); }
         };
 
+        const CanvasBackground = {
+            layer: null,
+            init() {
+                if(this.layer) this.layer.remove();
+                this.layer = new Layer();
+                this.layer.name = 'background';
+                this.layer.sendToBack();
+                this.layer.data = { isBackground: true };
+            },
+            renderMulti(config, pageCount) {
+                this.init();
+                this.layer.activate();
+                
+                const isInfinite = !config.width;
+                const width = config.width || 10000;
+                const height = config.height || 10000;
+                let fillColor = '#FFFFFF';
+                if (config.bgType.includes('beige')) fillColor = '#FFF8E1';
+                
+                if (isInfinite) {
+                    document.body.style.backgroundColor = fillColor;
+                    // Infinite grid
+                    if (config.bgType.includes('grid')) {
+                        const gridSize = 50;
+                        const strokeColor = config.bgType.includes('beige') ? '#d4c5a9' : '#cbd5e1'; 
+                        this.drawGrid(-5000, -5000, 10000, 10000, gridSize, strokeColor);
+                    }
+                } else {
+                    document.body.style.backgroundColor = '#E2E8F0'; // 灰色外部背景
+                    
+                    for (let i = 0; i < pageCount; i++) {
+                        const yOffset = i * (height + PAGE_GAP);
+                        
+                        // 畫紙張
+                        new Path.Rectangle({
+                            point: [0, yOffset],
+                            size: [width, height],
+                            fillColor: fillColor,
+                            shadowColor: new Color(0,0,0,0.1),
+                            shadowBlur: 20,
+                            shadowOffset: new Point(0, 5)
+                        });
+
+                        // 畫網格
+                        if (config.bgType.includes('grid')) {
+                            const gridSize = 50;
+                            const strokeColor = config.bgType.includes('beige') ? '#d4c5a9' : '#cbd5e1';
+                            this.drawGrid(0, yOffset, width, height, gridSize, strokeColor);
+                        }
+
+                        // 畫頁碼分隔線
+                        const sepY = yOffset + height + PAGE_GAP/2;
+                        
+                        // 背景色塊
+                        const labelBg = new Path.Rectangle({
+                            point: [width/2 - 60, sepY - 12],
+                            size: [120, 24],
+                            fillColor: '#E2E8F0',
+                            radius: 12
+                        });
+                        
+                        // 文字
+                        const text = new PointText({
+                            point: [width/2, sepY + 5],
+                            content: `第 ${i + 1} 頁`,
+                            justification: 'center',
+                            fillColor: '#475569',
+                            fontSize: 14,
+                            fontWeight: 'bold'
+                        });
+                    }
+                }
+
+                project.layers.forEach(l => { if(l !== this.layer) l.activate(); });
+                if(project.activeLayer === this.layer) new Layer().activate(); 
+            },
+            drawGrid(x, y, w, h, step, color) {
+                const group = new Group();
+                for (let i = x; i <= x + w; i += step) {
+                    const line = new Path.Line(new Point(i, y), new Point(i, y + h));
+                    line.strokeColor = color; line.strokeWidth = 1; group.addChild(line);
+                }
+                for (let j = y; j <= y + h; j += step) {
+                    const line = new Path.Line(new Point(x, j), new Point(x + w, j));
+                    line.strokeColor = color; line.strokeWidth = 1; group.addChild(line);
+                }
+            }
+        };
+
+        // New Stable Drag Sort Algorithm
+        function getDragAfterElement(container, y) {
+            const draggableElements = [...container.querySelectorAll('.page-list-item:not(.dragging)')];
+            
+            return draggableElements.reduce((closest, child) => {
+                const box = child.getBoundingClientRect();
+                const offset = y - box.top - box.height / 2;
+                
+                if (offset < 0 && offset > closest.offset) {
+                    return { offset: offset, element: child };
+                } else {
+                    return closest;
+                }
+            }, { offset: Number.NEGATIVE_INFINITY }).element;
+        }
+
         const AppManager = {
             currentCanvasId: null,
             currentCanvasName: "未命名畫布",
+            currentConfig: { bgType: 'white', width: null, height: null },
+            pages: [], 
+            originalPageIndices: new Map(), 
+
             async init() {
                 await DB.init();
                 this.renderGallery();
-                document.getElementById('btn-create-new').onclick = () => this.createNew();
+                this.initCreateModal();
+                this.initPageModal();
+                document.getElementById('btn-create-new').onclick = () => this.showCreateModal();
                 document.getElementById('btn-back-home').onclick = () => this.saveAndExit();
+                
+                // 頁面按鈕
+                document.getElementById('btn-add-page').onclick = () => this.addPage();
+                document.getElementById('btn-add-page-modal').onclick = () => { this.addPage(); document.getElementById('pages-modal').style.display = 'none'; };
+                document.getElementById('btn-pages').onclick = () => this.showPagesModal();
+
                 document.getElementById('loading').style.opacity = 0;
                 setTimeout(() => document.getElementById('loading').remove(), 500);
             },
+            initCreateModal() {
+                const modal = document.getElementById('new-canvas-modal');
+                const cancelBtn = document.getElementById('btn-cancel-create');
+                const confirmBtn = document.getElementById('btn-confirm-create');
+                const bgOptions = document.querySelectorAll('.bg-option');
+                const sizeSelect = document.getElementById('new-canvas-size');
+                const customInputs = document.getElementById('custom-size-inputs');
+
+                sizeSelect.onchange = () => {
+                    if(sizeSelect.value === 'custom') customInputs.classList.remove('hidden');
+                    else customInputs.classList.add('hidden');
+                };
+                
+                bgOptions.forEach(opt => {
+                    opt.onclick = () => {
+                        bgOptions.forEach(o => o.classList.remove('selected'));
+                        opt.classList.add('selected');
+                    };
+                });
+                
+                modal.onclick = (e) => {
+                    if (e.target === modal) modal.style.display = 'none';
+                };
+
+                cancelBtn.onclick = () => { modal.style.display = 'none'; };
+                
+                confirmBtn.onclick = () => {
+                    const nameInput = document.getElementById('new-canvas-name');
+                    const selectedBg = document.querySelector('.bg-option.selected').dataset.bg;
+                    let width = null, height = null;
+                    const val = sizeSelect.value;
+
+                    if (val === 'a4') { width = 794; height = 1123; }
+                    else if (val === 'a4-l') { width = 1123; height = 794; }
+                    else if (val === 'a3') { width = 1123; height = 1587; }
+                    else if (val === 'custom') {
+                        width = parseInt(document.getElementById('custom-width').value) || 1920;
+                        height = parseInt(document.getElementById('custom-height').value) || 1080;
+                    }
+
+                    this.createNew(nameInput.value.trim() || '未命名畫布', selectedBg, width, height);
+                    modal.style.display = 'none';
+                    nameInput.value = ''; 
+                };
+            },
+            initPageModal() {
+                const modal = document.getElementById('pages-modal');
+                document.getElementById('close-pages-modal').onclick = () => modal.style.display = 'none';
+                modal.onclick = (e) => { if(e.target === modal) modal.style.display = 'none'; };
+            },
+            showCreateModal() {
+                const modal = document.getElementById('new-canvas-modal');
+                modal.style.display = 'flex';
+                document.getElementById('new-canvas-name').focus();
+            },
+            
+            showPagesModal() {
+                this.originalPageIndices.clear();
+                this.pages.forEach((p, i) => {
+                    this.originalPageIndices.set(p.id, i + 1);
+                });
+                this.renderPageListInModal();
+                document.getElementById('pages-modal').style.display = 'flex';
+            },
+
+            renderPageListInModal(preserveLabels = false) {
+                const list = document.getElementById('pages-list-container');
+                list.innerHTML = '';
+                
+                this.pages.forEach((p, idx) => {
+                    const div = document.createElement('div');
+                    div.className = `page-list-item`;
+                    div.draggable = true;
+                    div.dataset.id = p.id;
+                    
+                    let displayNum = idx + 1;
+                    if (preserveLabels && this.originalPageIndices.has(p.id)) {
+                        displayNum = this.originalPageIndices.get(p.id);
+                    }
+
+                    div.innerHTML = `
+                        <div class="page-info-group">
+                            <div class="drag-handle"><i data-lucide="grip-vertical" size="16"></i></div>
+                            <span>第 ${displayNum} 頁</span>
+                        </div>
+                    `;
+                    
+                    if (this.pages.length > 1) {
+                        const delBtn = document.createElement('button');
+                        delBtn.className = 'icon-btn';
+                        delBtn.style.color = '#EF4444';
+                        delBtn.innerHTML = '<i data-lucide="trash-2" size="16"></i>';
+                        delBtn.onclick = (e) => { e.stopPropagation(); this.deletePage(idx); };
+                        div.appendChild(delBtn);
+                    }
+                    
+                    div.onclick = (e) => {
+                        if (e.target.closest('button') || e.target.closest('.drag-handle')) return;
+                        const currentIdx = Array.from(list.children).indexOf(div);
+                        const pH = this.currentConfig.height || 10000;
+                        const y = currentIdx * (pH + PAGE_GAP);
+                        const centerY = y + pH / 2;
+                        const pW = this.currentConfig.width || 10000;
+                        view.center = new Point(pW/2, centerY);
+                        document.getElementById('pages-modal').style.display = 'none';
+                    };
+
+                    // --- New Stable Drag Events ---
+                    div.addEventListener('dragstart', (e) => {
+                        div.classList.add('dragging');
+                        
+                        // Fix ghost position
+                        const rect = div.getBoundingClientRect();
+                        const offsetX = e.clientX - rect.left;
+                        const offsetY = e.clientY - rect.top;
+                        if (e.dataTransfer.setDragImage) {
+                            e.dataTransfer.setDragImage(div, offsetX, offsetY);
+                        }
+
+                        this.serializePages(); // Save before reorder
+                    });
+
+                    div.addEventListener('dragend', () => {
+                        div.classList.remove('dragging');
+                        this.commitPageOrder();
+                    });
+
+                    list.appendChild(div);
+                });
+                
+                // Attach dragover to container for stable sorting
+                list.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    const afterElement = getDragAfterElement(list, e.clientY);
+                    const draggable = document.querySelector('.dragging');
+                    if (draggable) {
+                        if (afterElement == null) {
+                            list.appendChild(draggable);
+                        } else {
+                            list.insertBefore(draggable, afterElement);
+                        }
+                    }
+                });
+
+                lucide.createIcons();
+            },
+
+            commitPageOrder() {
+                const list = document.getElementById('pages-list-container');
+                const newOrderIds = Array.from(list.children).map(el => el.dataset.id);
+                
+                const newPages = [];
+                newOrderIds.forEach(id => {
+                    const page = this.pages.find(p => p.id === id);
+                    if(page) newPages.push(page);
+                });
+                
+                this.pages = newPages;
+                
+                project.clear();
+                this.renderAllPages();
+            },
+
             async renderGallery() {
                 const list = await DB.getAll();
                 const container = document.getElementById('gallery-list');
@@ -506,71 +806,224 @@
                         input.type = 'text'; input.className = 'card-title-edit'; input.value = item.name;
                         titleEl.style.display = 'none'; titleContainer.appendChild(input); input.focus();
                         const saveName = async () => { const newName = input.value.trim(); if (newName && newName !== item.name) { item.name = newName; item.updatedAt = Date.now(); await DB.save(item); } this.renderGallery(); };
-                        input.onclick = (evt) => evt.stopPropagation();
                         input.addEventListener('blur', saveName);
                         input.addEventListener('keydown', (evt) => { if (evt.key === 'Enter') input.blur(); });
+                        input.onclick = (evt) => evt.stopPropagation();
                     };
                     container.appendChild(card);
                 });
                 lucide.createIcons();
             },
-            async createNew() {
+            async createNew(name, bgType, width, height) {
                 const id = Date.now().toString();
-                const newCanvas = { id: id, name: `未命名畫布`, data: null, createdAt: Date.now(), updatedAt: Date.now(), thumbnail: '' };
+                // 初始第一頁
+                const initialPages = [{ id: Date.now().toString(), data: null }];
+                
+                const newCanvas = { 
+                    id: id, 
+                    name: name, 
+                    pages: initialPages,
+                    createdAt: Date.now(), 
+                    updatedAt: Date.now(), 
+                    thumbnail: '',
+                    config: { bgType, width, height } 
+                };
                 await DB.save(newCanvas);
                 this.openCanvas(id);
             },
             async openCanvas(id) {
                 this.currentCanvasId = id;
-                const data = await DB.get(id);
+                const record = await DB.get(id);
                 document.body.classList.add('mode-editor');
                 
-                this.currentCanvasName = data.name;
-                document.getElementById('canvas-title-display').innerText = data.name;
+                this.currentCanvasName = record.name;
+                this.currentConfig = record.config || { bgType: 'white', width: null, height: null };
+                document.getElementById('canvas-title-display').innerText = record.name;
+
+                if (!record.pages) {
+                    this.pages = [{ id: 'p1', data: record.data }];
+                } else {
+                    this.pages = record.pages;
+                }
 
                 project.clear();
-                project.activeLayer.removeChildren();
-                if (data.data) project.importJSON(data.data);
                 
-                App.laserTrails = [];
-                App.activeLaserTrail = null;
-                
+                this.renderAllPages();
+
+                // 統一縮放設定：預設 60%
+                view.zoom = 0.6;
+                updateZoomToast(true);
+
+                if (!this.currentConfig.width) {
+                    view.center = new Point(0,0);
+                } else {
+                    view.center = new Point(this.currentConfig.width/2, this.currentConfig.height/2);
+                }
+
+                this.renderPageControls();
                 view.update();
                 History.stack = []; History.pointer = -1; History.saveState(); 
                 
-                setMode('pen');
+                setMode('hand');
                 document.getElementById('sub-toolbar').classList.remove('visible');
             },
+            
+            renderAllPages() {
+                CanvasBackground.renderMulti(this.currentConfig, this.pages.length);
+                const paintLayer = new Layer();
+                paintLayer.name = 'paint';
+                paintLayer.activate();
+
+                const h = this.currentConfig.height || 0;
+                const w = this.currentConfig.width || 0;
+                
+                this.pages.forEach((page, idx) => {
+                    if (page.data) {
+                        const tempGroup = new Group();
+                        tempGroup.importJSON(page.data);
+                        
+                        if (w > 0 && h > 0) {
+                            const yOffset = idx * (h + PAGE_GAP);
+                            tempGroup.position = tempGroup.position.add([0, yOffset]);
+                        }
+                        
+                        tempGroup.children.forEach(item => {
+                            paintLayer.addChild(item);
+                        });
+                        tempGroup.remove();
+                    }
+                });
+            },
+
+            renderPageControls() {
+                const controls = document.getElementById('page-controls');
+                if (this.currentConfig.width) {
+                    controls.classList.remove('hidden');
+                } else {
+                    controls.classList.add('hidden');
+                }
+            },
+            
+            serializePages() {
+                const paintLayer = project.layers.find(l => l.name === 'paint') || project.activeLayer;
+                const h = this.currentConfig.height;
+                const w = this.currentConfig.width;
+
+                if (!w || !h) {
+                    if(this.pages.length === 0) this.pages.push({id:'inf', data:null});
+                    this.pages[0].data = paintLayer.exportJSON();
+                    return;
+                }
+
+                const pageGroups = this.pages.map(p => ({ id: p.id, items: [] }));
+                
+                // 序列化時排除雷射筆跡
+                paintLayer.children.forEach(item => {
+                    if (item.data && item.data.isLaser) return; // SKIP LASER
+
+                    const cy = item.bounds.center.y;
+                    let pageIndex = Math.floor(cy / (h + PAGE_GAP));
+                    
+                    if (pageIndex < 0) pageIndex = 0;
+                    if (pageIndex >= this.pages.length) pageIndex = this.pages.length - 1;
+                    
+                    const clone = item.clone();
+                    const yOffset = pageIndex * (h + PAGE_GAP);
+                    clone.position = clone.position.subtract([0, yOffset]);
+                    pageGroups[pageIndex].items.push(clone);
+                });
+
+                pageGroups.forEach((pg, idx) => {
+                    if (pg.items.length > 0) {
+                        const tempLayer = new Layer();
+                        tempLayer.addChildren(pg.items);
+                        this.pages[idx].data = tempLayer.exportJSON();
+                        tempLayer.remove();
+                    } else {
+                        this.pages[idx].data = null;
+                    }
+                });
+            },
+
+            addPage() {
+                this.serializePages();
+                const newPageId = Date.now().toString();
+                this.pages.push({ id: newPageId, data: null });
+                project.clear();
+                this.renderAllPages();
+                const h = this.currentConfig.height;
+                const w = this.currentConfig.width;
+                const idx = this.pages.length - 1;
+                const y = idx * (h + PAGE_GAP) + h/2;
+                view.center = new Point(w/2, y);
+            },
+            
+            deletePage(idx) {
+                if (this.pages.length <= 1) return;
+                this.serializePages();
+                this.pages.splice(idx, 1);
+                project.clear();
+                this.renderAllPages();
+                this.showPagesModal(); 
+            },
+
             async saveAndExit() {
                 if (!this.currentCanvasId) return;
-                App.lassoPath?.remove(); App.lassoPath=null; 
-                if(App.eraserPreview) App.eraserPreview.visible = false;
                 
-                App.laserTrails.forEach(trail => {
-                    if(trail.pathGlow) trail.pathGlow.remove();
-                    if(trail.pathCore) trail.pathCore.remove();
-                });
+                // 1. 強制移除所有雷射筆跡
+                project.getItems({ data: { isLaser: true } }).forEach(i => i.remove());
                 App.laserTrails = [];
                 App.activeLaserTrail = null;
+                
+                App.lassoPath?.remove(); App.lassoPath=null; 
+                App.eraserPreview?.remove();
 
-                const bgRect = new Path.Rectangle({ rectangle: view.bounds, fillColor: 'white', insert: true });
-                bgRect.sendToBack(); 
+                this.serializePages();
+
+                // 2. 縮圖修復：建立一個暫時的最底層
+                const exportBgLayer = new Layer();
+                exportBgLayer.name = 'export-bg';
+                exportBgLayer.sendToBack();
+
+                // 根據模式決定底色
+                let bgFill = '#E2E8F0'; // 有限畫布的外部是灰色
+                if (!this.currentConfig.width) {
+                    // 無限畫布：直接填滿白/米色
+                    bgFill = this.currentConfig.bgType.includes('beige') ? '#FFF8E1' : '#FFFFFF';
+                }
+
+                // 繪製一個填滿視窗的矩形
+                const bgRect = new Path.Rectangle({
+                    rectangle: view.bounds,
+                    fillColor: bgFill
+                });
+
                 view.update(); 
                 const thumbData = view.element.toDataURL('image/jpeg', 0.5);
-                bgRect.remove(); 
+                exportBgLayer.remove(); // 移除暫時圖層
 
-                const jsonData = project.exportJSON();
-                const record = { id: this.currentCanvasId, name: this.currentCanvasName, data: jsonData, thumbnail: thumbData, updatedAt: Date.now(), createdAt: (await DB.get(this.currentCanvasId))?.createdAt || Date.now() };
+                const record = { 
+                    id: this.currentCanvasId, 
+                    name: this.currentCanvasName, 
+                    pages: this.pages,
+                    thumbnail: thumbData, 
+                    updatedAt: Date.now(), 
+                    createdAt: (await DB.get(this.currentCanvasId))?.createdAt || Date.now(),
+                    config: this.currentConfig
+                };
                 await DB.save(record);
+                
                 project.clear();
+                document.body.style.backgroundColor = '#F8FAFC';
                 this.currentCanvasId = null;
-                document.body.classList.remove('mode-editor');
+                document.body.classList.remove('mode-editor', 'cursor-hand', 'cursor-hand-grabbing');
                 this.renderGallery();
             },
             async autoSave() {
                 if (!this.currentCanvasId) return;
+                this.serializePages();
                 const currentRec = await DB.get(this.currentCanvasId);
-                currentRec.data = project.exportJSON();
+                currentRec.pages = this.pages;
                 currentRec.updatedAt = Date.now();
                 await DB.save(currentRec);
             }
@@ -585,10 +1038,10 @@
             eraserPreview: null, rectStart: null, rectPath: null, 
             lassoPath: null, lassoItems: [], lassoState: 'idle', lassoPrevPoint: null, 
             activePointers: new Map(), isGesturing: false, prevDist: 0, prevC: null,
-            laserTrails: [], activeLaserTrail: null
+            laserTrails: [], activeLaserTrail: null, lastLaserActivity: 0,
+            isTempPanning: false // 新增：暫時平移狀態
         };
         
-        // 工具數值本地儲存
         const ToolSettings = {
             save() {
                 const settings = {
@@ -621,77 +1074,94 @@
             stack: [], pointer: -1, maxStates: 30,
             saveState() {
                 if (this.pointer < this.stack.length - 1) this.stack = this.stack.slice(0, this.pointer + 1);
-                this.stack.push(project.activeLayer.exportJSON());
+                const paintLayer = project.layers.find(l => l.name === 'paint') || project.activeLayer;
+                this.stack.push(paintLayer.exportJSON());
                 if (this.stack.length > this.maxStates) this.stack.shift(); else this.pointer++;
                 this.updateButtons();
                 AppManager.autoSave(); 
             },
             undo() { if (this.pointer > 0) { this.pointer--; this.restoreState(); } },
             redo() { if (this.pointer < this.stack.length - 1) { this.pointer++; this.restoreState(); } },
-            restoreState() { project.activeLayer.removeChildren(); project.activeLayer.importJSON(this.stack[this.pointer]); this.updateButtons(); App.lassoPath = null; App.eraserPreview = null; view.update(); AppManager.autoSave(); },
+            restoreState() { 
+                const paintLayer = project.layers.find(l => l.name === 'paint') || project.activeLayer;
+                paintLayer.removeChildren(); 
+                paintLayer.importJSON(this.stack[this.pointer]); 
+                this.updateButtons(); App.lassoPath = null; App.eraserPreview = null; view.update(); AppManager.autoSave(); 
+            },
             updateButtons() { document.getElementById('btn-undo').disabled = this.pointer <= 0; document.getElementById('btn-redo').disabled = this.pointer >= this.stack.length - 1; }
         };
 
         window.onload = function() {
             lucide.createIcons();
             paper.setup('canvas');
-            ToolSettings.load(); // 載入工具設定
+            ToolSettings.load(); 
             initColorPicker();
             initEvents();
             initSettingsUI();
-            
             view.onFrame = onFrame;
-            
             AppManager.init();
         };
+
+        let zoomTimer = null;
+        function updateZoomToast(forceShow = false) {
+            const el = document.getElementById('zoom-indicator');
+            el.innerText = Math.round(view.zoom * 100) + '%';
+            el.style.opacity = 1;
+            if(zoomTimer) clearTimeout(zoomTimer);
+            zoomTimer = setTimeout(() => { el.style.opacity = 0; }, 1500);
+        }
         
         function onFrame(event) {
             if (App.laserTrails.length === 0) return;
-
             const now = Date.now();
-            const waitTime = 800;
+            
+            // 是否超過全域閒置時間 (0.8s)
+            const isGlobalIdle = (now - App.lastLaserActivity) > 800;
             const vanishDuration = 500;
-
+            
+            // 為了保持線條在螢幕上的粗細一致，需要根據 zoom 反向縮放
+            const scaleFactor = 1 / view.zoom;
+            const glowSize = 16 * scaleFactor;
+            const coreSize = 6 * scaleFactor;
+            
             for (let i = App.laserTrails.length - 1; i >= 0; i--) {
                 const trail = App.laserTrails[i];
-
                 if (trail.pathGlow) { trail.pathGlow.remove(); trail.pathGlow = null; }
                 if (trail.pathCore) { trail.pathCore.remove(); trail.pathCore = null; }
+                
+                if (!trail.isDrawing && !trail.vanishing && isGlobalIdle) {
+                    trail.vanishing = true;
+                    trail.vanishStartTime = now;
+                }
 
                 let visiblePoints = trail.points;
 
-                if (!trail.isDrawing) {
-                    const timeSinceLift = now - trail.liftTime;
-
-                    if (timeSinceLift >= waitTime + vanishDuration) {
+                if (trail.vanishing) {
+                    const timeSinceVanishStart = now - trail.vanishStartTime;
+                    
+                    if (timeSinceVanishStart >= vanishDuration) {
                         App.laserTrails.splice(i, 1);
                         continue;
                     }
 
-                    if (timeSinceLift < waitTime) {
-                        // visiblePoints 保持全顯
-                    } else {
-                        const vanishProgress = (timeSinceLift - waitTime) / vanishDuration;
-                        const cutoffLen = trail.totalLen * vanishProgress;
-                        visiblePoints = trail.points.filter(p => p.len >= cutoffLen);
-                    }
+                    const vanishProgress = timeSinceVanishStart / vanishDuration;
+                    const cutoffLen = trail.totalLen * vanishProgress;
+                    visiblePoints = trail.points.filter(p => p.len >= cutoffLen);
                 }
 
                 if (visiblePoints.length < 2) continue;
 
                 const strokePoints = visiblePoints.map(p => ({ x: p.x, y: p.y, pressure: p.pressure }));
-
-                const glowOptions = { size: 16, thinning: 0.5, smoothing: 0.5, streamline: 0.5, start: { taper: 0, cap: true }, end: { taper: 0, cap: true } };
+                
+                const glowOptions = { size: glowSize, thinning: 0.5, smoothing: 0.5, streamline: 0.5, start: { taper: 0, cap: true }, end: { taper: 0, cap: true } };
                 const outlineGlow = getStroke(strokePoints, glowOptions);
                 const pathDataGlow = window.getSvgPathFromStroke(outlineGlow);
-                
-                trail.pathGlow = new Path({ pathData: pathDataGlow, fillColor: '#FF0000', shadowColor: '#FF0000', shadowBlur: 10, opacity: 0.9, insert: true });
+                trail.pathGlow = new Path({ pathData: pathDataGlow, fillColor: '#FF0000', shadowColor: '#FF0000', shadowBlur: 10 * scaleFactor, opacity: 0.9, insert: true });
                 trail.pathGlow.data = { isLaser: true };
-
-                const coreOptions = { size: 6, thinning: 0.7, smoothing: 0.5, streamline: 0.5, start: { taper: 0, cap: true }, end: { taper: 0, cap: true } };
+                
+                const coreOptions = { size: coreSize, thinning: 0.7, smoothing: 0.5, streamline: 0.5, start: { taper: 0, cap: true }, end: { taper: 0, cap: true } };
                 const outlineCore = getStroke(strokePoints, coreOptions);
                 const pathDataCore = window.getSvgPathFromStroke(outlineCore);
-
                 trail.pathCore = new Path({ pathData: pathDataCore, fillColor: '#FFFFFF', opacity: 1, insert: true });
                 trail.pathCore.data = { isLaser: true };
             }
@@ -703,7 +1173,7 @@
                 App.strokeColor = color.hexString; 
                 const trigger = document.getElementById('color-trigger-btn'); 
                 if (trigger) trigger.style.background = App.strokeColor;
-                ToolSettings.save(); // 儲存顏色
+                ToolSettings.save(); 
             });
         }
         function toggleColorPopover() {
@@ -767,15 +1237,17 @@
                 else if (key === 'r') { setMode('eraser-rect'); Toast.show('方框擦除'); }
                 else if (key === 'l' || key === 's') { setMode('lasso'); Toast.show('索套'); }
                 else if (key === 'z') { setMode('laser'); Toast.show('雷射筆'); }
+                else if (key === 'h') { setMode('hand'); Toast.show('抓手工具'); }
                 else if (key === 'delete' || key === 'backspace') { if(App.lassoState === 'selected') deleteSelection(); }
             });
             
-            ['pen', 'eraser', 'eraser-rect', 'lasso', 'laser'].forEach(m => document.getElementById(`tool-${m}`).onclick = () => setMode(m));
+            ['hand', 'pen', 'eraser', 'eraser-rect', 'lasso', 'laser'].forEach(m => document.getElementById(`tool-${m}`).onclick = () => setMode(m));
             
             document.getElementById('tool-clear').onclick = async () => { 
                 const confirmed = await Dialog.confirm('清空確認', '確定清空整個畫布嗎？此動作可復原。');
                 if(confirmed){ 
-                    project.activeLayer.removeChildren(); 
+                    const paintLayer = project.layers.find(l => l.name === 'paint') || project.activeLayer;
+                    paintLayer.removeChildren(); 
                     clearLasso(); 
                     History.saveState(); 
                 }
@@ -789,6 +1261,7 @@
             const sub = document.getElementById('sub-toolbar');
             
             if (App.mode === m) {
+                if (m === 'hand') return; // Hand tool has no sub-menu
                 if (sub.classList.contains('visible')) {
                     sub.classList.remove('visible');
                 } else {
@@ -800,70 +1273,138 @@
                 App.mode = m;
                 document.querySelectorAll('.main-tools .btn').forEach(b => b.classList.remove('active'));
                 
-                const map = {pen:'tool-pen', eraser:'tool-eraser', 'eraser-rect':'tool-eraser-rect', lasso:'tool-lasso', laser:'tool-laser'};
+                const map = {hand:'tool-hand', pen:'tool-pen', eraser:'tool-eraser', 'eraser-rect':'tool-eraser-rect', lasso:'tool-lasso', laser:'tool-laser'};
                 if(map[m]) document.getElementById(map[m]).classList.add('active');
                 
-                updateSubToolbar();
-                sub.classList.remove('visible');
+                if (m === 'hand') {
+                    document.body.classList.add('cursor-hand');
+                    sub.classList.remove('visible');
+                } else {
+                    document.body.classList.remove('cursor-hand', 'cursor-hand-grabbing');
+                    updateSubToolbar();
+                    sub.classList.remove('visible');
+                }
             }
         }
 
-        function onPointerDown(e) {
-            // 自動隱藏設定列
-            if (e.target.id === 'canvas') {
-                document.getElementById('sub-toolbar').classList.remove('visible');
+        // 判斷點是否在有效的紙張範圍內 (非 Infinite)
+        function isPointAllowed(point) {
+            if (!AppManager.currentConfig.width) return true; // Infinite
+            
+            const w = AppManager.currentConfig.width;
+            const h = AppManager.currentConfig.height;
+            const count = AppManager.pages.length;
+            
+            // X 軸檢查
+            if (point.x < 0 || point.x > w) return false;
+            
+            // Y 軸檢查 (避開間距)
+            // 每一頁範圍： [i*(h+gap), i*(h+gap) + h]
+            for (let i = 0; i < count; i++) {
+                const startY = i * (h + PAGE_GAP);
+                const endY = startY + h;
+                if (point.y >= startY && point.y <= endY) return true;
             }
+            return false;
+        }
 
+        function onPointerDown(e) {
+            if (e.target.id === 'canvas') document.getElementById('sub-toolbar').classList.remove('visible');
             if (e.target.closest('.panel') || e.target.closest('#color-popover') || e.target.closest('.modal-content') || e.target.closest('.editor-nav') || e.target.closest('.editor-header-bar')) return;
             
             canvas.setPointerCapture(e.pointerId); App.activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+            
             if (App.activePointers.size === 2) { startGesture(); return; }
-            const p = view.viewToProject(new Point(e.clientX, e.clientY)); const pressure = getInputPressure(e, p, null, 0); if (pressure === -1) return;
+            
+            // 抓手工具邏輯
+            if (App.mode === 'hand') {
+                document.body.classList.add('cursor-hand-grabbing');
+                App.prevC = { x: e.clientX, y: e.clientY };
+                return;
+            }
+
+            const p = view.viewToProject(new Point(e.clientX, e.clientY));
+            
+            // 判斷點是否在畫布外
+            const allowed = isPointAllowed(p);
+
+            // 若在畫布外，且不是雷射筆模式 => 視為暫時平移 (抓手)
+            if (!allowed && App.mode !== 'laser') {
+                App.isTempPanning = true;
+                document.body.classList.add('cursor-hand-grabbing');
+                App.prevC = { x: e.clientX, y: e.clientY };
+                return;
+            }
+
+            // 以下為正常繪圖邏輯 (雷射筆例外：允許在外部畫)
+            
+            const pressure = getInputPressure(e, p, null, 0); if (pressure === -1) return;
+            
             if (App.activePointers.size === 1 && !App.isGesturing) { 
                 if (App.mode === 'pen') startPenStroke(p, pressure); 
                 else if (App.mode === 'eraser') eraseAt(p); 
                 else if (App.mode === 'eraser-rect') startRectEraser(p); 
                 else if (App.mode === 'lasso') handleLassoDown(p); 
                 else if (App.mode === 'laser') { 
-                    const trail = {
-                        id: Date.now(),
-                        points: [{x: p.x, y: p.y, pressure: pressure, len: 0}],
-                        pathGlow: null,
-                        pathCore: null,
-                        isDrawing: true,
-                        startTime: Date.now(),
-                        liftTime: null,
-                        totalLen: 0
+                    const trail = { 
+                        id: Date.now(), 
+                        points: [{x: p.x, y: p.y, pressure: pressure, len: 0}], 
+                        pathGlow: null, pathCore: null, 
+                        isDrawing: true, 
+                        vanishing: false, // 是否正在消失
+                        vanishStartTime: 0,
+                        liftTime: null, 
+                        totalLen: 0 
                     };
                     App.laserTrails.push(trail);
                     App.activeLaserTrail = trail;
+                    App.lastLaserActivity = Date.now();
                 }
                 App.lastPointTime = Date.now(); 
             }
         }
         function onPointerMove(e) {
             if (App.activePointers.has(e.pointerId)) App.activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+            
             if (App.activePointers.size === 2) { handleGesture(); return; }
+            
+            // 抓手工具移動 (或暫時平移)
+            if ((App.mode === 'hand' || App.isTempPanning) && App.activePointers.size === 1 && e.buttons) {
+                const current = { x: e.clientX, y: e.clientY };
+                if (App.prevC) {
+                    const delta = new Point(App.prevC.x - current.x, App.prevC.y - current.y);
+                    // 視圖移動 (除以 zoom 保持與手指移動 1:1)
+                    view.center = view.center.add(delta.divide(view.zoom));
+                }
+                App.prevC = current;
+                return;
+            }
+
             if (App.activePointers.size === 1 && !App.isGesturing && (e.buttons || e.pointerType === 'touch')) {
                 if (e.pointerType !== 'pen' && Settings.palmRejection) return;
+                
                 const rawEvents = e.getCoalescedEvents ? e.getCoalescedEvents() : [e]; 
                 const lastP = App.currentPoints.length > 0 ? new Point(App.currentPoints[App.currentPoints.length-1]) : null;
                 
+                // 檢查最後一個點是否還在範圍內，若不在則停止（雷射筆除外）
+                const currentP = view.viewToProject(new Point(e.clientX, e.clientY));
+                if (App.mode !== 'laser' && !isPointAllowed(currentP)) {
+                    // 如果原本在畫，現在出去了，強制結束
+                    if (App.mode === 'pen' && App.currentPath) finalizeStroke();
+                    return;
+                }
+
                 if (App.mode === 'pen' && App.currentPath) { 
                     rawEvents.forEach(evt => { const pt = view.viewToProject(new Point(evt.clientX, evt.clientY)); const pressure = getInputPressure(evt, pt, lastP, App.lastPointTime); App.currentPoints.push({ x: pt.x, y: pt.y, pressure: pressure }); App.lastPointTime = Date.now(); }); 
                     renderCurrentStroke(); 
                 } 
                 else if (App.mode === 'laser' && App.activeLaserTrail) {
+                    App.lastLaserActivity = Date.now(); // 更新雷射筆活動時間
                     rawEvents.forEach(evt => {
                         const pt = view.viewToProject(new Point(evt.clientX, evt.clientY));
                         const trail = App.activeLaserTrail;
                         let dist = 0;
-                        if(trail.points.length > 0) {
-                            const last = trail.points[trail.points.length - 1];
-                            const dx = pt.x - last.x;
-                            const dy = pt.y - last.y;
-                            dist = Math.sqrt(dx*dx + dy*dy);
-                        }
+                        if(trail.points.length > 0) { const last = trail.points[trail.points.length - 1]; const dx = pt.x - last.x; const dy = pt.y - last.y; dist = Math.sqrt(dx*dx + dy*dy); }
                         trail.totalLen += dist;
                         trail.points.push({ x: pt.x, y: pt.y, pressure: e.pressure || 0.5, len: trail.totalLen });
                     });
@@ -877,21 +1418,61 @@
             }
         }
         function onPointerUp(e) {
-            const wasGesturing = App.isGesturing; App.activePointers.delete(e.pointerId); if (App.activePointers.size === 0) App.isGesturing = false; if (wasGesturing) return;
+            const wasGesturing = App.isGesturing; App.activePointers.delete(e.pointerId); if (App.activePointers.size === 0) App.isGesturing = false; 
+            
+            if (App.mode === 'hand') {
+                document.body.classList.remove('cursor-hand-grabbing');
+                App.prevC = null;
+            }
+
+            // 結束暫時平移
+            if (App.isTempPanning) {
+                App.isTempPanning = false;
+                document.body.classList.remove('cursor-hand-grabbing');
+                App.prevC = null;
+                return;
+            }
+
+            if (wasGesturing) return;
+
             if (App.mode === 'pen' && App.currentPath) finalizeStroke(); 
             else if (App.mode === 'eraser') { if (App.eraserPreview) { App.eraserPreview.remove(); App.eraserPreview = null; } History.saveState(); } 
             else if (App.mode === 'eraser-rect') finalizeRectEraser(); 
             else if (App.mode === 'lasso') handleLassoUp();
-            else if (App.mode === 'laser' && App.activeLaserTrail) {
-                App.activeLaserTrail.isDrawing = false;
-                App.activeLaserTrail.liftTime = Date.now();
-                App.activeLaserTrail = null;
+            else if (App.mode === 'laser' && App.activeLaserTrail) { 
+                
+                // 防抖動：如果筆跡非常短（<5px），直接移除，避免殘留小點
+                if (App.activeLaserTrail.totalLen < 5) {
+                    const idx = App.laserTrails.indexOf(App.activeLaserTrail);
+                    if (idx > -1) App.laserTrails.splice(idx, 1);
+                    if (App.activeLaserTrail.pathGlow) App.activeLaserTrail.pathGlow.remove();
+                    if (App.activeLaserTrail.pathCore) App.activeLaserTrail.pathCore.remove();
+                    App.activeLaserTrail = null;
+                    return;
+                }
+
+                App.activeLaserTrail.isDrawing = false; 
+                App.activeLaserTrail.liftTime = Date.now(); 
+                App.activeLaserTrail = null; 
+                App.lastLaserActivity = Date.now();
             }
         }
 
-        function startPenStroke(point, pressure) { clearLasso(); App.currentPoints = [{ x: point.x, y: point.y, pressure: pressure }]; App.currentPath = new Path({ fillColor: App.strokeColor, opacity: App.strokeOpacity, blendMode: App.penType === 'highlighter' ? 'multiply' : 'normal', insert: true }); }
+        function ensurePaintLayer() {
+            let pl = project.layers.find(l => l.name === 'paint');
+            if(!pl) { pl = new Layer(); pl.name = 'paint'; }
+            pl.activate();
+            return pl;
+        }
+
+        function startPenStroke(point, pressure) { 
+            ensurePaintLayer();
+            clearLasso(); 
+            App.currentPoints = [{ x: point.x, y: point.y, pressure: pressure }]; 
+            App.currentPath = new Path({ fillColor: App.strokeColor, opacity: App.strokeOpacity, blendMode: App.penType === 'highlighter' ? 'multiply' : 'normal', insert: true }); 
+        }
         function renderCurrentStroke() { if (!App.currentPath || App.currentPoints.length < 1) return; let options = { size: App.strokeWidth, start: { taper: 0, cap: true }, end: { taper: 0, cap: true }, simulatePressure: false, streamline: 0.5 }; if (App.penType === 'fountain') { options.thinning = 0.8; options.smoothing = 0.5; } else options.thinning = 0; const outline = getStroke(App.currentPoints, options); App.currentPath.pathData = window.getSvgPathFromStroke(outline); }
-        function finalizeStroke() { renderCurrentStroke(); App.currentPath.simplify(1); const normalized = App.currentPath.unite(App.currentPath); App.currentPath.remove(); normalized.fillColor = App.strokeColor; normalized.opacity = App.strokeOpacity; normalized.blendMode = App.penType === 'highlighter' ? 'multiply' : 'normal'; if (!normalized.parent) project.activeLayer.addChild(normalized); App.currentPath = null; App.currentPoints = []; History.saveState(); }
+        function finalizeStroke() { renderCurrentStroke(); App.currentPath.simplify(1); const normalized = App.currentPath.unite(App.currentPath); App.currentPath.remove(); normalized.fillColor = App.strokeColor; normalized.opacity = App.strokeOpacity; normalized.blendMode = App.penType === 'highlighter' ? 'multiply' : 'normal'; if (!normalized.parent) ensurePaintLayer().addChild(normalized); App.currentPath = null; App.currentPoints = []; History.saveState(); }
         
         function eraseAt(point) { if (App.eraserPreview) App.eraserPreview.remove(); App.eraserPreview = new Path.Circle({ center: point, radius: App.eraserSize, strokeColor: '#EF4444', fillColor: new Color(1,0,0,0.2), strokeWidth: 1/view.zoom }); performErase(new Path.Circle({ center: point, radius: App.eraserSize, insert: false })); }
         function startRectEraser(point) { clearLasso(); App.rectStart = point; App.rectPath = new Path.Rectangle({ from: point, to: point, fillColor: new Color(1,0,0,0.1), strokeColor: '#EF4444', dashArray: [4,4], strokeWidth: 1/view.zoom }); }
@@ -899,36 +1480,34 @@
         function finalizeRectEraser() { if (App.rectPath) { performErase(new Path.Rectangle(App.rectPath.bounds)); App.rectPath.remove(); App.rectPath = null; History.saveState(); } }
         
         function performErase(eraserItem) {
-            const items = project.activeLayer.children.filter(i => i !== App.eraserPreview && i !== App.rectPath && !i.data.isLassoUI && !i.data.isLaser);
+            const paintLayer = ensurePaintLayer();
+            const items = paintLayer.children.filter(i => i !== App.eraserPreview && i !== App.rectPath && !i.data.isLassoUI && !i.data.isLaser);
             for (let i = items.length - 1; i >= 0; i--) {
                 let item = items[i];
                 if (!item.intersects(eraserItem) && !eraserItem.contains(item.position) && !item.contains(eraserItem.position)) continue;
                 if (App.eraserMode === 'object') item.remove();
-                else { const result = item.subtract(eraserItem); item.remove(); const chunks = separateDisjointPaths(result); for (let c of chunks) { c.fillColor = item.fillColor; c.opacity = item.opacity; c.blendMode = item.blendMode; if (Math.abs(c.area) > 2) project.activeLayer.addChild(c); } if (result !== chunks[0] && result.parent) result.remove(); }
+                else { const result = item.subtract(eraserItem); item.remove(); const chunks = separateDisjointPaths(result); for (let c of chunks) { c.fillColor = item.fillColor; c.opacity = item.opacity; c.blendMode = item.blendMode; if (Math.abs(c.area) > 2) paintLayer.addChild(c); } if (result !== chunks[0] && result.parent) result.remove(); }
             }
         }
         function separateDisjointPaths(item) { if (item instanceof Path) return [item]; if (item instanceof CompoundPath) { const children = item.removeChildren(); item.remove(); if (!children.length) return []; children.sort((a,b)=>Math.abs(b.area)-Math.abs(a.area)); const islands = []; for(let child of children){ let p = islands.find(isl => isl.body.bounds.contains(child.bounds) && isl.body.contains(child.firstSegment.point)); if(p) p.holes.push(child); else islands.push({body:child, holes:[]}); } return islands.map(isl => isl.holes.length ? new CompoundPath({children:[isl.body, ...isl.holes]}) : isl.body); } return [item]; }
         
         function handleLassoDown(point) { if (App.lassoState === 'selected' && App.lassoPath.contains(point)) { App.lassoState = 'moving'; App.lassoPrevPoint = point; return; } clearLasso(); App.lassoState = 'drawing'; App.lassoPath = new Path({ strokeColor: '#3B82F6', strokeWidth: 2/view.zoom, dashArray: [5,5], data: {isLassoUI:true} }); App.lassoPath.add(point); }
         function handleLassoMove(point) { if (App.lassoState === 'drawing') App.lassoPath.add(point); else if (App.lassoState === 'moving') { const delta = point.subtract(App.lassoPrevPoint); App.lassoItems.forEach(i => i.position = i.position.add(delta)); App.lassoPath.position = App.lassoPath.position.add(delta); App.lassoPrevPoint = point; updateLassoMenu(); } }
-        function handleLassoUp() { if (App.lassoState === 'drawing') { App.lassoPath.closed = true; App.lassoPath.simplify(10); const geo = App.lassoPath; App.lassoItems = project.activeLayer.children.filter(i => !i.data.isLassoUI && !i.data.isLaser && (geo.contains(i.bounds.center) || geo.intersects(i))); if (App.lassoItems.length > 0) { App.lassoState = 'selected'; const bounds = App.lassoItems.reduce((b,i)=>b.unite(i.bounds), App.lassoItems[0].bounds); App.lassoPath.remove(); App.lassoPath = new Path.Rectangle({ rectangle: bounds.expand(10), strokeColor: '#3B82F6', strokeWidth: 1/view.zoom, dashArray: [4,4], fillColor: new Color(0.23,0.51,0.96,0.05), data: {isLassoUI:true} }); showLassoMenu(bounds); } else clearLasso(); } else if (App.lassoState === 'moving') { App.lassoState = 'selected'; History.saveState(); } }
+        function handleLassoUp() { if (App.lassoState === 'drawing') { App.lassoPath.closed = true; App.lassoPath.simplify(10); const geo = App.lassoPath; App.lassoItems = ensurePaintLayer().children.filter(i => !i.data.isLassoUI && !i.data.isLaser && (geo.contains(i.bounds.center) || geo.intersects(i))); if (App.lassoItems.length > 0) { App.lassoState = 'selected'; const bounds = App.lassoItems.reduce((b,i)=>b.unite(i.bounds), App.lassoItems[0].bounds); App.lassoPath.remove(); App.lassoPath = new Path.Rectangle({ rectangle: bounds.expand(10), strokeColor: '#3B82F6', strokeWidth: 1/view.zoom, dashArray: [4,4], fillColor: new Color(0.23,0.51,0.96,0.05), data: {isLassoUI:true} }); showLassoMenu(bounds); } else clearLasso(); } else if (App.lassoState === 'moving') { App.lassoState = 'selected'; History.saveState(); } }
         function clearLasso() { if(App.lassoPath) { App.lassoPath.remove(); App.lassoPath = null; } App.lassoItems = []; App.lassoState = 'idle'; document.getElementById('lasso-actions').classList.remove('visible'); }
         function showLassoMenu(bounds) { const m = document.getElementById('lasso-actions'); const p = view.projectToView(bounds.topCenter); m.style.left = p.x + 'px'; m.style.top = (p.y - 10) + 'px'; m.classList.add('visible'); }
         function updateLassoMenu() { if(App.lassoPath) showLassoMenu(App.lassoPath.bounds); }
         function deleteSelection() { App.lassoItems.forEach(i => i.remove()); clearLasso(); History.saveState(); }
-        function duplicateSelection() { const cs = App.lassoItems.map(i => { const c = i.clone(); c.position = c.position.add([20,20]); project.activeLayer.addChild(c); return c; }); clearLasso(); History.saveState(); }
+        function duplicateSelection() { const cs = App.lassoItems.map(i => { const c = i.clone(); c.position = c.position.add([20,20]); ensurePaintLayer().addChild(c); return c; }); clearLasso(); History.saveState(); }
 
         function updateSubToolbar() {
             const el = document.getElementById('sub-toolbar'); el.innerHTML = '';
             if (App.mode === 'pen') {
-                // 筆型選擇器 (獨立群組)
                 const g = document.createElement('div'); g.className='opt-group';
                 [{id:'fountain',t:'鋼筆'}, {id:'ballpoint',t:'圓珠筆'}, {id:'highlighter',t:'螢光筆'}].forEach(o=>{ const d=document.createElement('div'); d.className=`opt-btn ${App.penType===o.id?'selected':''}`; d.innerText=o.t; d.onclick=()=>{ App.penType=o.id; if(o.id==='highlighter'){App.strokeColor='#FEF08A';App.strokeOpacity=0.5;App.strokeWidth=20;}else{if(App.strokeColor==='#FEF08A')App.strokeColor='#1E293B';App.strokeOpacity=1;App.strokeWidth=o.id==='ballpoint'?3:8;} updateSubToolbar(); ToolSettings.save();}; g.appendChild(d); }); el.appendChild(g);
                 
-                // 顏色觸發器 (獨立，或可跟筆型一起)
                 const cw = document.createElement('div'); cw.className='setting-item'; cw.innerHTML=`<div id="color-trigger-btn" class="color-trigger" style="background:${App.strokeColor}"></div>`; cw.onclick = (e) => { e.stopPropagation(); toggleColorPopover(); }; el.appendChild(cw);
                 
-                // 滑桿群組 (確保一起換行)
                 const sliderGroup = document.createElement('div');
                 sliderGroup.className = 'slider-group';
                 addSlider(sliderGroup,'粗細',1,40,App.strokeWidth,v=>{App.strokeWidth=v; ToolSettings.save();}); 
@@ -942,14 +1521,28 @@
             } else if (App.mode === 'lasso') {
                 el.innerHTML = '<span style="color:#64748B;font-size:12px">圈選後可移動、複製或刪除</span>';
             } else if (App.mode === 'laser') {
-                el.innerHTML = '<span style="color:#64748B;font-size:12px">軌跡會保留 0.8 秒後消失，不會儲存</span>';
+                el.innerHTML = '<span style="color:#64748B;font-size:12px">停止書寫 0.8 秒後軌跡自動消失</span>';
             }
         }
         function addSlider(p,l,min,max,v,cb){ const w=document.createElement('div'); w.className='setting-item'; w.innerHTML=`<span style="font-size:12px">${l}</span><input type="range" min="${min}" max="${max}" value="${v}">`; w.querySelector('input').oninput=(e)=>cb(parseInt(e.target.value)); p.appendChild(w); }
 
         function startGesture() { App.isGesturing = true; if(App.currentPath){App.currentPath.remove();App.currentPath=null;} const p=Array.from(App.activePointers.values()); App.prevDist=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y); App.prevC={x:(p[0].x+p[1].x)/2, y:(p[0].y+p[1].y)/2}; }
-        function handleGesture() { const p=Array.from(App.activePointers.values()); const dist=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y); const c={x:(p[0].x+p[1].x)/2, y:(p[0].y+p[1].y)/2}; if(App.prevDist>0){ const s=dist/App.prevDist; const p1=view.viewToProject(new Point(App.prevC.x,App.prevC.y)); view.scale(s,p1); view.center=view.center.add(p1.subtract(view.viewToProject(new Point(c.x,c.y)))); } App.prevDist=dist; App.prevC=c; if(App.lassoPath){ App.lassoPath.strokeWidth=1/view.zoom; updateLassoMenu(); } if(App.eraserPreview) App.eraserPreview.strokeWidth=1/view.zoom; }
-        function onWheel(e) { e.preventDefault(); const z = e.deltaY>0?1/1.05:1.05; view.scale(z, view.viewToProject(new Point(e.clientX, e.clientY))); if(App.lassoPath){App.lassoPath.strokeWidth=1/view.zoom; updateLassoMenu();} }
+        function handleGesture() { 
+            const p=Array.from(App.activePointers.values()); const dist=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y); const c={x:(p[0].x+p[1].x)/2, y:(p[0].y+p[1].y)/2}; 
+            if(App.prevDist>0){ 
+                const s=dist/App.prevDist; const p1=view.viewToProject(new Point(App.prevC.x,App.prevC.y)); 
+                view.scale(s,p1); view.center=view.center.add(p1.subtract(view.viewToProject(new Point(c.x,c.y)))); 
+                updateZoomToast();
+            } 
+            App.prevDist=dist; App.prevC=c; if(App.lassoPath){ App.lassoPath.strokeWidth=1/view.zoom; updateLassoMenu(); } if(App.eraserPreview) App.eraserPreview.strokeWidth=1/view.zoom; 
+        }
+        function onWheel(e) { 
+            e.preventDefault(); 
+            const z = e.deltaY>0?1/1.05:1.05; 
+            view.scale(z, view.viewToProject(new Point(e.clientX, e.clientY))); 
+            updateZoomToast();
+            if(App.lassoPath){App.lassoPath.strokeWidth=1/view.zoom; updateLassoMenu();} 
+        }
 
     </script>
 </body>
