@@ -1,4 +1,4 @@
-<!-- START OF FILE mi_paint_fixed_save_v8.html -->
+<!-- START OF FILE mi_paint_fixed_v9.html -->
 
 <!DOCTYPE html>
 <html lang="zh-TW">
@@ -605,7 +605,7 @@
             currentCanvasId: null,
             currentCanvasName: "未命名畫布",
             currentConfig: { bgType: 'white', width: null, height: null },
-            currentCreatedAt: 0, // [新增] 緩存建立時間，避免儲存時讀取DB造成衝突
+            currentCreatedAt: 0,
             pages: [], 
             originalPageIndices: new Map(), 
 
@@ -823,10 +823,9 @@
             },
             async createNew(name, bgType, width, height) {
                 const id = Date.now().toString();
-                // 初始第一頁
                 const initialPages = [{ id: Date.now().toString(), data: null }];
                 
-                // 預設縮圖：1x1 白色像素
+                // 預設縮圖
                 const defaultThumb = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAAXNSR0IArs4c6QAAAA1JREFUGFdj+P///38ACfsD/QVDRcoAAAAASUVORK5CYII=';
 
                 const newCanvas = { 
@@ -835,7 +834,7 @@
                     pages: initialPages,
                     createdAt: Date.now(), 
                     updatedAt: Date.now(), 
-                    thumbnail: defaultThumb, // 設定預設圖
+                    thumbnail: defaultThumb,
                     config: { bgType, width, height } 
                 };
                 await DB.save(newCanvas);
@@ -848,7 +847,7 @@
                 
                 this.currentCanvasName = record.name;
                 this.currentConfig = record.config || { bgType: 'white', width: null, height: null };
-                this.currentCreatedAt = record.createdAt || Date.now(); // [修正] 讀取並緩存建立時間
+                this.currentCreatedAt = record.createdAt || Date.now(); 
                 document.getElementById('canvas-title-display').innerText = record.name;
 
                 if (!record.pages) {
@@ -861,7 +860,7 @@
                 
                 this.renderAllPages();
 
-                // 統一縮放設定：預設 60%
+                // 統一縮放設定
                 view.zoom = 0.6;
                 updateZoomToast(true);
 
@@ -891,7 +890,6 @@
                 this.pages.forEach((page, idx) => {
                     if (page.data) {
                         const tempGroup = new Group();
-                        // [FIX] 增加錯誤處理，防止匯入失敗導致資料遺失
                         try {
                             tempGroup.importJSON(page.data);
                             
@@ -900,11 +898,8 @@
                                 tempGroup.position = tempGroup.position.add([0, yOffset]);
                             }
                             
-                            // [FIX] 使用解構陣列避免迴圈時物件移動導致的跳號問題
                             const children = [...tempGroup.children];
                             children.forEach(item => {
-                                // [FIX] 如果 importJSON 產生了包裹用的 Group (通常代表Layer結構)，則拆解它
-                                // 這樣橡皮擦才能正確識別內部的 Path
                                 if (item instanceof Group) {
                                     const subItems = [...item.children];
                                     subItems.forEach(sub => paintLayer.addChild(sub));
@@ -936,16 +931,24 @@
                 const w = this.currentConfig.width;
 
                 if (!w || !h) {
+                    // [Fix] 序列化時排除 UI 元素 (索套、橡皮擦預覽、雷射筆)
+                    const tempLayer = new Layer();
+                    paintLayer.children.forEach(item => {
+                        if (item.data && (item.data.isLaser || item.data.isLassoUI || item.data.isEraserUI)) return;
+                        tempLayer.addChild(item.clone());
+                    });
+                    
                     if(this.pages.length === 0) this.pages.push({id:'inf', data:null});
-                    this.pages[0].data = paintLayer.exportJSON();
+                    this.pages[0].data = tempLayer.exportJSON();
+                    tempLayer.remove();
                     return;
                 }
 
                 const pageGroups = this.pages.map(p => ({ id: p.id, items: [] }));
                 
-                // 序列化時排除雷射筆跡
                 paintLayer.children.forEach(item => {
-                    if (item.data && item.data.isLaser) return; // SKIP LASER
+                    // [Fix] 排除 UI 元素
+                    if (item.data && (item.data.isLaser || item.data.isLassoUI || item.data.isEraserUI)) return;
 
                     const cy = item.bounds.center.y;
                     let pageIndex = Math.floor(cy / (h + PAGE_GAP));
@@ -996,41 +999,41 @@
             async saveAndExit() {
                 if (!this.currentCanvasId) return;
                 
-                // 1. 移除介面元素與暫時性物件
-                project.getItems({ data: { isLaser: true } }).forEach(i => i.remove());
+                // 1. 移除介面元素
+                project.getItems({ 
+                    data: (d) => d && (d.isLaser || d.isLassoUI || d.isEraserUI) 
+                }).forEach(i => i.remove());
+                
                 App.laserTrails = [];
                 App.activeLaserTrail = null;
-                App.lassoPath?.remove(); App.lassoPath=null; 
-                App.eraserPreview?.remove();
+                App.lassoPath = null;
+                App.eraserPreview = null;
+                App.rectPath = null;
 
                 this.serializePages();
 
-                // 2. 強制更新畫面，確保 Canvas 緩衝區是最新的
+                // 2. 強制更新畫面
                 view.update();
 
-                // 3. 使用 Off-screen Canvas 進行縮圖合成 (解決透明背景變黑問題)
+                // 3. 縮圖合成
                 const sourceCanvas = document.getElementById('canvas');
                 const tempCanvas = document.createElement('canvas');
-                // 使用實際的像素大小
                 tempCanvas.width = sourceCanvas.width;
                 tempCanvas.height = sourceCanvas.height;
                 const ctx = tempCanvas.getContext('2d');
 
-                // 4. 決定背景色 (所見即所得)
+                // 4. 背景
                 let bgFill = '#F8FAFC'; 
-                // 若是無限畫布，依照設定填色；若是有限畫布，視窗背景是灰色 #E2E8F0
                 if (!this.currentConfig.width) {
                     bgFill = this.currentConfig.bgType.includes('beige') ? '#FFF8E1' : '#FFFFFF';
                 } else {
                     bgFill = '#E2E8F0'; 
                 }
 
-                // 5. 填滿背景色並繪製原始 Canvas
                 ctx.fillStyle = bgFill;
                 ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
                 ctx.drawImage(sourceCanvas, 0, 0);
 
-                // 6. 生成 JPEG 縮圖 (品質 0.5)
                 const thumbData = tempCanvas.toDataURL('image/jpeg', 0.5);
 
                 const record = { 
@@ -1039,7 +1042,6 @@
                     pages: this.pages,
                     thumbnail: thumbData, 
                     updatedAt: Date.now(), 
-                    // [修正] 使用緩存的時間，不再呼叫 DB.get() 避免競爭條件
                     createdAt: this.currentCreatedAt,
                     config: this.currentConfig
                 };
@@ -1055,7 +1057,6 @@
                 if (!this.currentCanvasId) return;
                 this.serializePages();
                 const currentRec = await DB.get(this.currentCanvasId);
-                // 簡單檢查避免錯誤
                 if(currentRec) {
                     currentRec.pages = this.pages;
                     currentRec.updatedAt = Date.now();
@@ -1074,7 +1075,7 @@
             lassoPath: null, lassoItems: [], lassoState: 'idle', lassoPrevPoint: null, 
             activePointers: new Map(), isGesturing: false, prevDist: 0, prevC: null,
             laserTrails: [], activeLaserTrail: null, lastLaserActivity: 0,
-            isTempPanning: false // 新增：暫時平移狀態
+            isTempPanning: false 
         };
         
         const ToolSettings = {
@@ -1105,12 +1106,32 @@
         
         let colorPickerInstance = null;
 
+        // [Fix] 乾淨的 JSON 取得函數，排除 UI 元素
+        function getCleanStateJSON() {
+            const paintLayer = project.layers.find(l => l.name === 'paint') || project.activeLayer;
+            // 找出所有 UI 物件
+            const uiItems = paintLayer.children.filter(i => i.data && (i.data.isLassoUI || i.data.isEraserUI || i.data.isLaser));
+            
+            // 暫時移除
+            uiItems.forEach(i => i.remove());
+            
+            // 匯出
+            const json = paintLayer.exportJSON();
+            
+            // 加回去
+            uiItems.forEach(i => paintLayer.addChild(i));
+            
+            return json;
+        }
+
         const History = {
             stack: [], pointer: -1, maxStates: 30,
             saveState() {
                 if (this.pointer < this.stack.length - 1) this.stack = this.stack.slice(0, this.pointer + 1);
-                const paintLayer = project.layers.find(l => l.name === 'paint') || project.activeLayer;
-                this.stack.push(paintLayer.exportJSON());
+                
+                // [Fix] 使用乾淨的 JSON 存檔
+                this.stack.push(getCleanStateJSON());
+                
                 if (this.stack.length > this.maxStates) this.stack.shift(); else this.pointer++;
                 this.updateButtons();
                 AppManager.autoSave(); 
@@ -1119,9 +1140,17 @@
             redo() { if (this.pointer < this.stack.length - 1) { this.pointer++; this.restoreState(); } },
             restoreState() { 
                 const paintLayer = project.layers.find(l => l.name === 'paint') || project.activeLayer;
+                
+                // [Fix] 還原前先清除現有的 UI，避免索套框卡住
+                clearLasso();
+                if(App.eraserPreview) { App.eraserPreview.remove(); App.eraserPreview = null; }
+                if(App.rectPath) { App.rectPath.remove(); App.rectPath = null; }
+                
                 paintLayer.removeChildren(); 
                 paintLayer.importJSON(this.stack[this.pointer]); 
-                this.updateButtons(); App.lassoPath = null; App.eraserPreview = null; view.update(); AppManager.autoSave(); 
+                this.updateButtons(); 
+                view.update(); 
+                AppManager.autoSave(); 
             },
             updateButtons() { document.getElementById('btn-undo').disabled = this.pointer <= 0; document.getElementById('btn-redo').disabled = this.pointer >= this.stack.length - 1; }
         };
@@ -1150,11 +1179,8 @@
             if (App.laserTrails.length === 0) return;
             const now = Date.now();
             
-            // 是否超過全域閒置時間 (0.8s)
             const isGlobalIdle = (now - App.lastLaserActivity) > 800;
             const vanishDuration = 500;
-            
-            // 為了保持線條在螢幕上的粗細一致，需要根據 zoom 反向縮放
             const scaleFactor = 1 / view.zoom;
             const glowSize = 16 * scaleFactor;
             const coreSize = 6 * scaleFactor;
@@ -1296,7 +1322,7 @@
             const sub = document.getElementById('sub-toolbar');
             
             if (App.mode === m) {
-                if (m === 'hand') return; // Hand tool has no sub-menu
+                if (m === 'hand') return; 
                 if (sub.classList.contains('visible')) {
                     sub.classList.remove('visible');
                 } else {
@@ -1322,19 +1348,15 @@
             }
         }
 
-        // 判斷點是否在有效的紙張範圍內 (非 Infinite)
         function isPointAllowed(point) {
-            if (!AppManager.currentConfig.width) return true; // Infinite
+            if (!AppManager.currentConfig.width) return true; 
             
             const w = AppManager.currentConfig.width;
             const h = AppManager.currentConfig.height;
             const count = AppManager.pages.length;
             
-            // X 軸檢查
             if (point.x < 0 || point.x > w) return false;
             
-            // Y 軸檢查 (避開間距)
-            // 每一頁範圍： [i*(h+gap), i*(h+gap) + h]
             for (let i = 0; i < count; i++) {
                 const startY = i * (h + PAGE_GAP);
                 const endY = startY + h;
@@ -1351,7 +1373,6 @@
             
             if (App.activePointers.size === 2) { startGesture(); return; }
             
-            // 抓手工具邏輯
             if (App.mode === 'hand') {
                 document.body.classList.add('cursor-hand-grabbing');
                 App.prevC = { x: e.clientX, y: e.clientY };
@@ -1360,10 +1381,8 @@
 
             const p = view.viewToProject(new Point(e.clientX, e.clientY));
             
-            // 判斷點是否在畫布外
             const allowed = isPointAllowed(p);
 
-            // 若在畫布外，且不是雷射筆模式 => 視為暫時平移 (抓手)
             if (!allowed && App.mode !== 'laser') {
                 App.isTempPanning = true;
                 document.body.classList.add('cursor-hand-grabbing');
@@ -1371,8 +1390,6 @@
                 return;
             }
 
-            // 以下為正常繪圖邏輯 (雷射筆例外：允許在外部畫)
-            
             const pressure = getInputPressure(e, p, null, 0); if (pressure === -1) return;
             
             if (App.activePointers.size === 1 && !App.isGesturing) { 
@@ -1386,7 +1403,7 @@
                         points: [{x: p.x, y: p.y, pressure: pressure, len: 0}], 
                         pathGlow: null, pathCore: null, 
                         isDrawing: true, 
-                        vanishing: false, // 是否正在消失
+                        vanishing: false, 
                         vanishStartTime: 0,
                         liftTime: null, 
                         totalLen: 0 
@@ -1403,12 +1420,10 @@
             
             if (App.activePointers.size === 2) { handleGesture(); return; }
             
-            // 抓手工具移動 (或暫時平移)
             if ((App.mode === 'hand' || App.isTempPanning) && App.activePointers.size === 1 && e.buttons) {
                 const current = { x: e.clientX, y: e.clientY };
                 if (App.prevC) {
                     const delta = new Point(App.prevC.x - current.x, App.prevC.y - current.y);
-                    // 視圖移動 (除以 zoom 保持與手指移動 1:1)
                     view.center = view.center.add(delta.divide(view.zoom));
                 }
                 App.prevC = current;
@@ -1421,10 +1436,8 @@
                 const rawEvents = e.getCoalescedEvents ? e.getCoalescedEvents() : [e]; 
                 const lastP = App.currentPoints.length > 0 ? new Point(App.currentPoints[App.currentPoints.length-1]) : null;
                 
-                // 檢查最後一個點是否還在範圍內，若不在則停止（雷射筆除外）
                 const currentP = view.viewToProject(new Point(e.clientX, e.clientY));
                 if (App.mode !== 'laser' && !isPointAllowed(currentP)) {
-                    // 如果原本在畫，現在出去了，強制結束
                     if (App.mode === 'pen' && App.currentPath) finalizeStroke();
                     return;
                 }
@@ -1434,7 +1447,7 @@
                     renderCurrentStroke(); 
                 } 
                 else if (App.mode === 'laser' && App.activeLaserTrail) {
-                    App.lastLaserActivity = Date.now(); // 更新雷射筆活動時間
+                    App.lastLaserActivity = Date.now();
                     rawEvents.forEach(evt => {
                         const pt = view.viewToProject(new Point(evt.clientX, evt.clientY));
                         const trail = App.activeLaserTrail;
@@ -1460,7 +1473,6 @@
                 App.prevC = null;
             }
 
-            // 結束暫時平移
             if (App.isTempPanning) {
                 App.isTempPanning = false;
                 document.body.classList.remove('cursor-hand-grabbing');
@@ -1476,7 +1488,6 @@
             else if (App.mode === 'lasso') handleLassoUp();
             else if (App.mode === 'laser' && App.activeLaserTrail) { 
                 
-                // 防抖動：如果筆跡非常短（<5px），直接移除，避免殘留小點
                 if (App.activeLaserTrail.totalLen < 5) {
                     const idx = App.laserTrails.indexOf(App.activeLaserTrail);
                     if (idx > -1) App.laserTrails.splice(idx, 1);
@@ -1509,14 +1520,50 @@
         function renderCurrentStroke() { if (!App.currentPath || App.currentPoints.length < 1) return; let options = { size: App.strokeWidth, start: { taper: 0, cap: true }, end: { taper: 0, cap: true }, simulatePressure: false, streamline: 0.5 }; if (App.penType === 'fountain') { options.thinning = 0.8; options.smoothing = 0.5; } else options.thinning = 0; const outline = getStroke(App.currentPoints, options); App.currentPath.pathData = window.getSvgPathFromStroke(outline); }
         function finalizeStroke() { renderCurrentStroke(); App.currentPath.simplify(1); const normalized = App.currentPath.unite(App.currentPath); App.currentPath.remove(); normalized.fillColor = App.strokeColor; normalized.opacity = App.strokeOpacity; normalized.blendMode = App.penType === 'highlighter' ? 'multiply' : 'normal'; if (!normalized.parent) ensurePaintLayer().addChild(normalized); App.currentPath = null; App.currentPoints = []; History.saveState(); }
         
-        function eraseAt(point) { if (App.eraserPreview) App.eraserPreview.remove(); App.eraserPreview = new Path.Circle({ center: point, radius: App.eraserSize, strokeColor: '#EF4444', fillColor: new Color(1,0,0,0.2), strokeWidth: 1/view.zoom }); performErase(new Path.Circle({ center: point, radius: App.eraserSize, insert: false })); }
-        function startRectEraser(point) { clearLasso(); App.rectStart = point; App.rectPath = new Path.Rectangle({ from: point, to: point, fillColor: new Color(1,0,0,0.1), strokeColor: '#EF4444', dashArray: [4,4], strokeWidth: 1/view.zoom }); }
-        function updateRectEraser(point) { if (!App.rectPath) return; App.rectPath.remove(); App.rectPath = new Path.Rectangle({ from: App.rectStart, to: point, fillColor: new Color(1,0,0,0.1), strokeColor: '#EF4444', dashArray: [4,4], strokeWidth: 1/view.zoom }); }
+        function eraseAt(point) { 
+            if (App.eraserPreview) App.eraserPreview.remove(); 
+            // [Fix] Add isEraserUI tag
+            App.eraserPreview = new Path.Circle({ 
+                center: point, 
+                radius: App.eraserSize, 
+                strokeColor: '#EF4444', 
+                fillColor: new Color(1,0,0,0.2), 
+                strokeWidth: 1/view.zoom,
+                data: { isEraserUI: true }
+            }); 
+            performErase(new Path.Circle({ center: point, radius: App.eraserSize, insert: false })); 
+        }
+        function startRectEraser(point) { 
+            clearLasso(); 
+            App.rectStart = point; 
+            // [Fix] Add isEraserUI tag
+            App.rectPath = new Path.Rectangle({ 
+                from: point, to: point, 
+                fillColor: new Color(1,0,0,0.1), 
+                strokeColor: '#EF4444', 
+                dashArray: [4,4], 
+                strokeWidth: 1/view.zoom,
+                data: { isEraserUI: true }
+            }); 
+        }
+        function updateRectEraser(point) { 
+            if (!App.rectPath) return; 
+            App.rectPath.remove(); 
+            // [Fix] Add isEraserUI tag
+            App.rectPath = new Path.Rectangle({ 
+                from: App.rectStart, to: point, 
+                fillColor: new Color(1,0,0,0.1), 
+                strokeColor: '#EF4444', 
+                dashArray: [4,4], 
+                strokeWidth: 1/view.zoom,
+                data: { isEraserUI: true }
+            }); 
+        }
         function finalizeRectEraser() { if (App.rectPath) { performErase(new Path.Rectangle(App.rectPath.bounds)); App.rectPath.remove(); App.rectPath = null; History.saveState(); } }
         
         function performErase(eraserItem) {
             const paintLayer = ensurePaintLayer();
-            const items = paintLayer.children.filter(i => i !== App.eraserPreview && i !== App.rectPath && !i.data.isLassoUI && !i.data.isLaser);
+            const items = paintLayer.children.filter(i => i !== App.eraserPreview && i !== App.rectPath && !i.data.isLassoUI && !i.data.isLaser && !i.data.isEraserUI);
             for (let i = items.length - 1; i >= 0; i--) {
                 let item = items[i];
                 if (!item.intersects(eraserItem) && !eraserItem.contains(item.position) && !item.contains(eraserItem.position)) continue;
@@ -1527,14 +1574,12 @@
         function separateDisjointPaths(item) { if (item instanceof Path) return [item]; if (item instanceof CompoundPath) { const children = item.removeChildren(); item.remove(); if (!children.length) return []; children.sort((a,b)=>Math.abs(b.area)-Math.abs(a.area)); const islands = []; for(let child of children){ let p = islands.find(isl => isl.body.bounds.contains(child.bounds) && isl.body.contains(child.firstSegment.point)); if(p) p.holes.push(child); else islands.push({body:child, holes:[]}); } return islands.map(isl => isl.holes.length ? new CompoundPath({children:[isl.body, ...isl.holes]}) : isl.body); } return [item]; }
         
         function handleLassoDown(point) { 
-            // 如果已經在選取狀態，且點擊在選取路徑內（支援不規則形狀判定）
             if (App.lassoState === 'selected' && App.lassoPath.contains(point)) { 
                 App.lassoState = 'moving'; 
                 App.lassoPrevPoint = point; 
                 return; 
             } 
             
-            // 否則重新開始畫
             clearLasso(); 
             App.lassoState = 'drawing'; 
             App.lassoPath = new Path({ 
@@ -1561,22 +1606,22 @@
         function handleLassoUp() { 
             if (App.lassoState === 'drawing') { 
                 App.lassoPath.closed = true; 
-                App.lassoPath.simplify(10); // 讓線條平滑一點
+                App.lassoPath.simplify(10); 
                 const geo = App.lassoPath; 
                 
                 App.lassoItems = ensurePaintLayer().children.filter(i => 
                     !i.data.isLassoUI && 
                     !i.data.isLaser && 
+                    !i.data.isEraserUI &&
                     (geo.contains(i.bounds.center) || geo.intersects(i))
                 ); 
                 
                 if (App.lassoItems.length > 0) { 
                     App.lassoState = 'selected'; 
-                    // [修改] 不轉換為 Rectangle，保留原始路徑作為 UI
                     App.lassoPath.strokeColor = '#3B82F6';
                     App.lassoPath.strokeWidth = 1/view.zoom;
                     App.lassoPath.dashArray = [5,5];
-                    App.lassoPath.fillColor = new Color(0.23,0.51,0.96,0.05); // 淡藍色填充方便選取
+                    App.lassoPath.fillColor = new Color(0.23,0.51,0.96,0.05);
                     
                     showLassoMenu(App.lassoPath.bounds); 
                 } else { 
@@ -1604,14 +1649,12 @@
                 newItems.push(c);
             }); 
             
-            // [修改] 複製後，將選取狀態轉移到新物件上，且不清除選取框
             App.lassoItems = newItems;
             if(App.lassoPath) {
                 App.lassoPath.position = App.lassoPath.position.add(offset);
                 App.lassoPath.bringToFront();
                 updateLassoMenu();
             }
-            // 移除 clearLasso();
             
             History.saveState(); 
         }
