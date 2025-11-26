@@ -1,4 +1,4 @@
-<!-- START OF FILE mi_paint_fixed_v9.html -->
+<!-- START OF FILE mi_paint_fixed_v14.html -->
 
 <!DOCTYPE html>
 <html lang="zh-TW">
@@ -153,7 +153,7 @@
         }
         .bg-option:hover { border-color: #94A3B8; }
         .bg-option.selected { border-color: #2563EB; background: #EFF6FF; }
-        .bg-preview { width: 24px; height: 24px; border-radius: 4px; border: 1px solid rgba(0,0,0,0.1); }
+        .bg-preview { width: 24px; height: 24px; border-radius: 4px; border: 1px solid rgba(0,0,0,0.1); position:relative; overflow:hidden;}
         
         .bg-option[data-bg="grid-white"] .bg-preview {
             background-color: white;
@@ -191,7 +191,11 @@
         #color-popover { position: absolute; top: 140px; left: 50%; transform: translateX(-50%); background: white; padding: 16px; border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.15); z-index: 200; display: none; flex-direction: column; align-items: center; border: 1px solid rgba(0,0,0,0.05); }
         #color-popover.visible { display: flex; animation: fadeIn 0.2s; }
 
-        #lasso-actions { position: absolute; display: none; background: #1E293B; padding: 6px; border-radius: 10px; gap: 8px; z-index: 200; transform: translate(-50%, -100%); margin-top: -15px; }
+        #lasso-actions { 
+            position: absolute; display: none; background: #1E293B; padding: 6px; border-radius: 10px; gap: 8px; z-index: 200; 
+            transform: translate(-50%, -100%); margin-top: -15px;
+            white-space: nowrap; 
+        }
         #lasso-actions.visible { display: flex; animation: popIn 0.2s; }
         .action-btn { color: white; background: transparent; border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 4px; font-size: 13px; }
         .action-btn:hover { background: rgba(255,255,255,0.15); }
@@ -517,20 +521,22 @@
                 
                 if (isInfinite) {
                     document.body.style.backgroundColor = fillColor;
-                    // Infinite grid
+                    document.body.style.backgroundImage = 'none'; // Removed texture
+                    
                     if (config.bgType.includes('grid')) {
                         const gridSize = 50;
                         const strokeColor = config.bgType.includes('beige') ? '#d4c5a9' : '#cbd5e1'; 
                         this.drawGrid(-5000, -5000, 10000, 10000, gridSize, strokeColor);
                     }
                 } else {
-                    document.body.style.backgroundColor = '#E2E8F0'; // 灰色外部背景
+                    document.body.style.backgroundColor = '#E2E8F0';
+                    document.body.style.backgroundImage = 'none';
                     
                     for (let i = 0; i < pageCount; i++) {
                         const yOffset = i * (height + PAGE_GAP);
                         
-                        // 畫紙張
-                        new Path.Rectangle({
+                        // Plain page background
+                        const rect = new Path.Rectangle({
                             point: [0, yOffset],
                             size: [width, height],
                             fillColor: fillColor,
@@ -539,26 +545,22 @@
                             shadowOffset: new Point(0, 5)
                         });
 
-                        // 畫網格
+                        // [Fix] Grid lines logic
                         if (config.bgType.includes('grid')) {
                             const gridSize = 50;
                             const strokeColor = config.bgType.includes('beige') ? '#d4c5a9' : '#cbd5e1';
                             this.drawGrid(0, yOffset, width, height, gridSize, strokeColor);
                         }
 
-                        // 畫頁碼分隔線
                         const sepY = yOffset + height + PAGE_GAP/2;
-                        
-                        // 背景色塊
-                        const labelBg = new Path.Rectangle({
+                        new Path.Rectangle({
                             point: [width/2 - 60, sepY - 12],
                             size: [120, 24],
                             fillColor: '#E2E8F0',
                             radius: 12
                         });
                         
-                        // 文字
-                        const text = new PointText({
+                        new PointText({
                             point: [width/2, sepY + 5],
                             content: `第 ${i + 1} 頁`,
                             justification: 'center',
@@ -576,11 +578,16 @@
                 const group = new Group();
                 for (let i = x; i <= x + w; i += step) {
                     const line = new Path.Line(new Point(i, y), new Point(i, y + h));
-                    line.strokeColor = color; line.strokeWidth = 1; group.addChild(line);
+                    line.strokeColor = color; 
+                    line.strokeWidth = 1;
+                    // [Fix] Removed strokeScaling = false to allow lines to shrink when zooming out
+                    group.addChild(line);
                 }
                 for (let j = y; j <= y + h; j += step) {
                     const line = new Path.Line(new Point(x, j), new Point(x + w, j));
-                    line.strokeColor = color; line.strokeWidth = 1; group.addChild(line);
+                    line.strokeColor = color; 
+                    line.strokeWidth = 1;
+                    group.addChild(line);
                 }
             }
         };
@@ -617,7 +624,6 @@
                 document.getElementById('btn-create-new').onclick = () => this.showCreateModal();
                 document.getElementById('btn-back-home').onclick = () => this.saveAndExit();
                 
-                // 頁面按鈕
                 document.getElementById('btn-add-page').onclick = () => this.addPage();
                 document.getElementById('btn-add-page-modal').onclick = () => { this.addPage(); document.getElementById('pages-modal').style.display = 'none'; };
                 document.getElementById('btn-pages').onclick = () => this.showPagesModal();
@@ -732,19 +738,15 @@
                         document.getElementById('pages-modal').style.display = 'none';
                     };
 
-                    // --- New Stable Drag Events ---
                     div.addEventListener('dragstart', (e) => {
                         div.classList.add('dragging');
-                        
-                        // Fix ghost position
                         const rect = div.getBoundingClientRect();
                         const offsetX = e.clientX - rect.left;
                         const offsetY = e.clientY - rect.top;
                         if (e.dataTransfer.setDragImage) {
                             e.dataTransfer.setDragImage(div, offsetX, offsetY);
                         }
-
-                        this.serializePages(); // Save before reorder
+                        this.serializePages(); 
                     });
 
                     div.addEventListener('dragend', () => {
@@ -755,7 +757,6 @@
                     list.appendChild(div);
                 });
                 
-                // Attach dragover to container for stable sorting
                 list.addEventListener('dragover', (e) => {
                     e.preventDefault();
                     const afterElement = getDragAfterElement(list, e.clientY);
@@ -824,8 +825,6 @@
             async createNew(name, bgType, width, height) {
                 const id = Date.now().toString();
                 const initialPages = [{ id: Date.now().toString(), data: null }];
-                
-                // 預設縮圖
                 const defaultThumb = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAAXNSR0IArs4c6QAAAA1JREFUGFdj+P///38ACfsD/QVDRcoAAAAASUVORK5CYII=';
 
                 const newCanvas = { 
@@ -857,10 +856,8 @@
                 }
 
                 project.clear();
-                
                 this.renderAllPages();
 
-                // 統一縮放設定
                 view.zoom = 0.6;
                 updateZoomToast(true);
 
@@ -872,8 +869,8 @@
 
                 this.renderPageControls();
                 view.update();
+
                 History.stack = []; History.pointer = -1; History.saveState(); 
-                
                 setMode('hand');
                 document.getElementById('sub-toolbar').classList.remove('visible');
             },
@@ -892,12 +889,10 @@
                         const tempGroup = new Group();
                         try {
                             tempGroup.importJSON(page.data);
-                            
                             if (w > 0 && h > 0) {
                                 const yOffset = idx * (h + PAGE_GAP);
                                 tempGroup.position = tempGroup.position.add([0, yOffset]);
                             }
-                            
                             const children = [...tempGroup.children];
                             children.forEach(item => {
                                 if (item instanceof Group) {
@@ -931,13 +926,11 @@
                 const w = this.currentConfig.width;
 
                 if (!w || !h) {
-                    // [Fix] 序列化時排除 UI 元素 (索套、橡皮擦預覽、雷射筆)
                     const tempLayer = new Layer();
                     paintLayer.children.forEach(item => {
                         if (item.data && (item.data.isLaser || item.data.isLassoUI || item.data.isEraserUI)) return;
                         tempLayer.addChild(item.clone());
                     });
-                    
                     if(this.pages.length === 0) this.pages.push({id:'inf', data:null});
                     this.pages[0].data = tempLayer.exportJSON();
                     tempLayer.remove();
@@ -947,15 +940,11 @@
                 const pageGroups = this.pages.map(p => ({ id: p.id, items: [] }));
                 
                 paintLayer.children.forEach(item => {
-                    // [Fix] 排除 UI 元素
                     if (item.data && (item.data.isLaser || item.data.isLassoUI || item.data.isEraserUI)) return;
-
                     const cy = item.bounds.center.y;
                     let pageIndex = Math.floor(cy / (h + PAGE_GAP));
-                    
                     if (pageIndex < 0) pageIndex = 0;
                     if (pageIndex >= this.pages.length) pageIndex = this.pages.length - 1;
-                    
                     const clone = item.clone();
                     const yOffset = pageIndex * (h + PAGE_GAP);
                     clone.position = clone.position.subtract([0, yOffset]);
@@ -999,7 +988,6 @@
             async saveAndExit() {
                 if (!this.currentCanvasId) return;
                 
-                // 1. 移除介面元素
                 project.getItems({ 
                     data: (d) => d && (d.isLaser || d.isLassoUI || d.isEraserUI) 
                 }).forEach(i => i.remove());
@@ -1011,18 +999,14 @@
                 App.rectPath = null;
 
                 this.serializePages();
-
-                // 2. 強制更新畫面
                 view.update();
 
-                // 3. 縮圖合成
                 const sourceCanvas = document.getElementById('canvas');
                 const tempCanvas = document.createElement('canvas');
                 tempCanvas.width = sourceCanvas.width;
                 tempCanvas.height = sourceCanvas.height;
                 const ctx = tempCanvas.getContext('2d');
 
-                // 4. 背景
                 let bgFill = '#F8FAFC'; 
                 if (!this.currentConfig.width) {
                     bgFill = this.currentConfig.bgType.includes('beige') ? '#FFF8E1' : '#FFFFFF';
@@ -1049,6 +1033,7 @@
                 
                 project.clear();
                 document.body.style.backgroundColor = '#F8FAFC';
+                document.body.style.backgroundImage = 'none'; 
                 this.currentCanvasId = null;
                 document.body.classList.remove('mode-editor', 'cursor-hand', 'cursor-hand-grabbing');
                 this.renderGallery();
@@ -1072,7 +1057,7 @@
             eraserMode: 'standard', eraserSize: 20, 
             currentPath: null, currentPoints: [], lastPointTime: 0, 
             eraserPreview: null, rectStart: null, rectPath: null, 
-            lassoPath: null, lassoItems: [], lassoState: 'idle', lassoPrevPoint: null, 
+            lassoPath: null, lassoItems: [], lassoState: 'idle', lassoPrevPoint: null, lassoBackup: null,
             activePointers: new Map(), isGesturing: false, prevDist: 0, prevC: null,
             laserTrails: [], activeLaserTrail: null, lastLaserActivity: 0,
             isTempPanning: false 
@@ -1106,21 +1091,12 @@
         
         let colorPickerInstance = null;
 
-        // [Fix] 乾淨的 JSON 取得函數，排除 UI 元素
         function getCleanStateJSON() {
             const paintLayer = project.layers.find(l => l.name === 'paint') || project.activeLayer;
-            // 找出所有 UI 物件
             const uiItems = paintLayer.children.filter(i => i.data && (i.data.isLassoUI || i.data.isEraserUI || i.data.isLaser));
-            
-            // 暫時移除
             uiItems.forEach(i => i.remove());
-            
-            // 匯出
             const json = paintLayer.exportJSON();
-            
-            // 加回去
             uiItems.forEach(i => paintLayer.addChild(i));
-            
             return json;
         }
 
@@ -1128,10 +1104,7 @@
             stack: [], pointer: -1, maxStates: 30,
             saveState() {
                 if (this.pointer < this.stack.length - 1) this.stack = this.stack.slice(0, this.pointer + 1);
-                
-                // [Fix] 使用乾淨的 JSON 存檔
                 this.stack.push(getCleanStateJSON());
-                
                 if (this.stack.length > this.maxStates) this.stack.shift(); else this.pointer++;
                 this.updateButtons();
                 AppManager.autoSave(); 
@@ -1141,7 +1114,6 @@
             restoreState() { 
                 const paintLayer = project.layers.find(l => l.name === 'paint') || project.activeLayer;
                 
-                // [Fix] 還原前先清除現有的 UI，避免索套框卡住
                 clearLasso();
                 if(App.eraserPreview) { App.eraserPreview.remove(); App.eraserPreview = null; }
                 if(App.rectPath) { App.rectPath.remove(); App.rectPath = null; }
@@ -1210,7 +1182,7 @@
                     visiblePoints = trail.points.filter(p => p.len >= cutoffLen);
                 }
 
-                if (visiblePoints.length < 2) continue;
+                if (visiblePoints.length < 2 && !trail.isDrawing) continue;
 
                 const strokePoints = visiblePoints.map(p => ({ x: p.x, y: p.y, pressure: p.pressure }));
                 
@@ -1480,7 +1452,10 @@
                 return;
             }
 
-            if (wasGesturing) return;
+            if (wasGesturing) {
+                if (App.lassoState === 'selected') updateLassoMenu();
+                return;
+            }
 
             if (App.mode === 'pen' && App.currentPath) finalizeStroke(); 
             else if (App.mode === 'eraser') { if (App.eraserPreview) { App.eraserPreview.remove(); App.eraserPreview = null; } History.saveState(); } 
@@ -1488,15 +1463,7 @@
             else if (App.mode === 'lasso') handleLassoUp();
             else if (App.mode === 'laser' && App.activeLaserTrail) { 
                 
-                if (App.activeLaserTrail.totalLen < 5) {
-                    const idx = App.laserTrails.indexOf(App.activeLaserTrail);
-                    if (idx > -1) App.laserTrails.splice(idx, 1);
-                    if (App.activeLaserTrail.pathGlow) App.activeLaserTrail.pathGlow.remove();
-                    if (App.activeLaserTrail.pathCore) App.activeLaserTrail.pathCore.remove();
-                    App.activeLaserTrail = null;
-                    return;
-                }
-
+                // [Fix] Removed check for totalLen < 5 so dots are preserved
                 App.activeLaserTrail.isDrawing = false; 
                 App.activeLaserTrail.liftTime = Date.now(); 
                 App.activeLaserTrail = null; 
@@ -1522,7 +1489,6 @@
         
         function eraseAt(point) { 
             if (App.eraserPreview) App.eraserPreview.remove(); 
-            // [Fix] Add isEraserUI tag
             App.eraserPreview = new Path.Circle({ 
                 center: point, 
                 radius: App.eraserSize, 
@@ -1536,7 +1502,6 @@
         function startRectEraser(point) { 
             clearLasso(); 
             App.rectStart = point; 
-            // [Fix] Add isEraserUI tag
             App.rectPath = new Path.Rectangle({ 
                 from: point, to: point, 
                 fillColor: new Color(1,0,0,0.1), 
@@ -1549,7 +1514,6 @@
         function updateRectEraser(point) { 
             if (!App.rectPath) return; 
             App.rectPath.remove(); 
-            // [Fix] Add isEraserUI tag
             App.rectPath = new Path.Rectangle({ 
                 from: App.rectStart, to: point, 
                 fillColor: new Color(1,0,0,0.1), 
@@ -1580,7 +1544,8 @@
                 return; 
             } 
             
-            clearLasso(); 
+            // [Fix] Save backup before clearing, in case this is a gesture
+            clearLasso(true); 
             App.lassoState = 'drawing'; 
             App.lassoPath = new Path({ 
                 strokeColor: '#3B82F6', 
@@ -1589,6 +1554,7 @@
                 data: {isLassoUI:true} 
             }); 
             App.lassoPath.add(point); 
+            updateLassoVisuals();
         }
 
         function handleLassoMove(point) { 
@@ -1601,6 +1567,7 @@
                 App.lassoPrevPoint = point; 
                 updateLassoMenu(); 
             } 
+            updateLassoVisuals();
         }
 
         function handleLassoUp() { 
@@ -1619,9 +1586,8 @@
                 if (App.lassoItems.length > 0) { 
                     App.lassoState = 'selected'; 
                     App.lassoPath.strokeColor = '#3B82F6';
-                    App.lassoPath.strokeWidth = 1/view.zoom;
-                    App.lassoPath.dashArray = [5,5];
                     App.lassoPath.fillColor = new Color(0.23,0.51,0.96,0.05);
+                    updateLassoVisuals();
                     
                     showLassoMenu(App.lassoPath.bounds); 
                 } else { 
@@ -1633,7 +1599,32 @@
             } 
         }
 
-        function clearLasso() { if(App.lassoPath) { App.lassoPath.remove(); App.lassoPath = null; } App.lassoItems = []; App.lassoState = 'idle'; document.getElementById('lasso-actions').classList.remove('visible'); }
+        // [Fix] New helper to keep lasso stroke visually constant
+        function updateLassoVisuals() {
+            if (!App.lassoPath) return;
+            const scale = 1 / view.zoom;
+            App.lassoPath.strokeWidth = 2 * scale;
+            App.lassoPath.dashArray = [5 * scale, 5 * scale];
+        }
+
+        // [Fix] Support backup for gesture restore
+        function clearLasso(saveBackup = false) { 
+            if (saveBackup && App.lassoState === 'selected') {
+                App.lassoBackup = {
+                    items: [...App.lassoItems], 
+                    pathData: App.lassoPath ? App.lassoPath.pathData : null,
+                    position: App.lassoPath ? App.lassoPath.position : null
+                };
+            } else if (!saveBackup) {
+                App.lassoBackup = null;
+            }
+
+            if(App.lassoPath) { App.lassoPath.remove(); App.lassoPath = null; } 
+            App.lassoItems = []; 
+            App.lassoState = 'idle'; 
+            document.getElementById('lasso-actions').classList.remove('visible'); 
+        }
+
         function showLassoMenu(bounds) { const m = document.getElementById('lasso-actions'); const p = view.projectToView(bounds.topCenter); m.style.left = p.x + 'px'; m.style.top = (p.y - 10) + 'px'; m.classList.add('visible'); }
         function updateLassoMenu() { if(App.lassoPath) showLassoMenu(App.lassoPath.bounds); }
         function deleteSelection() { App.lassoItems.forEach(i => i.remove()); clearLasso(); History.saveState(); }
@@ -1685,22 +1676,76 @@
         }
         function addSlider(p,l,min,max,v,cb){ const w=document.createElement('div'); w.className='setting-item'; w.innerHTML=`<span style="font-size:12px">${l}</span><input type="range" min="${min}" max="${max}" value="${v}">`; w.querySelector('input').oninput=(e)=>cb(parseInt(e.target.value)); p.appendChild(w); }
 
-        function startGesture() { App.isGesturing = true; if(App.currentPath){App.currentPath.remove();App.currentPath=null;} const p=Array.from(App.activePointers.values()); App.prevDist=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y); App.prevC={x:(p[0].x+p[1].x)/2, y:(p[0].y+p[1].y)/2}; }
+        function startGesture() { 
+            App.isGesturing = true; 
+            if(App.currentPath){App.currentPath.remove();App.currentPath=null;} 
+            const p=Array.from(App.activePointers.values()); 
+            App.prevDist=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y); 
+            App.prevC={x:(p[0].x+p[1].x)/2, y:(p[0].y+p[1].y)/2};
+            
+            document.getElementById('lasso-actions').classList.remove('visible');
+
+            // [Fix] Remove ongoing laser trail if gesture starts
+            if (App.mode === 'laser' && App.activeLaserTrail) {
+                const idx = App.laserTrails.indexOf(App.activeLaserTrail);
+                if (idx > -1) App.laserTrails.splice(idx, 1);
+                if (App.activeLaserTrail.pathGlow) App.activeLaserTrail.pathGlow.remove();
+                if (App.activeLaserTrail.pathCore) App.activeLaserTrail.pathCore.remove();
+                App.activeLaserTrail = null;
+            }
+
+            // [Fix] Restore lasso selection if gesture interrupted a new draw
+            if (App.mode === 'lasso') {
+                if (App.lassoState === 'drawing') {
+                    if (App.lassoPath) { App.lassoPath.remove(); App.lassoPath = null; }
+                    if (App.lassoBackup) {
+                        App.lassoItems = App.lassoBackup.items;
+                        App.lassoPath = new Path({
+                            pathData: App.lassoBackup.pathData,
+                            strokeColor: '#3B82F6',
+                            fillColor: new Color(0.23,0.51,0.96,0.05),
+                            data: { isLassoUI: true }
+                        });
+                        App.lassoPath.position = App.lassoBackup.position;
+                        App.lassoState = 'selected';
+                        updateLassoVisuals();
+                    } else {
+                        App.lassoState = 'idle';
+                    }
+                } else if (App.lassoState === 'moving') {
+                     App.lassoState = 'selected';
+                }
+            }
+        }
         function handleGesture() { 
             const p=Array.from(App.activePointers.values()); const dist=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y); const c={x:(p[0].x+p[1].x)/2, y:(p[0].y+p[1].y)/2}; 
             if(App.prevDist>0){ 
-                const s=dist/App.prevDist; const p1=view.viewToProject(new Point(App.prevC.x,App.prevC.y)); 
-                view.scale(s,p1); view.center=view.center.add(p1.subtract(view.viewToProject(new Point(c.x,c.y)))); 
+                let s=dist/App.prevDist; 
+                
+                if (view.zoom * s < 0.01) s = 0.01 / view.zoom;
+
+                const p1=view.viewToProject(new Point(App.prevC.x,App.prevC.y)); 
+                view.scale(s,p1); 
+                view.center=view.center.add(p1.subtract(view.viewToProject(new Point(c.x,c.y)))); 
+                
                 updateZoomToast();
             } 
-            App.prevDist=dist; App.prevC=c; if(App.lassoPath){ App.lassoPath.strokeWidth=1/view.zoom; updateLassoMenu(); } if(App.eraserPreview) App.eraserPreview.strokeWidth=1/view.zoom; 
+            App.prevDist=dist; App.prevC=c; 
+            updateLassoVisuals(); 
+            if(App.eraserPreview) App.eraserPreview.strokeWidth=1/view.zoom; 
         }
         function onWheel(e) { 
             e.preventDefault(); 
-            const z = e.deltaY>0?1/1.05:1.05; 
+            let z = e.deltaY>0?1/1.05:1.05; 
+            
+            if (view.zoom * z < 0.01) z = 0.01 / view.zoom;
+
             view.scale(z, view.viewToProject(new Point(e.clientX, e.clientY))); 
+            
             updateZoomToast();
-            if(App.lassoPath){App.lassoPath.strokeWidth=1/view.zoom; updateLassoMenu();} 
+
+            updateLassoVisuals();
+            updateLassoMenu(); 
         }
 
     </script>
