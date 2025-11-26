@@ -1,4 +1,4 @@
-<!-- START OF FILE mi_paint_fixed_lasso.html -->
+<!-- START OF FILE mi_paint_fixed_save_v8.html -->
 
 <!DOCTYPE html>
 <html lang="zh-TW">
@@ -126,10 +126,18 @@
         .modal-title { font-size: 18px; font-weight: bold; margin-bottom: 16px; color: #0F172A; display:flex; justify-content:space-between; align-items:center; }
         .dialog-msg { font-size: 15px; color: #475569; margin-bottom: 24px; line-height: 1.5; }
         .dialog-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 16px; }
-        .btn-text { padding: 8px 16px; font-weight: 600; color: #64748B; background: transparent; border: none; border-radius: 8px; cursor: pointer; width: auto; height: auto; display: inline-flex; }
+        
+        .btn-text { padding: 8px 16px; font-weight: 600; color: #64748B; background: transparent; border: none; border-radius: 8px; cursor: pointer; width: auto; height: auto; display: inline-flex; transition: 0.2s; }
         .btn-text:hover { background: #F1F5F9; color: #334155; }
+        
         .btn-primary { background: #2563EB; color: white; }
         .btn-primary:hover { background: #1D4ED8; color: white; }
+
+        /* [確認鈕樣式] 紅底白字 */
+        .btn-danger-solid { background: #EF4444; color: white; padding: 8px 20px; border-radius: 8px; font-weight: 600; border: none; cursor: pointer; transition: 0.2s; }
+        .btn-danger-solid:hover { background: #DC2626; }
+        .btn-danger-solid:active { transform: scale(0.98); }
+
         .modal-row { margin-bottom: 16px; }
         .modal-label { display: block; margin-bottom: 6px; font-weight: 500; }
         .modal-select, .modal-input { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #CBD5E1; background: #F8FAFC; color: #334155; box-sizing: border-box; font-size: 14px; }
@@ -211,7 +219,7 @@
             <div class="dialog-msg" id="dialog-msg">內容</div>
             <div class="dialog-actions">
                 <button class="btn-text" id="dialog-cancel">取消</button>
-                <button class="btn-text" style="color:#EF4444" id="dialog-ok">確定</button>
+                <button class="btn-danger-solid" id="dialog-ok">確定</button>
             </div>
         </div>
     </div>
@@ -597,6 +605,7 @@
             currentCanvasId: null,
             currentCanvasName: "未命名畫布",
             currentConfig: { bgType: 'white', width: null, height: null },
+            currentCreatedAt: 0, // [新增] 緩存建立時間，避免儲存時讀取DB造成衝突
             pages: [], 
             originalPageIndices: new Map(), 
 
@@ -839,6 +848,7 @@
                 
                 this.currentCanvasName = record.name;
                 this.currentConfig = record.config || { bgType: 'white', width: null, height: null };
+                this.currentCreatedAt = record.createdAt || Date.now(); // [修正] 讀取並緩存建立時間
                 document.getElementById('canvas-title-display').innerText = record.name;
 
                 if (!record.pages) {
@@ -881,16 +891,31 @@
                 this.pages.forEach((page, idx) => {
                     if (page.data) {
                         const tempGroup = new Group();
-                        tempGroup.importJSON(page.data);
-                        
-                        if (w > 0 && h > 0) {
-                            const yOffset = idx * (h + PAGE_GAP);
-                            tempGroup.position = tempGroup.position.add([0, yOffset]);
+                        // [FIX] 增加錯誤處理，防止匯入失敗導致資料遺失
+                        try {
+                            tempGroup.importJSON(page.data);
+                            
+                            if (w > 0 && h > 0) {
+                                const yOffset = idx * (h + PAGE_GAP);
+                                tempGroup.position = tempGroup.position.add([0, yOffset]);
+                            }
+                            
+                            // [FIX] 使用解構陣列避免迴圈時物件移動導致的跳號問題
+                            const children = [...tempGroup.children];
+                            children.forEach(item => {
+                                // [FIX] 如果 importJSON 產生了包裹用的 Group (通常代表Layer結構)，則拆解它
+                                // 這樣橡皮擦才能正確識別內部的 Path
+                                if (item instanceof Group) {
+                                    const subItems = [...item.children];
+                                    subItems.forEach(sub => paintLayer.addChild(sub));
+                                    item.remove();
+                                } else {
+                                    paintLayer.addChild(item);
+                                }
+                            });
+                        } catch (e) {
+                            console.error("Error importing page data:", e);
                         }
-                        
-                        tempGroup.children.forEach(item => {
-                            paintLayer.addChild(item);
-                        });
                         tempGroup.remove();
                     }
                 });
@@ -1014,7 +1039,8 @@
                     pages: this.pages,
                     thumbnail: thumbData, 
                     updatedAt: Date.now(), 
-                    createdAt: (await DB.get(this.currentCanvasId))?.createdAt || Date.now(),
+                    // [修正] 使用緩存的時間，不再呼叫 DB.get() 避免競爭條件
+                    createdAt: this.currentCreatedAt,
                     config: this.currentConfig
                 };
                 await DB.save(record);
@@ -1029,9 +1055,12 @@
                 if (!this.currentCanvasId) return;
                 this.serializePages();
                 const currentRec = await DB.get(this.currentCanvasId);
-                currentRec.pages = this.pages;
-                currentRec.updatedAt = Date.now();
-                await DB.save(currentRec);
+                // 簡單檢查避免錯誤
+                if(currentRec) {
+                    currentRec.pages = this.pages;
+                    currentRec.updatedAt = Date.now();
+                    await DB.save(currentRec);
+                }
             }
         };
 
