@@ -1,4 +1,4 @@
-<!-- START OF FILE mi_paint_fixed_v14.html -->
+<!-- START OF FILE mi_paint_fixed_v18.html -->
 
 <!DOCTYPE html>
 <html lang="zh-TW">
@@ -521,7 +521,7 @@
                 
                 if (isInfinite) {
                     document.body.style.backgroundColor = fillColor;
-                    document.body.style.backgroundImage = 'none'; // Removed texture
+                    document.body.style.backgroundImage = 'none'; 
                     
                     if (config.bgType.includes('grid')) {
                         const gridSize = 50;
@@ -545,7 +545,7 @@
                             shadowOffset: new Point(0, 5)
                         });
 
-                        // [Fix] Grid lines logic
+                        // Grid lines
                         if (config.bgType.includes('grid')) {
                             const gridSize = 50;
                             const strokeColor = config.bgType.includes('beige') ? '#d4c5a9' : '#cbd5e1';
@@ -580,7 +580,6 @@
                     const line = new Path.Line(new Point(i, y), new Point(i, y + h));
                     line.strokeColor = color; 
                     line.strokeWidth = 1;
-                    // [Fix] Removed strokeScaling = false to allow lines to shrink when zooming out
                     group.addChild(line);
                 }
                 for (let j = y; j <= y + h; j += step) {
@@ -1053,7 +1052,7 @@
         const Settings = { palmRejection: false, fingerMode: 'speed', stylusMode: 'pressure', stylusBtn34: 'none', stylusBtn33: 'none' };
         
         const App = { 
-            mode: 'pen', penType: 'fountain', strokeColor: '#1E293B', strokeWidth: 8, strokeOpacity: 1.0, 
+            mode: 'pen', penType: 'fountain', strokeColor: '#1E293B', strokeWidth: 8, strokeOpacity: 1.0, penDrawMode: 'free',
             eraserMode: 'standard', eraserSize: 20, 
             currentPath: null, currentPoints: [], lastPointTime: 0, 
             eraserPreview: null, rectStart: null, rectPath: null, 
@@ -1064,27 +1063,48 @@
         };
         
         const ToolSettings = {
+            // [Feature] Store presets per tool type
+            presets: {
+                pen: {
+                    fountain: { color: '#1E293B', width: 8, opacity: 1 },
+                    ballpoint: { color: '#1E293B', width: 3, opacity: 1 },
+                    highlighter: { color: '#FEF08A', width: 30, opacity: 0.5 }
+                },
+                eraser: { size: 20, mode: 'standard' },
+                penDrawMode: 'free'
+            },
             save() {
-                const settings = {
-                    penType: App.penType,
-                    strokeColor: App.strokeColor,
-                    strokeWidth: App.strokeWidth,
-                    strokeOpacity: App.strokeOpacity,
-                    eraserMode: App.eraserMode,
-                    eraserSize: App.eraserSize
-                };
-                localStorage.setItem('MiWhiteboard_ToolSettings', JSON.stringify(settings));
+                if(App.mode === 'pen') {
+                    this.presets.pen[App.penType] = { color: App.strokeColor, width: App.strokeWidth, opacity: App.strokeOpacity };
+                    this.presets.penDrawMode = App.penDrawMode;
+                } else if(App.mode.startsWith('eraser')) {
+                    this.presets.eraser = { size: App.eraserSize, mode: App.eraserMode };
+                }
+                localStorage.setItem('MiWhiteboard_ToolSettings', JSON.stringify(this.presets));
             },
             load() {
                 const saved = localStorage.getItem('MiWhiteboard_ToolSettings');
                 if (saved) {
-                    const s = JSON.parse(saved);
-                    if(s.penType) App.penType = s.penType;
-                    if(s.strokeColor) App.strokeColor = s.strokeColor;
-                    if(s.strokeWidth) App.strokeWidth = s.strokeWidth;
-                    if(s.strokeOpacity) App.strokeOpacity = s.strokeOpacity;
-                    if(s.eraserMode) App.eraserMode = s.eraserMode;
-                    if(s.eraserSize) App.eraserSize = s.eraserSize;
+                    try {
+                        const s = JSON.parse(saved);
+                        if(s.pen) this.presets.pen = {...this.presets.pen, ...s.pen};
+                        if(s.eraser) this.presets.eraser = {...this.presets.eraser, ...s.eraser};
+                        if(s.penDrawMode) this.presets.penDrawMode = s.penDrawMode;
+                    } catch(e) { console.error("Settings load error", e); }
+                }
+                this.apply('fountain');
+            },
+            apply(type) {
+                if (App.mode === 'pen') {
+                    const p = this.presets.pen[type || App.penType];
+                    App.strokeColor = p.color;
+                    App.strokeWidth = p.width;
+                    App.strokeOpacity = p.opacity;
+                    App.penDrawMode = this.presets.penDrawMode;
+                } else if (App.mode.startsWith('eraser')) {
+                    const e = this.presets.eraser;
+                    App.eraserSize = e.size;
+                    App.eraserMode = e.mode;
                 }
             }
         };
@@ -1303,12 +1323,17 @@
                 }
             } else {
                 if (App.mode === 'lasso' && m !== 'lasso') clearLasso();
+                if (App.currentPath) { App.currentPath.remove(); App.currentPath = null; App.currentPoints = []; } // Safety clear
                 App.mode = m;
                 document.querySelectorAll('.main-tools .btn').forEach(b => b.classList.remove('active'));
                 
                 const map = {hand:'tool-hand', pen:'tool-pen', eraser:'tool-eraser', 'eraser-rect':'tool-eraser-rect', lasso:'tool-lasso', laser:'tool-laser'};
                 if(map[m]) document.getElementById(map[m]).classList.add('active');
                 
+                // [New] Apply saved settings when switching tools
+                if(m === 'pen') ToolSettings.apply(App.penType); 
+                else if(m.startsWith('eraser')) ToolSettings.apply();
+
                 if (m === 'hand') {
                     document.body.classList.add('cursor-hand');
                     sub.classList.remove('visible');
@@ -1415,7 +1440,13 @@
                 }
 
                 if (App.mode === 'pen' && App.currentPath) { 
-                    rawEvents.forEach(evt => { const pt = view.viewToProject(new Point(evt.clientX, evt.clientY)); const pressure = getInputPressure(evt, pt, lastP, App.lastPointTime); App.currentPoints.push({ x: pt.x, y: pt.y, pressure: pressure }); App.lastPointTime = Date.now(); }); 
+                    if (App.penDrawMode === 'line') {
+                        const pt = view.viewToProject(new Point(e.clientX, e.clientY));
+                        const start = App.currentPoints[0];
+                        App.currentPoints = [start, { x: pt.x, y: pt.y, pressure: 0.5 }]; 
+                    } else {
+                        rawEvents.forEach(evt => { const pt = view.viewToProject(new Point(evt.clientX, evt.clientY)); const pressure = getInputPressure(evt, pt, lastP, App.lastPointTime); App.currentPoints.push({ x: pt.x, y: pt.y, pressure: pressure }); App.lastPointTime = Date.now(); }); 
+                    }
                     renderCurrentStroke(); 
                 } 
                 else if (App.mode === 'laser' && App.activeLaserTrail) {
@@ -1463,7 +1494,6 @@
             else if (App.mode === 'lasso') handleLassoUp();
             else if (App.mode === 'laser' && App.activeLaserTrail) { 
                 
-                // [Fix] Removed check for totalLen < 5 so dots are preserved
                 App.activeLaserTrail.isDrawing = false; 
                 App.activeLaserTrail.liftTime = Date.now(); 
                 App.activeLaserTrail = null; 
@@ -1481,11 +1511,54 @@
         function startPenStroke(point, pressure) { 
             ensurePaintLayer();
             clearLasso(); 
-            App.currentPoints = [{ x: point.x, y: point.y, pressure: pressure }]; 
+            let p = pressure;
+            if (App.penDrawMode === 'line') p = 0.5;
+            App.currentPoints = [{ x: point.x, y: point.y, pressure: p }]; 
             App.currentPath = new Path({ fillColor: App.strokeColor, opacity: App.strokeOpacity, blendMode: App.penType === 'highlighter' ? 'multiply' : 'normal', insert: true }); 
         }
-        function renderCurrentStroke() { if (!App.currentPath || App.currentPoints.length < 1) return; let options = { size: App.strokeWidth, start: { taper: 0, cap: true }, end: { taper: 0, cap: true }, simulatePressure: false, streamline: 0.5 }; if (App.penType === 'fountain') { options.thinning = 0.8; options.smoothing = 0.5; } else options.thinning = 0; const outline = getStroke(App.currentPoints, options); App.currentPath.pathData = window.getSvgPathFromStroke(outline); }
-        function finalizeStroke() { renderCurrentStroke(); App.currentPath.simplify(1); const normalized = App.currentPath.unite(App.currentPath); App.currentPath.remove(); normalized.fillColor = App.strokeColor; normalized.opacity = App.strokeOpacity; normalized.blendMode = App.penType === 'highlighter' ? 'multiply' : 'normal'; if (!normalized.parent) ensurePaintLayer().addChild(normalized); App.currentPath = null; App.currentPoints = []; History.saveState(); }
+        
+        function renderCurrentStroke() { 
+            if (!App.currentPath || App.currentPoints.length < 1) return; 
+            let options = { size: App.strokeWidth, start: { taper: 0, cap: true }, end: { taper: 0, cap: true }, simulatePressure: false, streamline: 0.5 }; 
+            
+            // [Fix] Strict straight line rendering (no bulging, equal width)
+            if (App.penDrawMode === 'line') {
+                options.thinning = 0; 
+                options.smoothing = 0; 
+                options.streamline = 0;
+                options.easing = (t) => t; // Linear easing
+                options.start = { taper: 0, cap: true }; 
+                options.end = { taper: 0, cap: true };
+            } else {
+                if (App.penType === 'fountain') { options.thinning = 0.8; options.smoothing = 0.5; } else options.thinning = 0; 
+            }
+
+            const outline = getStroke(App.currentPoints, options); 
+            App.currentPath.pathData = window.getSvgPathFromStroke(outline); 
+        }
+        
+        function finalizeStroke() { 
+            if (App.penDrawMode === 'line' && App.currentPoints.length === 1) {
+                const p = App.currentPoints[0];
+                App.currentPoints.push({ x: p.x, y: p.y, pressure: 0.5 });
+            }
+
+            renderCurrentStroke(); 
+            
+            // [Fix] Do NOT simplify straight lines or outlines generated by perfect-freehand
+            // simplify(1) was causing the "swelling" artifact by distorting the rectangle shape
+            // App.currentPath.simplify(1); 
+            
+            const normalized = App.currentPath.unite(App.currentPath); 
+            App.currentPath.remove(); 
+            normalized.fillColor = App.strokeColor; 
+            normalized.opacity = App.strokeOpacity; 
+            normalized.blendMode = App.penType === 'highlighter' ? 'multiply' : 'normal'; 
+            if (!normalized.parent) ensurePaintLayer().addChild(normalized); 
+            App.currentPath = null; 
+            App.currentPoints = []; 
+            History.saveState(); 
+        }
         
         function eraseAt(point) { 
             if (App.eraserPreview) App.eraserPreview.remove(); 
@@ -1544,7 +1617,6 @@
                 return; 
             } 
             
-            // [Fix] Save backup before clearing, in case this is a gesture
             clearLasso(true); 
             App.lassoState = 'drawing'; 
             App.lassoPath = new Path({ 
@@ -1599,7 +1671,6 @@
             } 
         }
 
-        // [Fix] New helper to keep lasso stroke visually constant
         function updateLassoVisuals() {
             if (!App.lassoPath) return;
             const scale = 1 / view.zoom;
@@ -1607,7 +1678,6 @@
             App.lassoPath.dashArray = [5 * scale, 5 * scale];
         }
 
-        // [Fix] Support backup for gesture restore
         function clearLasso(saveBackup = false) { 
             if (saveBackup && App.lassoState === 'selected') {
                 App.lassoBackup = {
@@ -1654,8 +1724,12 @@
             const el = document.getElementById('sub-toolbar'); el.innerHTML = '';
             if (App.mode === 'pen') {
                 const g = document.createElement('div'); g.className='opt-group';
-                [{id:'fountain',t:'鋼筆'}, {id:'ballpoint',t:'圓珠筆'}, {id:'highlighter',t:'螢光筆'}].forEach(o=>{ const d=document.createElement('div'); d.className=`opt-btn ${App.penType===o.id?'selected':''}`; d.innerText=o.t; d.onclick=()=>{ App.penType=o.id; if(o.id==='highlighter'){App.strokeColor='#FEF08A';App.strokeOpacity=0.5;App.strokeWidth=20;}else{if(App.strokeColor==='#FEF08A')App.strokeColor='#1E293B';App.strokeOpacity=1;App.strokeWidth=o.id==='ballpoint'?3:8;} updateSubToolbar(); ToolSettings.save();}; g.appendChild(d); }); el.appendChild(g);
+                // [New] Switch type -> Update Settings -> Re-render subtoolbar to show new values
+                [{id:'fountain',t:'鋼筆'}, {id:'ballpoint',t:'圓珠筆'}, {id:'highlighter',t:'螢光筆'}].forEach(o=>{ const d=document.createElement('div'); d.className=`opt-btn ${App.penType===o.id?'selected':''}`; d.innerText=o.t; d.onclick=()=>{ App.penType=o.id; ToolSettings.apply(o.id); ToolSettings.save(); updateSubToolbar(); }; g.appendChild(d); }); el.appendChild(g);
                 
+                const modeG = document.createElement('div'); modeG.className='opt-group';
+                [{id:'free',t:'曲線'}, {id:'line',t:'直線'}].forEach(o=>{ const d=document.createElement('div'); d.className=`opt-btn ${App.penDrawMode===o.id?'selected':''}`; d.innerText=o.t; d.onclick=()=>{ App.penDrawMode=o.id; ToolSettings.save(); updateSubToolbar();}; modeG.appendChild(d); }); el.appendChild(modeG);
+
                 const cw = document.createElement('div'); cw.className='setting-item'; cw.innerHTML=`<div id="color-trigger-btn" class="color-trigger" style="background:${App.strokeColor}"></div>`; cw.onclick = (e) => { e.stopPropagation(); toggleColorPopover(); }; el.appendChild(cw);
                 
                 const sliderGroup = document.createElement('div');
@@ -1666,7 +1740,7 @@
 
             } else if (App.mode.startsWith('eraser')) {
                 const g=document.createElement('div'); g.className='opt-group';
-                [{id:'standard',t:'擦部分'}, {id:'object',t:'擦整條'}].forEach(o=>{ const d=document.createElement('div'); d.className=`opt-btn ${App.eraserMode===o.id?'selected':''}`; d.innerText=o.t; d.onclick=()=>{App.eraserMode=o.id; updateSubToolbar(); ToolSettings.save();}; g.appendChild(d); }); el.appendChild(g);
+                [{id:'standard',t:'擦部分'}, {id:'object',t:'擦整條'}].forEach(o=>{ const d=document.createElement('div'); d.className=`opt-btn ${App.eraserMode===o.id?'selected':''}`; d.innerText=o.t; d.onclick=()=>{App.eraserMode=o.id; ToolSettings.save(); updateSubToolbar();}; g.appendChild(d); }); el.appendChild(g);
                 if(App.mode==='eraser') addSlider(el,'大小',5,100,App.eraserSize,v=>{App.eraserSize=v; ToolSettings.save();});
             } else if (App.mode === 'lasso') {
                 el.innerHTML = '<span style="color:#64748B;font-size:12px">圈選後可移動、複製或刪除</span>';
@@ -1685,7 +1759,6 @@
             
             document.getElementById('lasso-actions').classList.remove('visible');
 
-            // [Fix] Remove ongoing laser trail if gesture starts
             if (App.mode === 'laser' && App.activeLaserTrail) {
                 const idx = App.laserTrails.indexOf(App.activeLaserTrail);
                 if (idx > -1) App.laserTrails.splice(idx, 1);
@@ -1694,7 +1767,6 @@
                 App.activeLaserTrail = null;
             }
 
-            // [Fix] Restore lasso selection if gesture interrupted a new draw
             if (App.mode === 'lasso') {
                 if (App.lassoState === 'drawing') {
                     if (App.lassoPath) { App.lassoPath.remove(); App.lassoPath = null; }
