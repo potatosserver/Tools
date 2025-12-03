@@ -4,4 +4,4 @@
 
 2.[長春藤單字解析工具](https://potatosserver.github.io/Tools/ivy.html)
 
-3.[小米白板](https://potatosserver.github.io/Tools/mi_paint.html)
+3.[CCTV](https://potatosserver.github.io/Tools/CCTV.html)
