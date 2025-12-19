@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>象棋 AI - ffish-es6 版</title>
+<style>
+    body { font-family: "Microsoft Yahei", sans-serif; background: #222; color: #fff; display: flex; flex-direction: column; align-items: center; padding: 20px; margin: 0; }
+    #status { padding: 10px 20px; background: #444; border-radius: 8px; margin-bottom: 15px; color: #0f0; min-width: 320px; text-align: center; border: 1px solid #666; box-shadow: 0 2px 10px rgba(0,0,0,0.5); }
+    #board { position: relative; width: 360px; height: 400px; background: #e6b87c; border: 5px solid #8b5a2b; box-shadow: 0 0 20px rgba(0,0,0,0.8); cursor: pointer; }
+    
+    /* 棋盤裝飾 */
+    .line-h { position: absolute; background: #8b5a2b; height: 1px; left: 20px; width: 320px; z-index: 0; }
+    .line-v { position: absolute; background: #8b5a2b; width: 1px; top: 20px; height: 360px; z-index: 0; }
+    .river { position: absolute; top: 180px; left: 20px; width: 320px; height: 40px; display: flex; justify-content: space-between; align-items: center; color: #8b5a2b; font-size: 24px; padding: 0 40px; box-sizing: border-box; pointer-events: none; }
+    
+    /* 棋子 */
+    .piece { position: absolute; width: 38px; height: 38px; border-radius: 50%; background: #fdf5e6; border: 2px solid #8b5a2b; box-shadow: 1px 2px 4px rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; font-size: 22px; font-weight: bold; z-index: 10; transform: translate(-50%, -50%); transition: all 0.15s ease-out; }
+    .red { color: #c00; border-color: #c00; }
+    .black { color: #000; border-color: #000; }
+    .selected { background: #ffeb3b; z-index: 20; box-shadow: 0 0 15px #ff0; transform: translate(-50%, -50%) scale(1.1); }
+
+    /* 提示點 */
+    .valid-dot { position: absolute; width: 12px; height: 12px; background: rgba(0, 200, 0, 0.6); border-radius: 50%; transform: translate(-50%, -50%); z-index: 15; pointer-events: none; }
+    .capture-ring { position: absolute; width: 38px; height: 38px; border: 3px solid rgba(0, 200, 0, 0.8); border-radius: 50%; transform: translate(-50%, -50%); z-index: 15; pointer-events: none; }
+    
+    .controls { margin-top: 20px; }
+    button { padding: 10px 25px; background: #d32f2f; color: white; border: none; border-radius: 5px; font-size: 16px; cursor: pointer; font-weight: bold; }
+    button:disabled { background: #555; cursor: not-allowed; }
+</style>
+</head>
+<body>
+
+<h2 style="color:#f0c040">Pikafish AI (ffish-es6)</h2>
+<div id="status">正在初始化現代化引擎...</div>
+<div id="board"></div>
+
+<div class="controls">
+    <button id="btn-ai" disabled>電腦走棋</button>
+</div>
+
+<!-- 1. 引入 jQuery 與 Xiangqi.js (傳統方式) -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>window.module={exports:{}};window.exports=window.module.exports;</script>
+<script src="https://cdn.jsdelivr.net/gh/lengyanyu258/xiangqi.js@master/xiangqi.js"></script>
+
+<!-- 2. 使用 ES Module 引入 ffish-es6 (現代方式) -->
+<script type="module">
+    // 從 ESM CDN 引入
+    import { FairyStockfish } from 'https://esm.sh/ffish-es6';
+
+    const Xiangqi = window.Xiangqi || window.module.exports;
+    const MARGIN = 20, GAP = 40;
+    const PN = { 'k':'將', 'a':'士', 'b':'象', 'n':'馬', 'r':'車', 'c':'包', 'p':'卒', 'K':'帥', 'A':'仕', 'B':'相', 'N':'傌', 'R':'俥', 'C':'炮', 'P':'兵' };
+
+    let game = new Xiangqi();
+    let engine = null;
+    let selectedSq = null;
+    let isReady = false;
+
+    // --- 初始化 ---
+    async function init() {
+        try {
+            // 1. 繪製棋盤
+            drawGrid();
+            render();
+
+            // 2. 啟動引擎
+            // ffish-es6 會自動處理 Web Worker 和 WASM 載入
+            engine = await FairyStockfish.create();
+            
+            // 監聽引擎訊息
+            engine.onMessage((msg) => {
+                console.log('Engine:', msg);
+                if (msg.startsWith('bestmove')) {
+                    const move = msg.split(' ')[1];
+                    if (move && move !== '(none)') {
+                        game.move({ from: move.substring(0, 2), to: move.substring(2, 4) });
+                        render();
+                        updateStatus();
+                    }
+                }
+            });
+
+            // 3. 配置引擎
+            engine.postMessage('uci');
+            engine.postMessage('setoption name UCI_Variant value xiangqi');
+            
+            // 嘗試載入 NNUE (請確保同目錄下有 pikafish.nnue)
+            // ffish-es6 支援透過網路或本地載入 NNUE
+            engine.postMessage('setoption name EvalFile value pikafish.nnue');
+            
+            engine.postMessage('isready');
+            
+            // 等待 readyok
+            $('#status').text('Pikafish 就緒！請執紅先行');
+            isReady = true;
+            $('#btn-ai').prop('disabled', false);
+
+        } catch (e) {
+            console.error(e);
+            $('#status').text('初始化失敗: ' + e.message).css('color', 'red');
+        }
+    }
+
+    // --- 遊戲邏輯 ---
+    function render() {
+        $('#board .piece, #board .valid-dot, #board .capture-ring').remove();
+        
+        // 畫子
+        const fen = game.fen().split(' ')[0];
+        const rows = fen.split('/');
+        rows.forEach((row, r) => {
+            let c = 0;
+            for (let i = 0; i < row.length; i++) {
+                const char = row[i];
+                if (!isNaN(char)) c += parseInt(char);
+                else {
+                    const isRed = char === char.toUpperCase();
+                    const sq = String.fromCharCode(97 + c) + (9 - r);
+                    const $p = $('<div class="piece"></div>')
+                        .addClass(isRed ? 'red' : 'black')
+                        .text(PN[char])
+                        .css({ left: MARGIN + c * GAP, top: MARGIN + r * GAP })
+                        .attr('data-sq', sq);
+                    
+                    if (selectedSq === sq) $p.addClass('selected');
+                    $('#board').append($p);
+                    c++;
+                }
+            }
+        });
+
+        // 畫提示點
+        if (selectedSq) {
+            game.moves({ square: selectedSq, verbose: true }).forEach(m => {
+                const col = m.to.charCodeAt(0) - 97;
+                const row = 9 - parseInt(m.to[1]);
+                const hasTarget = game.get(m.to);
+                
+                if (hasTarget) {
+                    $('#board').append($('<div class="capture-ring"></div>').css({ left: MARGIN + col * GAP, top: MARGIN + row * GAP }));
+                } else {
+                    $('#board').append($('<div class="valid-dot"></div>').css({ left: MARGIN + col * GAP, top: MARGIN + row * GAP }));
+                }
+            });
+        }
+    }
+
+    function updateStatus() {
+        if (game.in_checkmate()) $('#status').text('將死！遊戲結束');
+        else if (game.in_draw()) $('#status').text('和棋');
+        else $('#status').text(game.turn() === 'r' ? '輪到你了' : '電腦思考中...');
+    }
+
+    async function aiPlay() {
+        if (!isReady || game.game_over()) return;
+        $('#status').text('Pikafish 正在深算...');
+        engine.postMessage(`position fen ${game.fen()}`);
+        engine.postMessage('go movetime 2000'); // 思考 2 秒
+    }
+
+    // --- 互動 ---
+    $('#board').on('click', '.piece, #board', function(e) {
+        if (!isReady || game.turn() !== 'r') return;
+        
+        const offset = $('#board').offset();
+        const x = Math.round((e.pageX - offset.left - MARGIN) / GAP);
+        const y = Math.round((e.pageY - offset.top - MARGIN) / GAP);
+        if (x < 0 || x > 8 || y < 0 || y > 9) return;
+        
+        const sq = String.fromCharCode(97 + x) + (9 - y);
+        const piece = game.get(sq);
+
+        if (piece && piece.color === 'r') {
+            selectedSq = sq;
+        } else if (selectedSq) {
+            const move = game.move({ from: selectedSq, to: sq });
+            if (move) {
+                selectedSq = null;
+                render();
+                updateStatus();
+                setTimeout(aiPlay, 100);
+            } else {
+                selectedSq = null;
+            }
+        }
+        render();
+    });
+
+    $('#btn-ai').click(aiPlay);
+
+    function drawGrid() {
+        const $b = $('#board');
+        for (let i = 0; i < 10; i++) $b.append($('<div class="line-h"></div>').css('top', MARGIN + i * GAP));
+        for (let i = 0; i < 9; i++) {
+            const h = (i === 0 || i === 8) ? 360 : 160;
+            $b.append($('<div class="line-v"></div>').css({ left: MARGIN + i * GAP, height: h }));
+            if (i > 0 && i < 8) $b.append($('<div class="line-v"></div>').css({ left: MARGIN + i * GAP, top: 220, height: 160 }));
+        }
+        $b.append($('<div class="river"><span>楚河</span><span>漢界</span></div>'));
+    }
+
+    init();
+</script>
+</body>
+</html>
