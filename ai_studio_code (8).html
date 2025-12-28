@@ -1,0 +1,650 @@
+<!-- --- START OF FILE exptech_v25_m3_blue_dot.html --- -->
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ExpTech M3 Blue Dot</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Google+Sans:wght@400;500;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,1,0" />
+
+    <style>
+        :root {
+            /* Material 3 Light Theme Tokens - High Contrast */
+            --md-sys-color-primary: #00668A;
+            --md-sys-color-on-primary: #FFFFFF;
+            --md-sys-color-primary-container: #C3E7FF;
+            
+            --md-sys-color-surface: #F0F2F5; /* Slightly darker than pure white for better contrast */
+            --md-sys-color-surface-container: #FFFFFF;
+            --md-sys-color-surface-container-high: #F5F7FA;
+            
+            --md-sys-color-on-surface: #101212; /* Almost black */
+            --md-sys-color-on-surface-variant: #353A3D; /* Dark Grey */
+            --md-sys-color-outline: #656C70;
+            
+            --md-sys-color-error: #BA1A1A;
+            --md-sys-color-safe: #146c2e; /* High contrast green */
+            
+            --shadow-2: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.06);
+        }
+
+        * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; outline: none; }
+        body { margin: 0; background: var(--md-sys-color-surface); color: var(--md-sys-color-on-surface); font-family: 'Google Sans', 'Roboto', sans-serif; overflow: hidden; height: 100vh; width: 100vw; }
+
+        #map { height: 100%; width: 100%; position: absolute; z-index: 1; background: #E0E4E7; }
+
+        /* --- LAYOUT --- */
+        #ui-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 1000; pointer-events: none; padding: 16px;
+            display: grid;
+            grid-template-columns: 300px 1fr 320px;
+            grid-template-rows: auto 1fr;
+            gap: 16px;
+            grid-template-areas: 
+                "header header header"
+                "left . right";
+        }
+
+        .m3-card {
+            background: var(--md-sys-color-surface-container);
+            border-radius: 16px;
+            padding: 16px;
+            box-shadow: var(--shadow-2);
+            pointer-events: auto;
+            display: flex; flex-direction: column; gap: 12px;
+            border: 1px solid rgba(0,0,0,0.08);
+        }
+
+        /* --- HEADER --- */
+        .header-bar {
+            grid-area: header; 
+            display: flex; justify-content: space-between; align-items: center;
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(8px);
+            border-radius: 28px;
+            padding: 0 8px 0 20px;
+            height: 56px;
+            box-shadow: var(--shadow-2);
+            pointer-events: auto;
+            place-self: start center; 
+            min-width: 380px; margin-top: 8px;
+            border: 1px solid rgba(0,0,0,0.05);
+        }
+
+        .app-branding { display: flex; align-items: center; gap: 12px; }
+        .app-title { font-weight: 700; font-size: 1.1rem; color: var(--md-sys-color-primary); letter-spacing: -0.5px; }
+        
+        .status-pill {
+            display: flex; align-items: center; gap: 6px;
+            font-size: 0.85rem; font-weight: 600;
+            padding: 4px 12px; border-radius: 20px;
+            background: #E8F5E9; color: var(--md-sys-color-safe);
+            transition: 0.3s;
+        }
+        .status-pill.alert { background: #FFDAD6; color: var(--md-sys-color-error); }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+
+        .header-actions { display: flex; align-items: center; gap: 8px; margin-right: 4px; }
+        
+        .time-display { 
+            font-family: 'JetBrains Mono', monospace; 
+            font-size: 1rem; font-weight: 700; 
+            color: var(--md-sys-color-on-surface); 
+            display: flex; gap: 8px; margin-right: 8px;
+            background: #F0F2F5;
+            padding: 6px 12px; border-radius: 12px;
+        }
+        .sim-active .time-display { color: #683D00; background: #FFDCBE; } 
+
+        .icon-btn { 
+            background: transparent; border: none; 
+            color: var(--md-sys-color-on-surface-variant); 
+            cursor: pointer; width: 40px; height: 40px; border-radius: 20px;
+            display: flex; align-items: center; justify-content: center;
+            transition: 0.2s; 
+        }
+        .icon-btn:hover { background: rgba(0,0,0,0.05); color: var(--md-sys-color-primary); }
+
+        /* --- LEFT PANEL --- */
+        .left-panel { grid-area: left; align-self: start; width: 100%; gap: 16px; }
+        .panel-header { font-size: 0.8rem; font-weight: 700; color: var(--md-sys-color-primary); text-transform: uppercase; margin-bottom: 4px; }
+        .stat-row { display: flex; gap: 12px; }
+        .stat-card { 
+            flex: 1; background: var(--md-sys-color-surface-container-high); 
+            border-radius: 12px; padding: 12px 16px; 
+            display: flex; flex-direction: column; border: 1px solid rgba(0,0,0,0.05);
+        }
+        .stat-label { font-size: 0.75rem; color: var(--md-sys-color-on-surface-variant); font-weight: 600; margin-bottom: 4px; }
+        .stat-value { font-family: 'JetBrains Mono', monospace; font-size: 1.5rem; font-weight: 700; color: var(--md-sys-color-on-surface); }
+        .stat-unit { font-size: 0.8rem; color: var(--md-sys-color-on-surface-variant); }
+
+        /* M3 Switch */
+        .layer-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; }
+        .layer-label { font-size: 0.95rem; color: var(--md-sys-color-on-surface); display: flex; align-items: center; gap: 10px; font-weight: 500; }
+        .m3-switch { position: relative; width: 44px; height: 24px; }
+        .m3-switch input { opacity: 0; width: 0; height: 0; }
+        .m3-slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--md-sys-color-outline); border-radius: 24px; transition: .3s; border: 2px solid var(--md-sys-color-outline); }
+        .m3-slider:before { position: absolute; content: ""; height: 12px; width: 12px; left: 4px; bottom: 4px; background-color: white; border-radius: 50%; transition: .3s; }
+        input:checked + .m3-slider { background-color: var(--md-sys-color-primary); border-color: var(--md-sys-color-primary); }
+        input:checked + .m3-slider:before { transform: translateX(20px); width: 16px; height: 16px; bottom: 2px; left: 2px; background-color: #fff; }
+
+        /* --- RIGHT PANEL (LIST) --- */
+        .right-panel { grid-area: right; max-height: 80vh; padding: 0; overflow: hidden; display: flex; flex-direction: column; background: var(--md-sys-color-surface-container); }
+        .list-header { padding: 16px 16px 8px 16px; border-bottom: 1px solid rgba(0,0,0,0.08); }
+        #quake-list { overflow-y: auto; flex: 1; display: flex; flex-direction: column; }
+        
+        .quake-item { 
+            display: flex; align-items: center; gap: 16px; 
+            padding: 12px 16px; cursor: pointer; 
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+            transition: background 0.2s; 
+        }
+        .quake-item:hover { background: rgba(0,0,0,0.03); }
+        .quake-item.active { background: #E1F5FE; } /* Light Blue Highlight */
+        
+        /* CIRCLE BADGE */
+        .mag-badge { 
+            width: 42px; height: 42px; min-width: 42px;
+            border-radius: 50%; /* CIRCLE */
+            display: flex; align-items: center; justify-content: center; 
+            font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 1rem; 
+            color: #1f1f1f; 
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
+        
+        .quake-info h4 { margin: 0; font-size: 0.95rem; font-weight: 600; color: var(--md-sys-color-on-surface); line-height: 1.4; }
+        .quake-info p { margin: 0; font-size: 0.8rem; color: var(--md-sys-color-on-surface-variant); }
+
+        /* --- USER DOT MARKER --- */
+        .user-dot-container {
+            width: 20px; height: 20px;
+            position: relative;
+        }
+        .user-dot-core {
+            width: 16px; height: 16px;
+            background-color: #4285F4; /* Google Blue */
+            border: 2px solid #ffffff;
+            border-radius: 50%;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 2;
+        }
+        .user-dot-halo {
+            width: 40px; height: 40px;
+            background-color: rgba(66, 133, 244, 0.2);
+            border-radius: 50%;
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            animation: pulse-halo 2s infinite;
+            z-index: 1;
+        }
+        @keyframes pulse-halo {
+            0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+            50% { opacity: 0.5; }
+            100% { transform: translate(-50%, -50%) scale(1.2); opacity: 0; }
+        }
+
+        /* --- BANNER --- */
+        .banner {
+            position: absolute; top: 80px; left: 50%; transform: translateX(-50%);
+            padding: 12px 24px; border-radius: 50px; font-weight: 500; font-size: 1rem;
+            box-shadow: var(--shadow-2); display: none; z-index: 2000; text-align: center;
+            align-items: center; gap: 8px;
+            background: var(--md-sys-color-error); color: white;
+        }
+
+        /* --- MAP MARKERS --- */
+        .leaflet-div-icon { background: transparent !important; border: none !important; }
+        .int-map-marker {
+            width: 24px !important; height: 24px !important; 
+            display: flex; justify-content: center; align-items: center; 
+            border-radius: 50%; color: #000; font-weight: 700; 
+            font-family: 'JetBrains Mono', monospace; 
+            border: 2px solid #fff; font-size: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        .int-1 { background: #9fa8da; color: #000; }
+        .int-2 { background: #1976d2; color: #fff; border-color: #fff; }
+        .int-3 { background: #388e3c; color: #fff; border-color: #fff; }
+        .int-4 { background: #fbc02d; color: #000; }
+        .int-5-, .int-5\+ { background: #f57c00; color: #fff; border-color: #fff; }
+        .int-6-, .int-6\+ { background: #d32f2f; color: #fff; border-color: #fff; }
+        .int-7 { background: #4a148c; color: #fff; border-color: #fff; }
+
+        @media (max-width: 900px) {
+            #ui-layer { grid-template-columns: 1fr; grid-template-rows: auto auto 1fr; grid-template-areas: "header" "left" "right"; padding: 12px; gap: 0; }
+            .header-bar { width: 100%; margin-top: 0; justify-content: space-between; padding: 0 16px; border-radius: 50px; }
+            .app-title { display: none; } /* Hide title on mobile to fit status */
+            .left-panel { margin-top: 12px; width: auto; max-width: 220px; }
+            .m3-card.left-panel { padding: 12px; background: rgba(255, 255, 255, 0.9); }
+            .layer-control-container { display: none; }
+            .panel-header { display: none; }
+            .stat-row { flex-direction: column; gap: 8px; }
+            .stat-card { padding: 8px 12px; background: rgba(0,0,0,0.04); }
+            .stat-value { font-size: 1.25rem; }
+            .right-panel { position: absolute; bottom: 0; left: 0; right: 0; width: 100%; max-height: 35vh; border-radius: 24px 24px 0 0; box-shadow: 0 -4px 10px rgba(0,0,0,0.1); z-index: 1001; margin: 0; }
+            .list-header span { display: inline-block; width: 40px; height: 4px; background: #E0E0E0; border-radius: 2px; margin: 0 auto 8px auto; display: block; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="eew-banner" class="banner">
+        <span class="material-symbols-rounded">warning</span>
+        <span id="banner-text">地震速報</span>
+    </div>
+
+    <div id="map"></div>
+
+    <div id="ui-layer">
+        <div class="header-bar">
+            <div class="app-branding">
+                <div class="app-title">ExpTech</div>
+                <div class="status-pill" id="system-status">
+                    <div class="status-dot"></div>
+                    <span id="status-text">無地震</span>
+                </div>
+            </div>
+            <div class="header-actions">
+                <div class="time-display" id="clock">
+                    <span id="clock-time">--:--</span>
+                    <span id="clock-offset" style="font-size:0.8rem; font-weight:500; opacity:0.8; align-self:center;"></span>
+                </div>
+                <button class="icon-btn" onclick="getUserLocation()" title="定位">
+                    <span class="material-symbols-rounded">my_location</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="m3-card left-panel">
+            <div class="panel-header" id="monitor-title">即時監測</div>
+            <div class="stat-row">
+                <div class="stat-card">
+                    <div class="stat-label">預估震度</div>
+                    <div style="display:flex; align-items:baseline; gap:4px;">
+                        <div class="stat-value" id="est-local-int" style="color:var(--md-sys-color-primary)">--</div>
+                        <div class="stat-unit">級</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">S波抵達</div>
+                    <div style="display:flex; align-items:baseline; gap:4px;">
+                        <div class="stat-value" id="s-wave-countdown">--</div>
+                        <div class="stat-unit">秒</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="layer-control-container" style="margin-top:4px; padding-top:8px; border-top:1px solid rgba(0,0,0,0.05);">
+                <div class="layer-item">
+                    <div class="layer-label">
+                        <span class="material-symbols-rounded" style="color:var(--md-sys-color-safe)">circle</span>
+                        即時震動 (RTS)
+                    </div>
+                    <label class="m3-switch">
+                        <input type="checkbox" checked onchange="toggleLayer('rts')" id="switch-rts">
+                        <span class="m3-slider"></span>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <div class="m3-card right-panel">
+            <div class="list-header">
+                <span></span>
+                <div style="font-weight:700; color:var(--md-sys-color-outline); font-size:0.8rem; text-transform:uppercase;">歷史地震</div>
+            </div>
+            <div id="quake-list">
+                <div style="padding:20px; text-align:center; color:#777;">載入中...</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        const Calc = {
+            getDistance: (lat1, lon1, lat2, lon2) => {
+                const R = 6371e3; const φ1 = lat1 * Math.PI/180; const φ2 = lat2 * Math.PI/180;
+                const Δφ = (lat2-lat1) * Math.PI/180; const Δλ = (lon2-lon1) * Math.PI/180;
+                const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ/2) * Math.sin(Δλ/2);
+                return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            },
+            pgaToFloat: (pga) => 2 * (Math.log10(pga)) + 0.7,
+            intensityFloatToInt: (val) => {
+                if (val < 0.5) return "0"; if (val < 1.5) return "1"; if (val < 2.5) return "2";
+                if (val < 3.5) return "3"; if (val < 4.5) return "4"; if (val < 5.0) return "5-";
+                if (val < 5.5) return "5+"; if (val < 6.0) return "6-"; if (val < 6.5) return "6+"; return "7";
+            },
+            pgaToIntensity: (pga) => Calc.intensityFloatToInt(Calc.pgaToFloat(pga)),
+            estimatePga: (mag, depth, distKm) => {
+                const hypoDist = Math.sqrt(Math.pow(distKm, 2) + Math.pow(depth, 2));
+                return 1.657 * Math.exp(1.533 * mag) * Math.pow(hypoDist, -1.607);
+            }
+        };
+
+        const CONFIG = {
+            center: [23.8, 121], zoom: 8, 
+            userLoc: { lat: 22.7253, lon: 120.3096, name: "預設: 楠梓" },
+            reportLimit: 100 
+        };
+
+        const PROXIES = [ "https://api.allorigins.win/raw?url=", "https://corsproxy.io/?", "https://thingproxy.freeboard.io/fetch/" ];
+        const Routes = {
+            station: "https://api-1.exptech.dev/api/v1/trem/station",
+            rts: "https://lb-1.exptech.dev/api/v2/trem/rts",
+            eew: "https://lb-1.exptech.dev/api/v2/eq/eew",
+            reportList: `https://api-1.exptech.dev/api/v2/eq/report?limit=${CONFIG.reportLimit}&page=1`,
+            reportDetail: (id) => `https://api-1.exptech.dev/api/v2/eq/report/${id}`
+        };
+
+        let map, layers = {}, stationsCache = null, activeReportId = null;
+        let simMode = false, simStartTime = 0, waveTimer = null;
+        let pCircle = null, sCircle = null;
+        let savedLayerState = { rts: true }; 
+        
+        async function fetchJson(url, useProxy = true) {
+            if (!useProxy) { try { const res = await fetch(url); if (res.ok) return await res.json(); } catch(e) {} }
+            if (useProxy) {
+                for (const proxy of PROXIES) { try { const res = await fetch(proxy + encodeURIComponent(url)); if (res.ok) return await res.json(); } catch (e) {} }
+            }
+            return { error: true };
+        }
+
+        async function init() {
+            if(!map) initMap();
+            window.toggleLayer = toggleLayer;
+            window.getUserLocation = getUserLocation;
+            startClock();
+            updateUserMarker();
+            
+            await loadStations();
+            loadReports(); 
+            loadRts();
+            
+            // 1 Second updates
+            setInterval(loadRts, 1000);
+            setInterval(pollEew, 1000);
+        }
+
+        function initMap() {
+            map = L.map('map', { zoomControl: false, attributionControl: false, preferCanvas: true }).setView(CONFIG.center, CONFIG.zoom);
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { 
+                maxZoom: 19, subdomains: 'abcd',
+                attribution: '&copy; OpenStreetMap &copy; CARTO'
+            }).addTo(map);
+            
+            map.createPane('reportPane'); map.getPane('reportPane').style.zIndex = 400; 
+            map.createPane('stationPane'); map.getPane('stationPane').style.zIndex = 650; 
+            map.createPane('rtsPane'); map.getPane('rtsPane').style.zIndex = 700; 
+            map.createPane('userPane'); map.getPane('userPane').style.zIndex = 800;
+
+            layers = {
+                activeReport: L.layerGroup().addTo(map),
+                rts: L.layerGroup().addTo(map),
+                user: L.layerGroup().addTo(map)
+            };
+        }
+
+        function toggleLayer(name) {
+            const layer = layers[name];
+            if (!layer) return;
+            if (map.hasLayer(layer)) map.removeLayer(layer); else map.addLayer(layer);
+        }
+
+        function getUserLocation() {
+            if (!navigator.geolocation) { alert("瀏覽器不支援定位"); return; }
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    CONFIG.userLoc.lat = pos.coords.latitude;
+                    CONFIG.userLoc.lon = pos.coords.longitude;
+                    CONFIG.userLoc.name = "您的位置";
+                    updateUserMarker();
+                    if (simMode && activeReportId) {
+                        const currentId = activeReportId;
+                        stopSimulation();
+                        startSimulation(currentId);
+                    }
+                },
+                (err) => { console.error(err); alert("無法取得定位，將使用預設位置(楠梓)"); }
+            );
+        }
+
+        function updateUserMarker() {
+            layers.user.clearLayers();
+            const icon = L.divIcon({
+                className: '',
+                html: `<div class="user-dot-container"><div class="user-dot-halo"></div><div class="user-dot-core"></div></div>`,
+                iconSize: [40, 40], iconAnchor: [20, 20]
+            });
+            L.marker([CONFIG.userLoc.lat, CONFIG.userLoc.lon], { icon: icon, pane: 'userPane' })
+             .bindPopup(CONFIG.userLoc.name)
+             .addTo(layers.user);
+        }
+
+        async function loadReports() {
+            const list = await fetchJson(`${Routes.reportList}&_t=${Date.now()}`, false);
+            if (!Array.isArray(list)) { document.getElementById('quake-list').innerHTML = "無法載入"; return; }
+            const container = document.getElementById('quake-list');
+            container.innerHTML = '';
+            list.forEach((eq) => {
+                const item = document.createElement('div');
+                item.className = 'quake-item';
+                item.id = `item-${eq.id}`;
+                item.innerHTML = `
+                    <div class="mag-badge" style="background:${getMagColor(eq.mag)}">${eq.mag}</div>
+                    <div class="quake-info">
+                        <h4>${eq.loc || "未知"}</h4>
+                        <p>${formatTime(eq.time)} • ${eq.depth}km</p>
+                    </div>`;
+                item.onclick = () => renderActiveReport(eq.id, item);
+                container.appendChild(item);
+            });
+        }
+
+        async function renderActiveReport(id, domItem) {
+            if (activeReportId === id) { stopSimulation(); return; }
+            document.querySelectorAll('.quake-item').forEach(el => el.classList.remove('active'));
+            if(domItem) domItem.classList.add('active');
+            stopSimulation(); 
+            startSimulation(id);
+        }
+
+        async function startSimulation(id) {
+            activeReportId = id;
+            simMode = true;
+            document.getElementById('monitor-title').innerText = "情境模擬";
+            
+            savedLayerState.rts = map.hasLayer(layers.rts);
+            if(savedLayerState.rts) map.removeLayer(layers.rts);
+
+            const detail = await fetchJson(Routes.reportDetail(id), false);
+            if(detail.error) { stopSimulation(); return; }
+
+            simStartTime = detail.time;
+            let lat = detail.lat, lon = detail.lon;
+            if (!lat && detail.epiCenter) { lat = detail.epiCenter.lat; lon = detail.epiCenter.lon; }
+
+            const bounds = [];
+            const color = getMagColor(detail.mag); 
+            const maxRadius = getEstimatedRadius(detail.mag);
+            let distToUserMeters = 0;
+
+            if (lat && lon) {
+                bounds.push([lat, lon]);
+                distToUserMeters = Calc.getDistance(lat, lon, CONFIG.userLoc.lat, CONFIG.userLoc.lon);
+
+                L.circle([lat, lon], { 
+                    radius: maxRadius, color: '#555', weight: 1, dashArray: '4, 4',
+                    fillColor: color, fillOpacity: 0.1, pane: 'reportPane', interactive: false 
+                }).addTo(layers.activeReport);
+                
+                L.circleMarker([lat, lon], { radius: 8, color: color, fillColor: '#fff', fillOpacity: 1, weight: 3, pane: 'reportPane' }).bindPopup(`<b>震央</b> M${detail.mag}`).addTo(layers.activeReport);
+                
+                pCircle = L.circle([lat, lon], { radius: 0, color: '#2e7d32', weight: 1, fill: false, pane: 'reportPane' }).addTo(layers.activeReport);
+                sCircle = L.circle([lat, lon], { radius: 0, color: '#c62828', weight: 2, fill: false, pane: 'reportPane' }).addTo(layers.activeReport);
+
+                const distKm = distToUserMeters / 1000; 
+                const estPga = Calc.estimatePga(detail.mag, detail.depth, distKm);
+                const estInt = Calc.pgaToIntensity(estPga);
+                document.getElementById('est-local-int').innerText = estInt;
+                document.getElementById('est-local-int').style.color = getIntColorText(estInt);
+            }
+
+            if (detail.list) {
+                for (const [r, rData] of Object.entries(detail.list)) {
+                    if (rData.town) {
+                        for (const [t, tData] of Object.entries(rData.town)) {
+                            if (tData.lat && tData.lon) {
+                                const int = String(tData.int || "0"); 
+                                const bgCol = getIntColor(int);
+                                bounds.push([tData.lat, tData.lon]);
+                                L.circleMarker([tData.lat, tData.lon], { radius: 5, color: '#fff', weight: 1, fillColor: bgCol, fillOpacity: 1, pane: 'stationPane' }).bindPopup(`${r}${t} ${int}級`).addTo(layers.activeReport);
+                                if (parseFloat(int.replace('+', '.5').replace('-', '.5')) >= 1) {
+                                    const icon = L.divIcon({ className: 'int-map-marker', html: int, iconSize: [24, 24], iconAnchor: [12, 12] });
+                                    icon.options.className += ` int-${int}`;
+                                    L.marker([tData.lat, tData.lon], { icon: icon, pane: 'stationPane', interactive:false }).addTo(layers.activeReport);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            if (bounds.length > 0) map.fitBounds(bounds, { padding: [50, 50], maxZoom: 10, animate: true });
+
+            const sSpeed = 3500; const pSpeed = 6500;
+            const maxDurationSec = (maxRadius / sSpeed) + 10; 
+            const startTime = Date.now();
+
+            waveTimer = setInterval(() => {
+                const now = Date.now();
+                const animElapsed = (now - startTime); 
+                const simSeconds = animElapsed / 1000; 
+                
+                if (simSeconds > maxDurationSec) { stopSimulation(); return; }
+                
+                if(pCircle) pCircle.setRadius(pSpeed * simSeconds);
+                if(sCircle) sCircle.setRadius(sSpeed * simSeconds);
+
+                const simDate = new Date(simStartTime + (simSeconds * 1000));
+                document.getElementById('clock-time').innerText = simDate.toLocaleTimeString('zh-TW', {hour12:false});
+                document.getElementById('clock-offset').innerText = `(+${simSeconds.toFixed(0)}s)`;
+                
+                if(lat && lon) {
+                    if (distToUserMeters > maxRadius) {
+                        const el = document.getElementById('s-wave-countdown');
+                        el.innerText = "無影響";
+                        el.style.color = "#999";
+                    } else {
+                        const sArrivalSec = distToUserMeters / sSpeed;
+                        const timeLeft = Math.max(0, sArrivalSec - simSeconds);
+                        const label = timeLeft > 0 ? timeLeft.toFixed(0) : "已抵達";
+                        const el = document.getElementById('s-wave-countdown');
+                        el.innerText = label;
+                        el.style.color = timeLeft > 0 ? 'var(--md-sys-color-on-surface)' : 'var(--md-sys-color-error)';
+                    }
+                }
+            }, 30);
+        }
+
+        function stopSimulation() {
+            simMode = false;
+            activeReportId = null;
+            document.getElementById('monitor-title').innerText = "即時監測";
+            document.getElementById('est-local-int').innerText = "--";
+            document.getElementById('est-local-int').style.color = "var(--md-sys-color-on-surface)";
+            document.getElementById('s-wave-countdown').innerText = "--";
+            document.getElementById('clock-offset').innerText = ""; 
+            
+            document.querySelectorAll('.quake-item').forEach(el => el.classList.remove('active'));
+            layers.activeReport.clearLayers();
+            if(waveTimer) clearInterval(waveTimer);
+            if(savedLayerState.rts) map.addLayer(layers.rts);
+        }
+
+        async function loadRts() {
+            if (simMode) return; 
+            const data = await fetchJson(`${Routes.rts}?_t=${Date.now()}`, false);
+            if (!data || data.error) return;
+            layers.rts.clearLayers();
+            let maxPga = 0;
+            for (const [id, valObj] of Object.entries(data.station || {})) {
+                const pga = valObj.pga;
+                if (pga < 0.8) continue;
+                if (pga > 0) {
+                    if (pga > maxPga) maxPga = pga;
+                    const st = stationsCache ? stationsCache[id] : null;
+                    let lat, lon;
+                    if (st) { if (st.lat) { lat = st.lat; lon = st.lon; } else if (st.info && st.info[0]) { lat = st.info[0].lat; lon = st.info[0].lon; } }
+                    if (lat && lon) {
+                        const intStr = Calc.pgaToIntensity(pga);
+                        const color = getIntColor(intStr);
+                        L.circleMarker([lat, lon], { radius: 5 + (Math.log(pga) * 1.5), color: '#666', weight:0.5, fillColor: color, fillOpacity: 0.8, pane: 'rtsPane' }).bindPopup(`${st ? st.name : id}<br>${pga} gal`).addTo(layers.rts);
+                        if(pga >= 2.5) {
+                            const icon = L.divIcon({ className: 'int-map-marker', html: intStr, iconSize: [24, 24], iconAnchor:[12,12] });
+                            icon.options.className += ` int-${intStr}`;
+                            L.marker([lat, lon], { icon: icon, pane: 'rtsPane', interactive: false }).addTo(layers.rts);
+                        }
+                    }
+                }
+            }
+        }
+
+        async function pollEew() {
+            if(simMode) return; 
+            const data = await fetchJson(`${Routes.eew}?_t=${Date.now()}`, false);
+            const banner = document.getElementById('eew-banner');
+            const statusPill = document.getElementById('system-status');
+            const statusText = document.getElementById('status-text');
+            const bannerText = document.getElementById('banner-text');
+            
+            if (Array.isArray(data)) {
+                const cwa = data.find(e => e.agency === 'cwa');
+                if (cwa) {
+                    // Alert Mode
+                    banner.style.display = 'flex';
+                    bannerText.innerHTML = `地震速報 (${formatTime(cwa.time)}) M${cwa.mag} ${cwa.loc || cwa.location}`;
+                    
+                    statusPill.classList.add('alert');
+                    statusText.innerText = "⚠️ 地震速報";
+                } else {
+                    // Normal Mode
+                    banner.style.display = 'none';
+                    statusPill.classList.remove('alert');
+                    statusText.innerText = "無地震";
+                }
+            }
+        }
+
+        async function loadStations() { const data = await fetchJson(Routes.station, false); if (!data.error) stationsCache = data; }
+
+        function getMagColor(mag) { return mag >= 6 ? '#b3261e' : (mag >= 4 ? '#f57c00' : '#2e7d32'); }
+        function getEstimatedRadius(mag) { if (mag < 4) return 20000; if (mag < 5) return 60000; if (mag < 6) return 150000; return 300000; }
+        
+        function getIntColor(intStr) { 
+            const map = { '0':'#e0e0e0', '1':'#9fa8da', '2':'#1976d2', '3':'#388e3c', '4':'#fbc02d', '5-':'#f57c00', '5+':'#e64a19', '6-':'#d32f2f', '6+':'#b71c1c', '7':'#4a148c' }; 
+            return map[intStr] || '#ccc'; 
+        }
+        function getIntColorText(intStr) {
+            if(intStr === '0' || intStr === '1') return '#757575';
+            return getIntColor(intStr);
+        }
+
+        function formatTime(ts) { if(!ts) return ''; return new Date(Number(ts)||ts).toLocaleString('zh-TW', {month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'}); }
+        function startClock() { 
+            setInterval(() => { 
+                if(!simMode) {
+                    document.getElementById('clock-time').textContent = new Date().toLocaleTimeString('zh-TW', {hour12:false}); 
+                    document.getElementById('clock-offset').textContent = "";
+                }
+            }, 1000); 
+        }
+
+        init();
+    </script>
+</body>
+</html>
