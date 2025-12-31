@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>YouBike 監控</title>
+    <!-- Icons & Fonts -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <!-- Leaflet & Chart.js -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        :root {
+            --bg: #f1f5f9; --surface: #ffffff; --text: #0f172a; --text-sub: #64748b;
+            --primary: #f59e0b; --danger: #ef4444; --success: #10b981; --border: #cbd5e1;
+            --info: #3b82f6;
+        }
+        body { margin: 0; font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--text); -webkit-tap-highlight-color: transparent; }
+
+        /* 進度條 */
+        #progress-wrap { position: fixed; top: 0; left: 0; width: 100%; height: 4px; z-index: 9999; }
+        #progress-bar { height: 100%; background: var(--info); width: 0%; transition: width 0.2s ease-out; }
+
+        /* 導航列 */
+        nav {
+            position: sticky; top: 0; z-index: 1000; background: var(--surface);
+            border-bottom: 1px solid var(--border); padding: 0.8rem 1rem;
+            display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+        }
+        .brand { font-weight: 800; font-size: 1.1rem; display: flex; align-items: center; gap: 8px; }
+        .controls { display: flex; gap: 8px; }
+        button {
+            border: none; padding: 0.5rem 0.8rem; border-radius: 8px; cursor: pointer;
+            font-weight: 600; display: flex; align-items: center; gap: 4px; font-family: inherit;
+            transition: all 0.2s; font-size: 0.9rem;
+        }
+        .btn-primary { background: var(--text); color: var(--bg); }
+        .btn-icon { background: transparent; color: var(--text); border: 1px solid var(--border); }
+
+        /* KPI 面板 */
+        .kpi-board {
+            display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;
+            padding: 15px; max-width: 1400px; margin: 0 auto;
+        }
+        /* 電腦版顯示 6 欄 */
+        @media(min-width: 900px) { .kpi-board { grid-template-columns: repeat(6, 1fr); } }
+        
+        .kpi-card {
+            background: var(--surface); padding: 12px; border-radius: 12px;
+            border: 1px solid var(--border); display: flex; flex-direction: column;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        }
+        .kpi-label { font-size: 0.75rem; color: var(--text-sub); font-weight: 600; margin-bottom: 4px; }
+        .kpi-val { font-size: 1.5rem; font-weight: 800; color: var(--text); }
+        .kpi-sub { font-size: 0.8rem; color: var(--text-sub); font-weight: 400; margin-left: 5px; }
+        
+        .c-yb2 { color: #f59e0b; } 
+        .c-ybe { color: #ea580c; } 
+        .c-err { color: var(--text-sub); } 
+        .c-full { color: var(--danger); }
+        .c-info { color: var(--info); }
+
+        /* 內容佈局 */
+        .main-layout {
+            display: flex; flex-direction: column;
+            gap: 15px;
+            padding: 0 15px; max-width: 1400px; margin: 0 auto 15px;
+        }
+        @media(min-width: 900px) { 
+            .main-layout { display: grid; grid-template-columns: 3fr 1fr; }
+        }
+
+        .filter-panel {
+            background: var(--surface); padding: 15px; border-radius: 12px;
+            border: 1px solid var(--border); display: flex; flex-direction: column; gap: 10px;
+        }
+        .filter-row-1 { display: flex; gap: 10px; width: 100%; }
+        .filter-row-2 { display: flex; gap: 15px; align-items: center; flex-wrap: wrap; }
+        
+        .chart-panel {
+            background: var(--surface); padding: 10px; border-radius: 12px;
+            border: 1px solid var(--border); 
+            height: 200px; 
+            position: relative; 
+            display: block;
+        }
+
+        input, select {
+            padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px;
+            background: var(--bg); color: var(--text); outline: none; font-family: inherit; font-size: 16px;
+        }
+
+        /* 網格區 */
+        #grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 10px; padding: 0 15px 40px; max-width: 1400px; margin: 0 auto;
+        }
+        @media(min-width: 600px) { #grid { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; } }
+
+        .card {
+            background: var(--surface); border-radius: 12px; padding: 12px;
+            border: 1px solid var(--border); border-left-width: 5px; cursor: pointer;
+            transition: transform 0.2s; position: relative;
+        }
+        .card:active { transform: scale(0.98); }
+        .card-header { display: flex; justify-content: space-between; margin-bottom: 8px; flex-direction: column; }
+        .card-title { font-weight: 700; font-size: 1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .card-sub { font-size: 0.75rem; color: var(--text-sub); margin-top: 2px; }
+        .stats-row { display: flex; justify-content: space-between; gap: 4px; margin-top: 8px; }
+        .stat-box { flex: 1; text-align: center; background: var(--bg); padding: 4px; border-radius: 6px; }
+        .stat-num { font-size: 1.1rem; font-weight: 800; display: block; }
+        .stat-label { font-size: 0.65rem; color: var(--text-sub); }
+        
+        /* 彈窗基礎 */
+        .modal-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 3000;
+            display: none; align-items: center; justify-content: center; backdrop-filter: blur(3px);
+        }
+        .modal {
+            background: var(--surface); width: 90%; max-width: 600px; max-height: 80vh;
+            border-radius: 16px; display: flex; flex-direction: column; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3); position: relative; overflow: hidden;
+        }
+        .modal-full { width: 95%; max-width: 900px; height: 80vh; }
+
+        .modal-close-btn {
+            position: absolute; top: 12px; right: 12px; z-index: 2000;
+            width: 40px; height: 40px; border-radius: 50%;
+            background: rgba(0,0,0,0.05); border: none; color: var(--text);
+            display: flex; align-items: center; justify-content: center; cursor: pointer;
+            transition: background 0.2s;
+        }
+        .modal-close-btn:hover { background: rgba(0,0,0,0.15); }
+        .map-close-btn {
+            background: #ffffff; color: #333; box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            top: 15px; right: 15px;
+        }
+
+        .list-header { padding: 20px 20px 10px; border-bottom: 1px solid var(--border); padding-right: 60px; }
+        .list-body { flex: 1; overflow-y: auto; padding: 0 20px 20px; }
+        
+        .map-btn {
+            background: #3b82f6; color: white; width: 100%; margin-top: 10px;
+            padding: 12px; border-radius: 8px; font-size: 1rem; display: flex; 
+            align-items: center; justify-content: center; gap: 5px;
+            box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+        }
+        
+        #detail-map { width: 100%; height: 100%; }
+
+        .bike-list { width: 100%; border-collapse: collapse; font-size: 0.9rem; margin-top: 10px; }
+        .bike-list th { text-align: left; color: var(--text-sub); padding: 10px; border-bottom: 1px solid var(--border); background: var(--surface); position: sticky; top: 0; }
+        .bike-list td { padding: 10px; border-bottom: 1px solid var(--border); }
+        
+        .bat-val { font-weight: 800; font-family: monospace; font-size: 1rem; }
+        .bat-high { color: #10b981; } .bat-mid { color: #f59e0b; } .bat-low { color: #ef4444; }
+
+        /* Loading */
+        #sys-loading {
+            position: fixed; inset: 0; background: var(--surface); z-index: 5000;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
+        .spinner { width: 40px; height: 40px; border: 4px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 1s infinite linear; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+    <div id="sys-loading">
+        <div class="spinner"></div>
+        <h3 style="margin-top:15px;">系統初始化...</h3>
+        <p style="color:var(--text-sub)">下載靜態資料與計算最佳路徑</p>
+    </div>
+
+    <div id="progress-wrap"><div id="progress-bar"></div></div>
+
+    <nav>
+        <div class="brand">
+            <span class="material-icons-round" style="color:var(--primary)">radar</span>
+            <div>
+                YouBike 監控
+                <div id="status-tag" style="font-size:0.6rem; color:var(--text-sub); font-weight:400;">準備中</div>
+            </div>
+        </div>
+        <div class="controls">
+            <!-- 移除了暗色模式按鈕 -->
+            <button class="btn-primary" id="update-btn" onclick="startSmartScan()">
+                <span class="material-icons-round">refresh</span> 重新掃描
+            </button>
+        </div>
+    </nav>
+
+    <!-- KPI -->
+    <div class="kpi-board">
+        <div class="kpi-card">
+            <div class="kpi-label">站點 / 覆蓋率</div>
+            <div class="kpi-val"><span id="kpi-total">0</span><span class="kpi-sub" id="kpi-coverage">0%</span></div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">無車可借</div>
+            <div class="kpi-val c-err" id="kpi-no-bikes">0</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">滿站 (無法還車)</div>
+            <div class="kpi-val c-full" id="kpi-full-stations">0</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">平均停車率</div>
+            <div class="kpi-val c-info" id="kpi-occupancy">0%</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">2.0E 電輔</div>
+            <div class="kpi-val c-ybe" id="kpi-ybe">0</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">2.0 一般</div>
+            <div class="kpi-val c-yb2" id="kpi-yb2">0</div>
+        </div>
+    </div>
+
+    <div class="main-layout">
+        <div class="filter-panel">
+            <div class="filter-row-1">
+                <input type="text" id="search-input" placeholder="搜尋站點..." oninput="updateUI()" style="flex:2">
+                <select id="region-select" style="flex:1" onchange="updateUI()">
+                    <option value="all">全台灣</option>
+                    <!-- JS append -->
+                </select>
+            </div>
+            
+            <div class="filter-row-2">
+                <span style="font-size:0.9rem; font-weight:600;">過濾:</span>
+                <label style="display:flex;align-items:center;gap:4px;cursor:pointer;">
+                    <input type="checkbox" id="only-empty" onchange="updateUI()"> 無車
+                </label>
+                <label style="display:flex;align-items:center;gap:4px;cursor:pointer;">
+                    <input type="checkbox" id="only-full" onchange="updateUI()"> 滿站
+                </label>
+                <label style="display:flex;align-items:center;gap:4px;cursor:pointer;">
+                    <input type="checkbox" id="only-has-e" onchange="updateUI()"> 電輔
+                </label>
+            </div>
+        </div>
+        
+        <!-- 圖表區域 -->
+        <div class="chart-panel">
+            <canvas id="statusChart"></canvas>
+        </div>
+    </div>
+
+    <div id="grid"></div>
+
+    <!-- 1. 列表彈窗 -->
+    <div class="modal-overlay" id="list-modal-overlay" onclick="closeListModal()">
+        <div class="modal" id="list-modal" onclick="event.stopPropagation()">
+            <button class="modal-close-btn" onclick="closeListModal()">
+                <span class="material-icons-round">close</span>
+            </button>
+            <div class="list-header">
+                <h2 id="modal-title" style="margin:0; font-size:1.3rem;">站點名稱</h2>
+                <p id="modal-sub" style="color:var(--text-sub); font-size:0.9rem; margin:5px 0 0;">地址</p>
+                <button class="map-btn" onclick="openMapModal()">
+                    <span class="material-icons-round">map</span> 查看地圖位置
+                </button>
+            </div>
+            <div class="list-body">
+                <table class="bike-list">
+                    <thead><tr><th>車號</th><th>類型</th><th>電量</th><th>車柱</th></tr></thead>
+                    <tbody id="bike-list-body"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. 地圖彈窗 -->
+    <div class="modal-overlay" id="map-modal-overlay" onclick="closeMapModal()">
+        <div class="modal modal-full" onclick="event.stopPropagation()">
+            <button class="modal-close-btn map-close-btn" onclick="closeMapModal()">
+                <span class="material-icons-round" style="font-weight:bold;">close</span>
+            </button>
+            <div id="detail-map"></div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        const CONFIG = {
+            STATIC_API: 'https://apis.youbike.com.tw/json/station-min-yb2.json',
+            SCAN_API: 'https://apis.youbike.com.tw/tw2/parkingInfo', 
+            DETAIL_API: 'https://apis.youbike.com.tw/api/front/bike/lists',
+            SCAN_RADIUS: 10000, 
+            MAX_RETRIES: 5 // 強力補掃
+        };
+
+        let state = {
+            staticMap: {},      
+            realtimeMap: {},    
+            isScanning: false,
+            controller: null,
+            chart: null,
+            map: null,
+            marker: null,
+            retryCount: 0,
+            currentStationId: null
+        };
+
+        // --- 初始化 ---
+        window.onload = async () => {
+            initChart();
+
+            try {
+                const res = await fetch(CONFIG.STATIC_API);
+                const data = await res.json();
+                
+                const regions = new Set();
+                data.forEach(s => {
+                    state.staticMap[s.station_no] = s;
+                    if (s.area_code) {
+                        let rName = mapAreaCode(s.area_code);
+                        if(rName) regions.add(rName);
+                    }
+                });
+
+                const select = document.getElementById('region-select');
+                Array.from(regions).sort().forEach(r => {
+                    const opt = document.createElement('option');
+                    opt.value = r; opt.innerText = r;
+                    select.appendChild(opt);
+                });
+
+                document.getElementById('sys-loading').style.display = 'none';
+                startSmartScan(); // 自動啟動
+
+            } catch (e) {
+                alert('初始化失敗: ' + e.message);
+            }
+        };
+
+        function mapAreaCode(code) {
+            const map = {
+                '00': '台北市', '01': '台中市', '02': '新北市', '03': '桃園市', 
+                '04': '新竹市', '05': '新竹縣', '07': '苗栗縣', '08': '嘉義市',
+                '10': '嘉義縣', '11': '嘉義縣', '12': '高雄市', '13': '台南市', 
+                '14': '屏東縣', '15': '台東縣'
+            };
+            return map[code] || '其他地區';
+        }
+
+        // --- 核心：掃描點生成 ---
+        function generateScanPoints(stations) {
+            let remaining = [...stations];
+            let points = [];
+            const rLat = CONFIG.SCAN_RADIUS / 111000; 
+            const rLng = CONFIG.SCAN_RADIUS / 100000; 
+
+            while(remaining.length > 0) {
+                const center = remaining[0];
+                points.push({ lat: parseFloat(center.lat), lng: parseFloat(center.lng) });
+                remaining = remaining.filter(s => {
+                    const dLat = Math.abs(parseFloat(s.lat) - parseFloat(center.lat));
+                    const dLng = Math.abs(parseFloat(s.lng) - parseFloat(center.lng));
+                    return (dLat > rLat * 1.5 || dLng > rLng * 1.5); 
+                });
+            }
+            return points;
+        }
+
+        // --- 核心：主掃描流程 ---
+        async function startSmartScan() {
+            if(state.isScanning) return;
+            state.isScanning = true;
+            state.controller = new AbortController();
+            state.retryCount = 0;
+            
+            const btn = document.getElementById('update-btn');
+            btn.disabled = true;
+            
+            try {
+                // 掃描時仍以「區域選擇」為主，但若選擇全台則掃全台
+                const selectedRegion = document.getElementById('region-select').value;
+                let targetStations = Object.values(state.staticMap);
+                
+                if (selectedRegion !== 'all') {
+                    targetStations = targetStations.filter(s => {
+                        return s.district_tw.includes(selectedRegion) || 
+                               s.address_tw.includes(selectedRegion) || 
+                               mapAreaCode(s.area_code) === selectedRegion;
+                    });
+                }
+
+                let currentScanPoints = generateScanPoints(targetStations);
+                await runScanLoop(currentScanPoints, targetStations);
+
+            } catch(e) {
+                console.error(e);
+                updateStatus("已停止", "#fef2f2", "#b91c1c");
+            } finally {
+                state.isScanning = false;
+                btn.disabled = false;
+                btn.innerHTML = '<span class="material-icons-round">refresh</span> 重新掃描';
+                setTimeout(()=>document.getElementById('progress-bar').style.width='0%', 500);
+            }
+        }
+
+        // --- 核心：掃描迴圈與自動補漏 ---
+        async function runScanLoop(scanPoints, allTargetStations) {
+            const pBar = document.getElementById('progress-bar');
+            const total = scanPoints.length;
+            
+            let statusText = state.retryCount === 0 ? "掃描中..." : `補掃中 (${state.retryCount}/5)...`;
+            updateStatus(statusText, "#e0f2fe", "#0369a1");
+
+            for(let i=0; i<total; i++) {
+                if(state.controller.signal.aborted) break;
+                
+                const point = scanPoints[i];
+                try {
+                    const res = await fetch(CONFIG.SCAN_API, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            lat: point.lat, lng: point.lng, maxDistance: CONFIG.SCAN_RADIUS
+                        }),
+                        signal: state.controller.signal
+                    });
+                    const json = await res.json();
+                    if(json.retCode === 1) {
+                        const list = Array.isArray(json.retVal) ? json.retVal : (json.retVal?.data || []);
+                        list.forEach(s => state.realtimeMap[s.station_no] = s);
+                    }
+                } catch(err) { console.warn("Scan err", err); }
+
+                const pct = Math.round(((i+1)/total)*100);
+                pBar.style.width = `${pct}%`;
+                
+                if (i % 5 === 0 || i === total - 1) updateUI();
+                await new Promise(r => setTimeout(r, 100)); // 禮貌延遲
+            }
+
+            if(!state.controller.signal.aborted) {
+                const missing = verifyIntegrity(allTargetStations);
+                
+                if (missing.length > 0 && state.retryCount < CONFIG.MAX_RETRIES) {
+                    state.retryCount++;
+                    const patchPoints = generateScanPoints(missing);
+                    if (patchPoints.length > 0) {
+                        await new Promise(r => setTimeout(r, 500));
+                        await runScanLoop(patchPoints, allTargetStations); // 遞迴補掃
+                    }
+                } else {
+                    updateStatus("更新完成", "#dcfce7", "#15803d");
+                }
+            }
+        }
+
+        function verifyIntegrity(targets) {
+            const missing = [];
+            targets.forEach(s => {
+                if (!state.realtimeMap[s.station_no]) {
+                    missing.push(s);
+                }
+            });
+            // 覆蓋率計算會由 updateUI 中的 getFilteredData 負責顯示更精確的
+            return missing;
+        }
+
+        function updateStatus(text, bg, color) {
+            const tag = document.getElementById('status-tag');
+            tag.innerText = text;
+            tag.style.color = "#64748b";
+        }
+
+        // --- 主更新邏輯 ---
+        function updateUI() {
+            // 1. 取得篩選後的資料
+            const filteredStations = getFilteredData();
+            
+            // 2. 更新 KPI (傳入篩選後資料)
+            updateKPI(filteredStations);
+            
+            // 3. 更新 圖表 (傳入篩選後資料)
+            updateChart(filteredStations);
+            
+            // 4. 更新 列表網格 (傳入篩選後資料)
+            renderGrid(filteredStations);
+        }
+
+        function getFilteredData() {
+            const search = document.getElementById('search-input').value.toLowerCase();
+            const region = document.getElementById('region-select').value;
+            const onlyEmpty = document.getElementById('only-empty').checked;
+            const onlyFull = document.getElementById('only-full').checked;
+            const onlyHasE = document.getElementById('only-has-e').checked;
+
+            const allStations = Object.values(state.staticMap).map(s => {
+                const rt = state.realtimeMap[s.station_no];
+                return {
+                    ...s,
+                    yb2: rt?.available_spaces_detail?.yb2 || 0,
+                    ybe: rt?.available_spaces_detail?.eyb || 0,
+                    emp: rt?.empty_spaces || 0,
+                    isOnline: !!rt
+                };
+            });
+
+            return allStations.filter(s => {
+                const totalBikes = s.yb2 + s.ybe;
+                
+                // 區域篩選
+                if (region !== 'all') {
+                    if (!s.district_tw.includes(region) && 
+                        !s.address_tw.includes(region) && 
+                        mapAreaCode(s.area_code) !== region) return false;
+                }
+                
+                // 搜尋篩選
+                if (search && 
+                    !s.name_tw.toLowerCase().includes(search) && 
+                    !s.address_tw.includes(search)) return false;
+                
+                // 狀態篩選
+                if (s.isOnline) {
+                    if (onlyEmpty && totalBikes > 0) return false;
+                    if (onlyFull && s.emp > 0) return false;
+                    if (onlyHasE && s.ybe === 0) return false;
+                } else {
+                    // 若無連線資料，不應顯示在這些特定狀態篩選中
+                    if (onlyEmpty || onlyFull || onlyHasE) return false;
+                }
+                return true;
+            });
+        }
+
+        function renderGrid(stations) {
+            const grid = document.getElementById('grid');
+            const displayList = stations.slice(0, 100);
+            let html = '';
+            
+            displayList.forEach(s => {
+                const total = s.yb2 + s.ybe;
+                let border = 'var(--border)';
+                let opacity = '1';
+
+                if (!s.isOnline) {
+                    border = 'var(--border)'; opacity = '0.6'; 
+                } else {
+                    if(total === 0) border = 'var(--text-sub)'; // 無車
+                    else if(s.emp === 0) border = 'var(--danger)'; // 滿站
+                    else if(s.ybe > 0) border = 'var(--primary)'; // 有電輔
+                }
+
+                html += `
+                <div class="card" onclick="openListModal('${s.station_no}')" style="border-left-color:${border}; opacity:${opacity}">
+                    <div class="card-header">
+                        <div class="card-title">${s.name_tw}</div>
+                    </div>
+                    <div class="card-sub">${s.district_tw}</div>
+                    <div class="stats-row">
+                        <div class="stat-box"><span class="stat-num c-yb2">${s.isOnline?s.yb2:'-'}</span><span class="stat-label">2.0</span></div>
+                        <div class="stat-box"><span class="stat-num c-ybe">${s.isOnline?s.ybe:'-'}</span><span class="stat-label">2.0E</span></div>
+                        <div class="stat-box"><span class="stat-num c-err">${s.isOnline?s.emp:'-'}</span><span class="stat-label">空位</span></div>
+                    </div>
+                </div>`;
+            });
+
+            if(stations.length === 0) html = '<div style="grid-column:1/-1; text-align:center; color:var(--text-sub)">無符合資料</div>';
+            else if(stations.length > 100) html += `<div style="grid-column:1/-1; text-align:center; padding:10px; color:var(--text-sub)">還有 ${stations.length - 100} 筆...</div>`;
+
+            grid.innerHTML = html;
+        }
+
+        function updateKPI(stations) {
+            let tSt = stations.length;
+            let tYb2 = 0, tYbe = 0;
+            let tNo = 0;   // 無車
+            let tFull = 0; // 滿站
+            
+            // 用於計算滿站率 (佔用率)
+            let totalBikesAccum = 0;
+            let totalCapAccum = 0;
+
+            let onlineCount = 0;
+
+            stations.forEach(s => {
+                if (s.isOnline) {
+                    onlineCount++;
+                    const bikes = s.yb2 + s.ybe;
+                    const cap = bikes + s.emp;
+
+                    tYb2 += s.yb2;
+                    tYbe += s.ybe;
+
+                    if (bikes === 0) tNo++;
+                    if (s.emp === 0) tFull++;
+
+                    // 僅計算有效站點（車位總數 > 0）的滿站率
+                    if (cap > 0) {
+                        totalBikesAccum += bikes;
+                        totalCapAccum += cap;
+                    }
+                }
+            });
+
+            // 計算覆蓋率 (以篩選後的總數 vs 有即時資料的數)
+            // 若全部都未掃描到，則顯示 0%
+            let coverage = tSt > 0 ? Math.round((onlineCount / tSt) * 100) : 0;
+            
+            // 計算平均停車率 (佔用率)
+            let occupancy = 0;
+            if (totalCapAccum > 0) {
+                occupancy = Math.round((totalBikesAccum / totalCapAccum) * 100);
+            }
+
+            const ani = (id, val) => document.getElementById(id).innerText = val.toLocaleString();
+            
+            ani('kpi-total', tSt);
+            document.getElementById('kpi-coverage').innerText = `${coverage}%`;
+            
+            ani('kpi-no-bikes', tNo);
+            ani('kpi-full-stations', tFull); // 滿站數
+            
+            document.getElementById('kpi-occupancy').innerText = `${occupancy}%`; // 停車率
+            
+            ani('kpi-ybe', tYbe);
+            ani('kpi-yb2', tYb2);
+        }
+
+        function initChart() {
+            const ctx = document.getElementById('statusChart').getContext('2d');
+            state.chart = new Chart(ctx, {
+                type: 'doughnut',
+                data: { labels:['正常','無車','滿站'], datasets:[{data:[1,0,0], backgroundColor:['#10b981','#64748b','#ef4444'], borderWidth:0}] },
+                options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'right'}} }
+            });
+        }
+        
+        function updateChart(stations) {
+            if(!state.chart) return;
+            let norm=0, empty=0, full=0;
+            
+            stations.forEach(s => {
+                if (s.isOnline) {
+                    const tot = s.yb2 + s.ybe;
+                    const emp = s.emp;
+                    if(tot===0) empty++; 
+                    else if(emp===0) full++; 
+                    else norm++;
+                }
+            });
+            
+            // 如果全部都是0 (例如剛載入)，避免圖表全空
+            if (norm+empty+full === 0) {
+                state.chart.data.datasets[0].data = [1,0,0]; // 預設
+            } else {
+                state.chart.data.datasets[0].data = [norm, empty, full];
+            }
+            state.chart.update();
+        }
+
+        // --- 視窗邏輯 ---
+        async function openListModal(sid) {
+            state.currentStationId = sid;
+            const s = state.staticMap[sid];
+            if(!s) return;
+            
+            document.getElementById('list-modal-overlay').style.display = 'flex';
+            document.getElementById('modal-title').innerText = s.name_tw;
+            document.getElementById('modal-sub').innerText = s.address_tw;
+            
+            const tbody = document.getElementById('bike-list-body');
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">載入中...</td></tr>';
+            
+            try {
+                const res = await fetch(`${CONFIG.DETAIL_API}?station_no=${sid}`);
+                const json = await res.json();
+                if(json.retCode === 1 && json.retVal) {
+                    renderBikeList(json.retVal);
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">無車輛</td></tr>';
+                }
+            } catch(e) { tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">載入失敗</td></tr>'; }
+        }
+
+        function renderBikeList(list) {
+            const tbody = document.getElementById('bike-list-body');
+            tbody.innerHTML = '';
+            if(list.length === 0) { tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">無符合車輛</td></tr>'; return; }
+            
+            // 排序
+            list.sort((a,b) => (b.battery_power||0) - (a.battery_power||0));
+            
+            list.forEach(b => {
+                const type = b.bike_type===2 ? '2.0E' : '2.0';
+                
+                let batTxt = '-';
+                let batCls = '';
+                if(b.battery_power != null && b.battery_power > 0) {
+                    batTxt = `${b.battery_power}%`;
+                    if(b.battery_power > 15) batCls = 'bat-high'; // >15 Green
+                    else if(b.battery_power > 5) batCls = 'bat-mid'; // 5-15 Orange
+                    else batCls = 'bat-low'; // <=5 Red
+                }
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td>${b.bike_no}</td><td>${type}</td><td class="bat-val ${batCls}">${batTxt}</td><td>${b.pillar_no}</td>`;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function openMapModal() {
+            if(!state.currentStationId) return;
+            const s = state.staticMap[state.currentStationId];
+            document.getElementById('map-modal-overlay').style.display = 'flex';
+            
+            setTimeout(() => {
+                if(!state.map) {
+                    state.map = L.map('detail-map').setView([s.lat, s.lng], 16);
+                    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(state.map);
+                } else {
+                    state.map.invalidateSize();
+                    state.map.setView([s.lat, s.lng], 16);
+                }
+                if(state.marker) state.map.removeLayer(state.marker);
+                state.marker = L.marker([s.lat, s.lng]).addTo(state.map).bindPopup(s.name_tw).openPopup();
+            }, 300);
+        }
+
+        function closeListModal() { document.getElementById('list-modal-overlay').style.display = 'none'; }
+        function closeMapModal() { document.getElementById('map-modal-overlay').style.display = 'none'; }
+    </script>
+</body>
+</html>
