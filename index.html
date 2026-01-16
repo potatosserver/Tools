@@ -9,16 +9,15 @@
     <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
     <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
     
-    <!-- 引入 PMTiles (讀取離線檔案) -->
-    <script src="https://unpkg.com/pmtiles@2.11.0/dist/pmtiles.js"></script>
+    <!-- 【修正】引入 PMTiles v3.2.0 (這是修復白畫面的關鍵) -->
+    <script src="https://unpkg.com/pmtiles@3.2.0/dist/pmtiles.js"></script>
 
     <style>
         body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
         
-        /* 地圖容器 */
         #map { position: absolute; top: 0; bottom: 0; width: 100%; }
 
-        /* 圖例 (Legend) 樣式 */
+        /* 圖例樣式 */
         #legend {
             position: absolute; bottom: 40px; right: 10px;
             background: rgba(255, 255, 255, 0.95);
@@ -30,16 +29,11 @@
             z-index: 10;
         }
         .legend-title { font-weight: bold; margin-bottom: 8px; font-size: 14px; text-align: center; }
-        .legend-item { display: flex; align-items: center; margin-bottom: 5px; cursor: pointer; }
-        .legend-item:hover { background-color: #f0f0f0; border-radius: 4px; }
+        .legend-item { display: flex; align-items: center; margin-bottom: 5px; }
         .dot { width: 12px; height: 12px; border-radius: 50%; margin-right: 8px; border: 1px solid rgba(0,0,0,0.1); flex-shrink: 0; }
         
-        /* 彈出視窗樣式優化 */
-        .maplibregl-popup-content {
-            border-radius: 10px;
-            padding: 15px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-        }
+        /* 彈出視窗樣式 */
+        .maplibregl-popup-content { border-radius: 10px; padding: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
         .popup-type { font-weight: bold; font-size: 1.1em; margin-bottom: 4px; display: block; }
         .popup-name { color: #555; }
     </style>
@@ -49,13 +43,15 @@
 <div id="map"></div>
 <div id="legend">
     <div class="legend-title">皮克敏種類</div>
-    <!-- 圖例內容會由 JS 自動生成 -->
 </div>
 
 <script>
-    // =========================================================
-    // 1. 設定顏色與翻譯對照表
-    // =========================================================
+    // 0. 錯誤捕捉 (如果還是白畫面，會跳出警告視窗)
+    window.addEventListener('error', function(e) {
+        alert("程式發生錯誤：" + e.message);
+    });
+
+    // 1. 設定顏色與翻譯
     const CATEGORIES = {
         'burger':      { name: '漢堡店', color: '#ff0000' },
         'sushi':       { name: '壽司店', color: '#00008b' },
@@ -76,15 +72,17 @@
         'hotel':       { name: '飯店', color: '#cd5c5c' }
     };
 
-    // =========================================================
-    // 2. 初始化地圖與 PMTiles
-    // =========================================================
-    const protocol = new pmtiles.Protocol();
-    maplibregl.addProtocol("pmtiles", protocol.tile);
+    // 2. 初始化 PMTiles
+    // 這裡使用 try-catch 防止 pmtiles 未載入導致崩潰
+    try {
+        const protocol = new pmtiles.Protocol();
+        maplibregl.addProtocol("pmtiles", protocol.tile);
+    } catch (e) {
+        alert("PMTiles 函式庫載入失敗，請檢查網路連線。");
+    }
 
     const map = new maplibregl.Map({
         container: 'map',
-        // 使用 Carto Light 底圖 (乾淨、讀取快)
         style: {
             "version": 8,
             "sources": {
@@ -96,62 +94,37 @@
                 },
                 "pikmin-source": {
                     "type": "vector",
-                    // 【關鍵設定】讀取同目錄下的檔案
-                    // 如果你在 GitHub Pages 上，它會自動抓取 https://.../Tools/pikmin.pmtiles
-                    "url": "pmtiles://pikmin.pmtiles"
+                    // 【重點】請確認這裡的網址是你的真實路徑
+                    // 為了避免路徑錯誤，建議直接填入 GitHub Pages 的完整網址
+                    "url": "pmtiles://https://potatosserver.github.io/Tools/pikmin.pmtiles"
                 }
             },
             "layers": [
-                {
-                    "id": "base-map",
-                    "type": "raster",
-                    "source": "osm-tiles",
-                    "minzoom": 0,
-                    "maxzoom": 19
-                }
+                { "id": "base-map", "type": "raster", "source": "osm-tiles", "minzoom": 0, "maxzoom": 19 }
             ]
         },
-        center: [121.5, 23.6], // 預設視角：台灣全島
+        center: [121.5, 23.6],
         zoom: 7,
-        maxZoom: 18,
-        hash: true // 在網址列記錄座標，方便分享
+        maxZoom: 18
     });
 
-    // 加入定位按鈕 (右上角)
-    map.addControl(new maplibregl.GeolocateControl({
-        positionOptions: { enableHighAccuracy: true },
-        trackUserLocation: true
-    }), 'top-right');
-
-    // 加入縮放按鈕
+    map.addControl(new maplibregl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: true }), 'top-right');
     map.addControl(new maplibregl.NavigationControl(), 'top-right');
 
-    // =========================================================
-    // 3. 地圖載入後的邏輯
-    // =========================================================
     map.on('load', () => {
-
-        // 構建顏色匹配表達式 (供 MapLibre 使用)
         const matchExpression = ['match', ['get', 'type']];
         for (const [key, info] of Object.entries(CATEGORIES)) {
             matchExpression.push(key, info.color);
         }
-        matchExpression.push('#aaaaaa'); // 未知類別預設灰色
+        matchExpression.push('#aaaaaa');
 
-        // 加入皮克敏點位圖層
         map.addLayer({
             'id': 'pikmin-points',
             'type': 'circle',
             'source': 'pikmin-source',
-            'source-layer': 'pikmin_layer', // 對應 Colab 中 tippecanoe -l 的名稱
+            'source-layer': 'pikmin_layer',
             'paint': {
-                // 圓點大小隨縮放變化
-                'circle-radius': [
-                    'interpolate', ['linear'], ['zoom'],
-                    10, 2,  // Zoom 10: 2px
-                    14, 4,  // Zoom 14: 4px
-                    16, 7   // Zoom 16: 7px
-                ],
+                'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 2, 14, 4, 16, 7],
                 'circle-color': matchExpression,
                 'circle-stroke-width': 1,
                 'circle-stroke-color': '#ffffff',
@@ -159,52 +132,25 @@
             }
         });
 
-        // 生成圖例 (Legend) HTML
-        const legendContainer = document.getElementById('legend');
-        for (const [key, info] of Object.entries(CATEGORIES)) {
-            const div = document.createElement('div');
-            div.className = 'legend-item';
-            div.innerHTML = `<div class="dot" style="background:${info.color}"></div>${info.name}`;
-            // 點擊圖例可以過濾 (進階功能預留)
-            legendContainer.appendChild(div);
-        }
-
-        // =====================================================
-        // 4. 互動事件 (點擊與滑鼠樣式)
-        // =====================================================
-        
-        // 點擊顯示資訊
+        // 點擊與互動事件
         map.on('click', 'pikmin-points', (e) => {
             const coordinates = e.features[0].geometry.coordinates.slice();
             const props = e.features[0].properties;
-            const typeKey = props.type;
-            const typeInfo = CATEGORIES[typeKey] || { name: '未知', color: '#333' };
-
-            // 確保 Popup 不會因為地圖移動而跑掉
-            while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
-                coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
-            }
-
-            new maplibregl.Popup()
-                .setLngLat(coordinates)
-                .setHTML(`
-                    <span class="popup-type" style="color:${typeInfo.color}">
-                        ${typeInfo.name}
-                    </span>
-                    <span class="popup-name">
-                        ${props.name || '未命名地點'}
-                    </span>
-                `)
-                .addTo(map);
+            const typeInfo = CATEGORIES[props.type] || { name: '未知', color: '#333' };
+            while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) { coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360; }
+            new maplibregl.Popup().setLngLat(coordinates).setHTML(`
+                <span class="popup-type" style="color:${typeInfo.color}">${typeInfo.name}</span>
+                <span class="popup-name">${props.name || '未命名地點'}</span>
+            `).addTo(map);
         });
 
-        // 滑鼠移入變手指
-        map.on('mouseenter', 'pikmin-points', () => {
-            map.getCanvas().style.cursor = 'pointer';
-        });
-        map.on('mouseleave', 'pikmin-points', () => {
-            map.getCanvas().style.cursor = '';
-        });
+        map.on('mouseenter', 'pikmin-points', () => { map.getCanvas().style.cursor = 'pointer'; });
+        map.on('mouseleave', 'pikmin-points', () => { map.getCanvas().style.cursor = ''; });
+
+        const legendContainer = document.getElementById('legend');
+        for (const [key, info] of Object.entries(CATEGORIES)) {
+            legendContainer.innerHTML += `<div class="legend-item"><div class="dot" style="background:${info.color}"></div>${info.name}</div>`;
+        }
     });
 </script>
 
