@@ -9,7 +9,7 @@
     <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
     <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
     
-    <!-- 【修正】引入 PMTiles v3.2.0 (這是修復白畫面的關鍵) -->
+    <!-- 引入 PMTiles v3.2.0 (關鍵版本) -->
     <script src="https://unpkg.com/pmtiles@3.2.0/dist/pmtiles.js"></script>
 
     <style>
@@ -28,14 +28,15 @@
             width: 140px;
             z-index: 10;
         }
-        .legend-title { font-weight: bold; margin-bottom: 8px; font-size: 14px; text-align: center; }
-        .legend-item { display: flex; align-items: center; margin-bottom: 5px; }
+        .legend-title { font-weight: bold; margin-bottom: 8px; font-size: 14px; text-align: center; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+        .legend-item { display: flex; align-items: center; margin-bottom: 5px; cursor: pointer; padding: 2px; }
+        .legend-item:hover { background: #f0f0f0; border-radius: 4px; }
         .dot { width: 12px; height: 12px; border-radius: 50%; margin-right: 8px; border: 1px solid rgba(0,0,0,0.1); flex-shrink: 0; }
         
         /* 彈出視窗樣式 */
-        .maplibregl-popup-content { border-radius: 10px; padding: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
+        .maplibregl-popup-content { border-radius: 10px; padding: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); min-width: 150px; }
         .popup-type { font-weight: bold; font-size: 1.1em; margin-bottom: 4px; display: block; }
-        .popup-name { color: #555; }
+        .popup-name { color: #555; display: block; margin-top: 4px; line-height: 1.4; }
     </style>
 </head>
 <body>
@@ -46,9 +47,13 @@
 </div>
 
 <script>
-    // 0. 錯誤捕捉 (如果還是白畫面，會跳出警告視窗)
+    // 全域錯誤監聽 (除錯用)
     window.addEventListener('error', function(e) {
-        alert("程式發生錯誤：" + e.message);
+        console.error(e);
+        // 如果是嚴重的初始化錯誤才跳窗
+        if(e.message.includes('pmtiles') || e.message.includes('Map')) {
+            // alert("程式錯誤：" + e.message); 
+        }
     });
 
     // 1. 設定顏色與翻譯
@@ -73,13 +78,8 @@
     };
 
     // 2. 初始化 PMTiles
-    // 這裡使用 try-catch 防止 pmtiles 未載入導致崩潰
-    try {
-        const protocol = new pmtiles.Protocol();
-        maplibregl.addProtocol("pmtiles", protocol.tile);
-    } catch (e) {
-        alert("PMTiles 函式庫載入失敗，請檢查網路連線。");
-    }
+    const protocol = new pmtiles.Protocol();
+    maplibregl.addProtocol("pmtiles", protocol.tile);
 
     const map = new maplibregl.Map({
         container: 'map',
@@ -94,8 +94,7 @@
                 },
                 "pikmin-source": {
                     "type": "vector",
-                    // 【重點】請確認這裡的網址是你的真實路徑
-                    // 為了避免路徑錯誤，建議直接填入 GitHub Pages 的完整網址
+                    // ★★★ 請確認這裡的檔名！如果你上傳的是 pikmin.pmtiles，請把下方改掉 ★★★
                     "url": "pmtiles://https://potatosserver.github.io/Tools/pikmin_final.pmtiles"
                 }
             },
@@ -103,27 +102,32 @@
                 { "id": "base-map", "type": "raster", "source": "osm-tiles", "minzoom": 0, "maxzoom": 19 }
             ]
         },
-        center: [121.5, 23.6],
+        center: [121.5, 23.6], // 預設視角：台灣
         zoom: 7,
-        maxZoom: 18
+        maxZoom: 18,
+        hash: true // 網址會記錄座標
     });
 
+    // 加入控制項 (定位與縮放)
     map.addControl(new maplibregl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: true }), 'top-right');
     map.addControl(new maplibregl.NavigationControl(), 'top-right');
 
     map.on('load', () => {
+        // 構建顏色匹配規則
         const matchExpression = ['match', ['get', 'type']];
         for (const [key, info] of Object.entries(CATEGORIES)) {
             matchExpression.push(key, info.color);
         }
-        matchExpression.push('#aaaaaa');
+        matchExpression.push('#aaaaaa'); // 預設顏色
 
+        // 加入圖層
         map.addLayer({
             'id': 'pikmin-points',
             'type': 'circle',
             'source': 'pikmin-source',
-            'source-layer': 'pikmin_layer',
+            'source-layer': 'pikmin_layer', // 這是 Tippecanoe 預設的圖層名稱
             'paint': {
+                // 圓點大小隨縮放變化
                 'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 2, 14, 4, 16, 7],
                 'circle-color': matchExpression,
                 'circle-stroke-width': 1,
@@ -132,21 +136,26 @@
             }
         });
 
-        // 點擊與互動事件
+        // 3. 點擊事件 (修復版：使用滑鼠座標)
         map.on('click', 'pikmin-points', (e) => {
-            const coordinates = e.features[0].geometry.coordinates.slice();
             const props = e.features[0].properties;
             const typeInfo = CATEGORIES[props.type] || { name: '未知', color: '#333' };
-            while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) { coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360; }
-            new maplibregl.Popup().setLngLat(coordinates).setHTML(`
-                <span class="popup-type" style="color:${typeInfo.color}">${typeInfo.name}</span>
-                <span class="popup-name">${props.name || '未命名地點'}</span>
-            `).addTo(map);
+            
+            // 使用 e.lngLat 而非 feature.geometry，避免多邊形資料導致崩潰
+            new maplibregl.Popup()
+                .setLngLat(e.lngLat)
+                .setHTML(`
+                    <span class="popup-type" style="color:${typeInfo.color}">${typeInfo.name}</span>
+                    <span class="popup-name">${props.name || '未命名地點'}</span>
+                `)
+                .addTo(map);
         });
 
-        map.on('mouseenter', 'pikmin-points', () => { map.getCanvas().style.cursor = 'pointer'; });
-        map.on('mouseleave', 'pikmin-points', () => { map.getCanvas().style.cursor = ''; });
+        // 滑鼠樣式變更
+        map.on('mouseenter', 'pikmin-points', () => map.getCanvas().style.cursor = 'pointer');
+        map.on('mouseleave', 'pikmin-points', () => map.getCanvas().style.cursor = '');
 
+        // 產生圖例
         const legendContainer = document.getElementById('legend');
         for (const [key, info] of Object.entries(CATEGORIES)) {
             legendContainer.innerHTML += `<div class="legend-item"><div class="dot" style="background:${info.color}"></div>${info.name}</div>`;
