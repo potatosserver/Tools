@@ -3,18 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>皮克敏全台離線地圖</title>
+    <title>皮克敏全台離線地圖 (已過濾未命名)</title>
     
-    <!-- 引入 MapLibre (地圖引擎) -->
+    <!-- 引入 MapLibre -->
     <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
     <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
     
-    <!-- 引入 PMTiles v3.2.0 (關鍵版本) -->
+    <!-- 引入 PMTiles v3.2.0 -->
     <script src="https://unpkg.com/pmtiles@3.2.0/dist/pmtiles.js"></script>
 
     <style>
         body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-        
         #map { position: absolute; top: 0; bottom: 0; width: 100%; }
 
         /* 圖例樣式 */
@@ -47,15 +46,6 @@
 </div>
 
 <script>
-    // 全域錯誤監聽 (除錯用)
-    window.addEventListener('error', function(e) {
-        console.error(e);
-        // 如果是嚴重的初始化錯誤才跳窗
-        if(e.message.includes('pmtiles') || e.message.includes('Map')) {
-            // alert("程式錯誤：" + e.message); 
-        }
-    });
-
     // 1. 設定顏色與翻譯
     const CATEGORIES = {
         'burger':      { name: '漢堡店', color: '#ff0000' },
@@ -94,7 +84,7 @@
                 },
                 "pikmin-source": {
                     "type": "vector",
-                    // ★★★ 請確認這裡的檔名！如果你上傳的是 pikmin.pmtiles，請把下方改掉 ★★★
+                    // ★★★ 請確認這裡的檔名 (pikmin_final.pmtiles 或 pikmin.pmtiles) ★★★
                     "url": "pmtiles://https://potatosserver.github.io/Tools/pikmin_final.pmtiles"
                 }
             },
@@ -102,32 +92,32 @@
                 { "id": "base-map", "type": "raster", "source": "osm-tiles", "minzoom": 0, "maxzoom": 19 }
             ]
         },
-        center: [121.5, 23.6], // 預設視角：台灣
+        center: [121.5, 23.6],
         zoom: 7,
         maxZoom: 18,
-        hash: true // 網址會記錄座標
+        hash: true
     });
 
-    // 加入控制項 (定位與縮放)
     map.addControl(new maplibregl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: true }), 'top-right');
     map.addControl(new maplibregl.NavigationControl(), 'top-right');
 
     map.on('load', () => {
-        // 構建顏色匹配規則
         const matchExpression = ['match', ['get', 'type']];
         for (const [key, info] of Object.entries(CATEGORIES)) {
             matchExpression.push(key, info.color);
         }
-        matchExpression.push('#aaaaaa'); // 預設顏色
+        matchExpression.push('#aaaaaa'); 
 
-        // 加入圖層
         map.addLayer({
             'id': 'pikmin-points',
             'type': 'circle',
             'source': 'pikmin-source',
-            'source-layer': 'pikmin_layer', // 這是 Tippecanoe 預設的圖層名稱
+            'source-layer': 'pikmin_layer',
+            
+            // ★★★ 過濾條件：只顯示 name 不等於空字串的地點 ★★★
+            'filter': ['!=', ['get', 'name'], ''],
+
             'paint': {
-                // 圓點大小隨縮放變化
                 'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 2, 14, 4, 16, 7],
                 'circle-color': matchExpression,
                 'circle-stroke-width': 1,
@@ -136,26 +126,23 @@
             }
         });
 
-        // 3. 點擊事件 (修復版：使用滑鼠座標)
+        // 3. 點擊事件
         map.on('click', 'pikmin-points', (e) => {
             const props = e.features[0].properties;
             const typeInfo = CATEGORIES[props.type] || { name: '未知', color: '#333' };
             
-            // 使用 e.lngLat 而非 feature.geometry，避免多邊形資料導致崩潰
             new maplibregl.Popup()
                 .setLngLat(e.lngLat)
                 .setHTML(`
                     <span class="popup-type" style="color:${typeInfo.color}">${typeInfo.name}</span>
-                    <span class="popup-name">${props.name || '未命名地點'}</span>
+                    <span class="popup-name">${props.name}</span>
                 `)
                 .addTo(map);
         });
 
-        // 滑鼠樣式變更
         map.on('mouseenter', 'pikmin-points', () => map.getCanvas().style.cursor = 'pointer');
         map.on('mouseleave', 'pikmin-points', () => map.getCanvas().style.cursor = '');
 
-        // 產生圖例
         const legendContainer = document.getElementById('legend');
         for (const [key, info] of Object.entries(CATEGORIES)) {
             legendContainer.innerHTML += `<div class="legend-item"><div class="dot" style="background:${info.color}"></div>${info.name}</div>`;
