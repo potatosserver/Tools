@@ -1,163 +1,212 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>象棋 AI - ffish-es6 版</title>
-<style>
-    body { font-family: sans-serif; background: #222; color: #fff; display: flex; flex-direction: column; align-items: center; padding: 20px; }
-    #status { padding: 10px; background: #444; border-radius: 8px; margin-bottom: 15px; color: #0f0; min-width: 320px; text-align: center; border: 1px solid #666; }
-    #board { position: relative; width: 360px; height: 400px; background: #e6b87c; border: 5px solid #8b5a2b; cursor: pointer; }
-    .line-h { position: absolute; background: #8b5a2b; height: 1px; left: 20px; width: 320px; z-index: 0; }
-    .line-v { position: absolute; background: #8b5a2b; width: 1px; top: 20px; height: 360px; z-index: 0; }
-    .piece { position: absolute; width: 38px; height: 38px; border-radius: 50%; background: #fdf5e6; border: 2px solid #8b5a2b; display: flex; justify-content: center; align-items: center; font-size: 22px; font-weight: bold; z-index: 10; transform: translate(-50%, -50%); transition: all 0.15s; }
-    .red { color: #c00; border-color: #c00; } .black { color: #000; border-color: #000; }
-    .selected { background: #ffeb3b; z-index: 20; box-shadow: 0 0 15px #ff0; }
-    .dot { position: absolute; width: 12px; height: 12px; background: rgba(0,200,0,0.6); border-radius: 50%; transform: translate(-50%, -50%); z-index: 5; pointer-events: none; }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>皮克敏全台離線地圖</title>
+    
+    <!-- 引入 MapLibre (地圖引擎) -->
+    <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+    <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
+    
+    <!-- 引入 PMTiles (讀取離線檔案) -->
+    <script src="https://unpkg.com/pmtiles@2.11.0/dist/pmtiles.js"></script>
+
+    <style>
+        body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        
+        /* 地圖容器 */
+        #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+
+        /* 圖例 (Legend) 樣式 */
+        #legend {
+            position: absolute; bottom: 40px; right: 10px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 12px; border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            font-size: 13px;
+            max-height: 50vh; overflow-y: auto;
+            width: 140px;
+            z-index: 10;
+        }
+        .legend-title { font-weight: bold; margin-bottom: 8px; font-size: 14px; text-align: center; }
+        .legend-item { display: flex; align-items: center; margin-bottom: 5px; cursor: pointer; }
+        .legend-item:hover { background-color: #f0f0f0; border-radius: 4px; }
+        .dot { width: 12px; height: 12px; border-radius: 50%; margin-right: 8px; border: 1px solid rgba(0,0,0,0.1); flex-shrink: 0; }
+        
+        /* 彈出視窗樣式優化 */
+        .maplibregl-popup-content {
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        .popup-type { font-weight: bold; font-size: 1.1em; margin-bottom: 4px; display: block; }
+        .popup-name { color: #555; }
+    </style>
 </head>
 <body>
 
-<h2 style="color:#f0c040">Pikafish AI (ffish-es6 修正版)</h2>
-<div id="status">正在初始化引擎模組...</div>
-<div id="board"></div>
+<div id="map"></div>
+<div id="legend">
+    <div class="legend-title">皮克敏種類</div>
+    <!-- 圖例內容會由 JS 自動生成 -->
+</div>
 
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+    // =========================================================
+    // 1. 設定顏色與翻譯對照表
+    // =========================================================
+    const CATEGORIES = {
+        'burger':      { name: '漢堡店', color: '#ff0000' },
+        'sushi':       { name: '壽司店', color: '#00008b' },
+        'ramen':       { name: '拉麵店', color: '#ffa500' },
+        'curry':       { name: '咖哩店', color: '#daa520' },
+        'italian':     { name: '義大利麵', color: '#800080' },
+        'sweet':       { name: '甜點店', color: '#ff69b4' },
+        'bakery':      { name: '麵包店', color: '#f5deb3' },
+        'cafe':        { name: '咖啡廳', color: '#8b4513' },
+        'restaurant':  { name: '一般餐廳', color: '#ff4500' },
+        'convenience': { name: '便利商店', color: '#00ced1' },
+        'forest':      { name: '森林/公園', color: '#228b22' },
+        'water':       { name: '水邊', color: '#1e90ff' },
+        'movie':       { name: '電影院', color: '#000000' },
+        'art':         { name: '美術館', color: '#9370db' },
+        'station':     { name: '車站', color: '#808080' },
+        'airport':     { name: '機場', color: '#4682b4' },
+        'hotel':       { name: '飯店', color: '#cd5c5c' }
+    };
 
-<script type="module">
-    // 1. 修正導入方式：使用預設導出 (Default Import)
-    import initFfish from 'https://esm.sh/ffish-es6';
+    // =========================================================
+    // 2. 初始化地圖與 PMTiles
+    // =========================================================
+    const protocol = new pmtiles.Protocol();
+    maplibregl.addProtocol("pmtiles", protocol.tile);
 
-    const MARGIN = 20, GAP = 40;
-    const PN = { 'k':'將', 'a':'士', 'b':'象', 'n':'馬', 'r':'車', 'c':'包', 'p':'卒', 'K':'帥', 'A':'仕', 'B':'相', 'N':'傌', 'R':'俥', 'C':'炮', 'P':'兵' };
-    
-    let ffish = null;   // 套件實例
-    let board = null;   // 棋盤物件
-    let selectedSq = null;
-    let isAiThinking = false;
-
-    async function start() {
-        try {
-            // 2. 執行工廠函數初始化模組
-            $('#status').text('正在載入 WebAssembly...');
-            ffish = await initFfish();
-            
-            // 3. 建立象棋棋盤 (ffish 語法類似 python-chess)
-            board = new ffish.Board("xiangqi");
-            
-            drawGrid();
-            render();
-            $('#status').text('準備就緒！請執紅先行');
-
-            // 4. 處理 AI 邏輯
-            // 注意：ffish-es6 主要提供棋規，若要「自動下棋」，我們需要呼叫它的內建搜索
-            // 或者模擬一個簡單的搜索邏輯。
-        } catch (e) {
-            console.error(e);
-            $('#status').text('載入失敗: ' + e.message);
-        }
-    }
-
-    function render() {
-        $('#board .piece, #board .dot').remove();
-        
-        // 使用 board.fen() 取得當前局面並繪製
-        const fen = board.fen().split(' ')[0];
-        const rows = fen.split('/');
-        
-        rows.forEach((row, r) => {
-            let c = 0;
-            for (let i = 0; i < row.length; i++) {
-                const char = row[i];
-                if (!isNaN(char)) c += parseInt(char);
-                else {
-                    const isRed = char === char.toUpperCase();
-                    const sq = String.fromCharCode(97 + c) + (9 - r);
-                    const $p = $('<div class="piece"></div>')
-                        .addClass(isRed ? 'red' : 'black')
-                        .text(PN[char])
-                        .css({ left: MARGIN + c * GAP, top: MARGIN + r * GAP })
-                        .attr('data-sq', sq);
-                    
-                    if (selectedSq === sq) $p.addClass('selected');
-                    $('#board').append($p);
-                    c++;
+    const map = new maplibregl.Map({
+        container: 'map',
+        // 使用 Carto Light 底圖 (乾淨、讀取快)
+        style: {
+            "version": 8,
+            "sources": {
+                "osm-tiles": {
+                    "type": "raster",
+                    "tiles": ["https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png"],
+                    "tileSize": 256,
+                    "attribution": "&copy; OpenStreetMap &copy; CARTO"
+                },
+                "pikmin-source": {
+                    "type": "vector",
+                    // 【關鍵設定】讀取同目錄下的檔案
+                    // 如果你在 GitHub Pages 上，它會自動抓取 https://.../Tools/pikmin.pmtiles
+                    "url": "pmtiles://pikmin.pmtiles"
                 }
+            },
+            "layers": [
+                {
+                    "id": "base-map",
+                    "type": "raster",
+                    "source": "osm-tiles",
+                    "minzoom": 0,
+                    "maxzoom": 19
+                }
+            ]
+        },
+        center: [121.5, 23.6], // 預設視角：台灣全島
+        zoom: 7,
+        maxZoom: 18,
+        hash: true // 在網址列記錄座標，方便分享
+    });
+
+    // 加入定位按鈕 (右上角)
+    map.addControl(new maplibregl.GeolocateControl({
+        positionOptions: { enableHighAccuracy: true },
+        trackUserLocation: true
+    }), 'top-right');
+
+    // 加入縮放按鈕
+    map.addControl(new maplibregl.NavigationControl(), 'top-right');
+
+    // =========================================================
+    // 3. 地圖載入後的邏輯
+    // =========================================================
+    map.on('load', () => {
+
+        // 構建顏色匹配表達式 (供 MapLibre 使用)
+        const matchExpression = ['match', ['get', 'type']];
+        for (const [key, info] of Object.entries(CATEGORIES)) {
+            matchExpression.push(key, info.color);
+        }
+        matchExpression.push('#aaaaaa'); // 未知類別預設灰色
+
+        // 加入皮克敏點位圖層
+        map.addLayer({
+            'id': 'pikmin-points',
+            'type': 'circle',
+            'source': 'pikmin-source',
+            'source-layer': 'pikmin_layer', // 對應 Colab 中 tippecanoe -l 的名稱
+            'paint': {
+                // 圓點大小隨縮放變化
+                'circle-radius': [
+                    'interpolate', ['linear'], ['zoom'],
+                    10, 2,  // Zoom 10: 2px
+                    14, 4,  // Zoom 14: 4px
+                    16, 7   // Zoom 16: 7px
+                ],
+                'circle-color': matchExpression,
+                'circle-stroke-width': 1,
+                'circle-stroke-color': '#ffffff',
+                'circle-opacity': 0.85
             }
         });
 
-        // 畫合法步提示
-        if (selectedSq) {
-            // ffish 的合法步取得方式
-            const moves = board.legalMoves(selectedSq);
-            moves.split(' ').forEach(m => {
-                if(!m) return;
-                const to = m.substring(2, 4); // 取得目標格，如 "e4e5" 中的 "e5"
-                const col = to.charCodeAt(0) - 97;
-                const row = 9 - parseInt(to[1]);
-                $('#board').append($('<div class="dot"></div>').css({ left: MARGIN + col * GAP, top: MARGIN + row * GAP }));
-            });
+        // 生成圖例 (Legend) HTML
+        const legendContainer = document.getElementById('legend');
+        for (const [key, info] of Object.entries(CATEGORIES)) {
+            const div = document.createElement('div');
+            div.className = 'legend-item';
+            div.innerHTML = `<div class="dot" style="background:${info.color}"></div>${info.name}`;
+            // 點擊圖例可以過濾 (進階功能預留)
+            legendContainer.appendChild(div);
         }
-    }
 
-    // 處理點擊移動
-    $('#board').on('click', function(e) {
-        if (isAiThinking || board.isGameOver()) return;
-
-        const offset = $(this).offset();
-        const x = Math.round((e.pageX - offset.left - MARGIN) / GAP);
-        const y = Math.round((e.pageY - offset.top - MARGIN) / GAP);
-        if (x < 0 || x > 8 || y < 0 || y > 9) return;
+        // =====================================================
+        // 4. 互動事件 (點擊與滑鼠樣式)
+        // =====================================================
         
-        const sq = String.fromCharCode(97 + x) + (9 - y);
-        const piece = board.pieceAt(sq);
+        // 點擊顯示資訊
+        map.on('click', 'pikmin-points', (e) => {
+            const coordinates = e.features[0].geometry.coordinates.slice();
+            const props = e.features[0].properties;
+            const typeKey = props.type;
+            const typeInfo = CATEGORIES[typeKey] || { name: '未知', color: '#333' };
 
-        if (piece && piece.includes('white')) { // ffish 內部紅方通常標註為 white
-            selectedSq = sq;
-        } else if (selectedSq) {
-            // 嘗試移動 (例如 "e3e4")
-            const moveStr = selectedSq + sq;
-            try {
-                board.push(moveStr); // 執行移動
-                selectedSq = null;
-                render();
-                if (!board.isGameOver()) {
-                    setTimeout(aiMove, 200);
-                }
-            } catch(err) {
-                selectedSq = null;
+            // 確保 Popup 不會因為地圖移動而跑掉
+            while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
+                coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
             }
-        }
-        render();
+
+            new maplibregl.Popup()
+                .setLngLat(coordinates)
+                .setHTML(`
+                    <span class="popup-type" style="color:${typeInfo.color}">
+                        ${typeInfo.name}
+                    </span>
+                    <span class="popup-name">
+                        ${props.name || '未命名地點'}
+                    </span>
+                `)
+                .addTo(map);
+        });
+
+        // 滑鼠移入變手指
+        map.on('mouseenter', 'pikmin-points', () => {
+            map.getCanvas().style.cursor = 'pointer';
+        });
+        map.on('mouseleave', 'pikmin-points', () => {
+            map.getCanvas().style.cursor = '';
+        });
     });
-
-    // 簡易 AI：呼叫引擎搜尋 (ffish 內建了 Fairy-Stockfish 的搜索功能)
-    function aiMove() {
-        isAiThinking = true;
-        $('#status').text('Pikafish 思考中...');
-        
-        setTimeout(() => {
-            // ffish 提供最佳步搜索，這裡設定搜尋深度或時間
-            // 注意：不同 build 具體方法名可能有異，這裡使用通用 API
-            const bestMove = board.bestMove(1000); // 搜尋 1000 毫秒
-            board.push(bestMove);
-            render();
-            $('#status').text(board.isCheck() ? '被將軍！輪到你了' : '輪到你了');
-            isAiThinking = false;
-        }, 50);
-    }
-
-    function drawGrid() {
-        const $b = $('#board');
-        for (let i = 0; i < 10; i++) $b.append($('<div class="line-h"></div>').css('top', MARGIN + i * GAP));
-        for (let i = 0; i < 9; i++) {
-            const h = (i === 0 || i === 8) ? 360 : 160;
-            $b.append($('<div class="line-v"></div>').css({ left: MARGIN + i * GAP, height: h }));
-            if (i > 0 && i < 8) $b.append($('<div class="line-v"></div>').css({ left: MARGIN + i * GAP, top: 220, height: 160 }));
-        }
-    }
-
-    start();
 </script>
+
 </body>
 </html>
