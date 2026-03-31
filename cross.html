@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>115學年度聯合查榜系統</title>
+    <style>
+        :root { --primary: #0284c7; --bg: #f8fafc; --card: #ffffff; --text: #0f172a; }
+        body { font-family: "PingFang TC", "Microsoft JhengHei", sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; line-height: 1.5; }
+        .container { max-width: 900px; margin: 0 auto; }
+        
+        /* 搜尋區 */
+        .search-container { background: var(--card); padding: 25px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); margin-bottom: 25px; }
+        .search-group { display: flex; gap: 10px; }
+        input { flex: 1; border: 2px solid #e2e8f0; padding: 14px; border-radius: 10px; font-size: 16px; transition: 0.3s; outline: none; }
+        input:focus { border-color: var(--primary); box-shadow: 0 0 0 4px rgba(2, 132, 199, 0.1); }
+        button { background: var(--primary); color: white; border: none; padding: 0 25px; border-radius: 10px; cursor: pointer; font-weight: 600; transition: 0.2s; }
+        button:hover { background: #0369a1; }
+        button:disabled { background: #cbd5e1; cursor: not-allowed; }
+
+        /* 狀態與載入 */
+        .status { text-align: center; font-size: 13px; color: #64748b; margin-bottom: 10px; }
+        .loading-overlay { display: none; text-align: center; padding: 20px; }
+        .spinner { border: 3px solid #f3f3f3; border-top: 3px solid var(--primary); border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; margin: 0 auto 10px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* 結果顯示 */
+        .result-section { display: none; }
+        .student-header { background: linear-gradient(135deg, #0284c7, #0369a1); color: white; padding: 20px; border-radius: 12px; margin-bottom: 15px; }
+        .student-header h2 { margin: 0; font-size: 24px; }
+        .school-card { background: white; border-radius: 12px; margin-bottom: 10px; padding: 15px; border-left: 5px solid var(--primary); display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: 0.2s; border-bottom: 1px solid #eee; }
+        .school-card:hover { transform: translateX(5px); background: #f0f9ff; }
+        .tag { font-size: 12px; background: #e0f2fe; color: #0369a1; padding: 3px 10px; border-radius: 20px; font-weight: bold; }
+
+        /* Modal 彈窗 */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); z-index: 999; }
+        .modal-content { background: white; width: 90%; max-width: 500px; margin: 10% auto; border-radius: 20px; overflow: hidden; display: flex; flex-direction: column; height: 70vh; }
+        .modal-header { padding: 20px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
+        .modal-body { padding: 10px; overflow-y: auto; }
+        .list-item { display: flex; justify-content: space-between; padding: 12px 15px; border-bottom: 1px solid #f1f5f9; cursor: pointer; }
+        .list-item:hover { background: #f1f5f9; }
+        .close-btn { font-size: 24px; cursor: pointer; color: #94a3b8; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div style="text-align: center; margin-bottom: 30px;">
+        <h1 style="margin-bottom: 5px;">🎓 115學年度大學/科大聯合查榜</h1>
+        <p style="color: #64748b;">支援全名搜尋、應試號碼及校系交叉查詢</p>
+    </div>
+
+    <div class="search-container">
+        <div id="dataStatus" class="status">正在從 GitHub 獲取最新榜單...</div>
+        <div class="search-group">
+            <input type="text" id="userInput" placeholder="請輸入姓名 (如: 葉學群) 或 8 位號碼..." disabled>
+            <button id="searchBtn" onclick="handleSearch()" disabled>搜尋</button>
+        </div>
+    </div>
+
+    <div id="loading" class="loading-overlay">
+        <div class="spinner"></div>
+        <div id="loadingText">處理大數據中...</div>
+    </div>
+
+    <div id="resultSection" class="result-section">
+        <!-- 搜尋結果會顯示在這裡 -->
+    </div>
+</div>
+
+<!-- Modal 彈窗 -->
+<div id="deptModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <div>
+                <h3 id="modalTitle" style="margin:0;">校系名單</h3>
+                <small id="modalSubTitle" style="color: #64748b;"></small>
+            </div>
+            <span class="close-btn" onclick="closeModal()">✕</span>
+        </div>
+        <div id="modalBody" class="modal-body"></div>
+    </div>
+</div>
+
+<script>
+    const GITHUB_JSON = "https://raw.githubusercontent.com/potatosserver/Tools/refs/heads/main/exam_local_db.json";
+    
+    let rawData = null;
+    let idToIndex = {};    // 號碼 -> {姓名, 錄取清單}
+    let nameToIndex = {};  // 姓名(遮蓋後) -> [號碼1, 號碼2]
+    let deptToIndex = {};  // 校系Key -> [號碼1, 號碼2]
+
+    // 初始化：載入資料
+    window.onload = async () => {
+        try {
+            const response = await fetch(GITHUB_JSON);
+            rawData = await response.json();
+            buildFastIndex();
+        } catch (e) {
+            document.getElementById('dataStatus').innerText = "❌ 資料載入失敗，請確認 GitHub 連結是否有效。";
+        }
+    };
+
+    // 遮蓋姓名邏輯：葉學群 -> 葉Ｏ群, 李千 -> 李Ｏ千
+    function maskName(name) {
+        if (!name || name.length < 2) return name;
+        if (name.includes('Ｏ')) return name; // 已經是碼過的就不用再處理
+
+        const first = name[0];
+        const last = name[name.length - 1];
+        return `${first}Ｏ${last}`;
+    }
+
+    function buildFastIndex() {
+        document.getElementById('loading').style.display = 'block';
+        
+        setTimeout(() => {
+            const types = { cac: "普通大學", jctv: "科技校院" };
+            
+            // 建立校系與號碼的對應
+            for (let type in types) {
+                const schools = rawData[type];
+                for (let sName in schools) {
+                    for (let dName in schools[sName]) {
+                        const ids = schools[sName][dName];
+                        const dKey = `${types[type]}-${sName}-${dName}`;
+                        deptToIndex[dKey] = ids;
+
+                        ids.forEach(id => {
+                            if (!idToIndex[id]) idToIndex[id] = [];
+                            idToIndex[id].push({ type: types[type], school: sName, dept: dName });
+                        });
+                    }
+                }
+            }
+
+            // 建立姓名與號碼的對應
+            for (let id in rawData.name_map) {
+                const name = rawData.name_map[id];
+                if (!nameToIndex[name]) nameToIndex[name] = [];
+                nameToIndex[name].push(id);
+            }
+
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('dataStatus').innerText = `✅ 系統就緒，共載入 ${Object.keys(idToIndex).length} 筆考生紀錄`;
+            document.getElementById('userInput').disabled = false;
+            document.getElementById('searchBtn').disabled = false;
+        }, 100);
+    }
+
+    function handleSearch() {
+        const query = document.getElementById('userInput').value.trim();
+        if (!query) return;
+
+        let targetIds = [];
+
+        if (/^\d{8}$/.test(query)) {
+            // 是號碼
+            targetIds = [query];
+        } else {
+            // 是姓名 -> 先轉成遮蓋格式 (例如 李千 -> 李Ｏ千)
+            const maskedQuery = maskName(query);
+            targetIds = nameToIndex[maskedQuery] || [];
+        }
+
+        renderResults(targetIds);
+    }
+
+    function renderResults(ids) {
+        const resDiv = document.getElementById('resultSection');
+        resDiv.innerHTML = "";
+        
+        if (ids.length === 0) {
+            alert("查無此人！請確認姓名或應試號碼是否正確。");
+            return;
+        }
+
+        resDiv.style.display = 'block';
+        
+        ids.forEach(id => {
+            const name = rawData.name_map[id] || "（普大考生，無姓名紀錄）";
+            const depts = idToIndex[id] || [];
+            
+            let html = `
+                <div class="student-header">
+                    <h2>${name}</h2>
+                    <div>應試號碼：${id}</div>
+                </div>
+            `;
+            
+            depts.forEach(item => {
+                const dKey = `${item.type}-${item.school}-${item.dept}`;
+                html += `
+                    <div class="school-card" onclick="openDeptModal('${dKey}')">
+                        <div>
+                            <div style="font-weight:bold; font-size:18px;">${item.school}</div>
+                            <div style="font-size:14px; color:#64748b;">${item.dept}</div>
+                        </div>
+                        <span class="tag">${item.type}</span>
+                    </div>
+                `;
+            });
+            
+            resDiv.innerHTML += html;
+        });
+    }
+
+    function openDeptModal(dKey) {
+        const ids = deptToIndex[dKey];
+        const [type, school, dept] = dKey.split('-');
+        
+        document.getElementById('modalTitle').innerText = dept;
+        document.getElementById('modalSubTitle').innerText = school;
+        
+        const body = document.getElementById('modalBody');
+        body.innerHTML = `<div style="padding:10px; font-size:13px; color:#64748b;">通過此校系篩選人數：${ids.length} 人</div>`;
+        
+        ids.forEach(id => {
+            const name = rawData.name_map[id] || "（無姓名紀錄）";
+            const div = document.createElement('div');
+            div.className = 'list-item';
+            div.innerHTML = `<span>${name}</span><span style="color:#cbd5e1; font-family:monospace;">${id}</span>`;
+            div.onclick = () => {
+                closeModal();
+                document.getElementById('userInput').value = id;
+                renderResults([id]);
+                window.scrollTo({top: 0, behavior: 'smooth'});
+            };
+            body.appendChild(div);
+        });
+        
+        document.getElementById('deptModal').style.display = 'block';
+    }
+
+    function closeModal() {
+        document.getElementById('deptModal').style.display = 'none';
+    }
+
+    window.onclick = (e) => {
+        if (e.target == document.getElementById('deptModal')) closeModal();
+    };
+</script>
+
+</body>
+</html>
