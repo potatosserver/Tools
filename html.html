@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Editor</title>
+    <!-- CodeMirror 資源 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/theme/monokai.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/xml/xml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/javascript/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/css/css.min.css"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/htmlmixed/htmlmixed.min.js"></script>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #272822;
+        }
+
+        .workspace {
+            display: flex;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        .editor-pane {
+            width: 50%;
+            height: 100%;
+            position: relative;
+        }
+
+        .CodeMirror {
+            width: 100%;
+            height: 100%;
+            font-size: 14px;
+            font-family: Consolas, 'Fira Code', Monaco, monospace;
+        }
+
+        /* 拖曳分隔線 */
+        .resizer {
+            width: 6px;
+            height: 100%;
+            background-color: #1a1a1a;
+            cursor: col-resize;
+            transition: background 0.2s;
+            z-index: 10;
+        }
+
+        .resizer:hover, .resizer.dragging {
+            background-color: #007acc;
+        }
+
+        .preview-pane {
+            flex: 1;
+            height: 100%;
+            background: #fff;
+            position: relative;
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+
+<div class="workspace">
+    <div class="editor-pane" id="editorPane">
+        <textarea id="code"></textarea>
+    </div>
+    <div class="resizer" id="resizer"></div>
+    <div class="preview-pane">
+        <iframe id="preview"></iframe>
+    </div>
+</div>
+
+<script>
+    // 預設代碼範本
+    const defaultCode = `<!DOCTYPE html>
+<html>
+<head>
+  <title>我的專案 - 預覽</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 90vh;
+      margin: 0;
+      background: #f0f2f5;
+    }
+    .card {
+      background: white;
+      padding: 24px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+    button {
+      padding: 8px 16px;
+      border: none;
+      background: #007acc;
+      color: white;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    button:hover { background: #005999; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2 id="title">即時預覽測試</h2>
+    <p>修改 &lt;title&gt; 會直接改變分頁標題！</p>
+    <br>
+    <button onclick="changeText()">點我試試</button>
+  </div>
+
+  <script>
+    function changeText() {
+      document.getElementById('title').innerText = 'JavaScript 運作正常！ 🎉';
+    }
+  <\/script>
+</body>
+</html>`;
+
+    // 1. 讀取儲存的比例與內容
+    const STORAGE_KEY_CODE = 'live_editor_saved_code';
+    const STORAGE_KEY_RATIO = 'live_editor_saved_ratio';
+
+    const editorPane = document.getElementById('editorPane');
+    const savedRatio = localStorage.getItem(STORAGE_KEY_RATIO);
+    if (savedRatio) {
+        editorPane.style.width = `${savedRatio}%`;
+    }
+
+    const savedCode = localStorage.getItem(STORAGE_KEY_CODE);
+    const initialCode = savedCode !== null ? savedCode : defaultCode;
+
+    // 2. 初始化 CodeMirror
+    const textarea = document.getElementById('code');
+    textarea.value = initialCode;
+
+    const editor = CodeMirror.fromTextArea(textarea, {
+        mode: 'htmlmixed',
+        theme: 'monokai',
+        lineNumbers: true,
+        lineWrapping: true,
+        tabSize: 2,
+        indentUnit: 2,
+        indentWithTabs: false
+    });
+
+    // 3. 即時預覽、同步 Title 與 LocalStorage
+    const preview = document.getElementById('preview');
+    let timeout = null;
+
+    function updatePreview() {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => {
+            const content = editor.getValue();
+
+            // 更新 iframe 內容
+            preview.srcdoc = content;
+
+            // 自動解析並更新瀏覽器標籤頁的 Title
+            const titleMatch = content.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+            if (titleMatch && titleMatch[1].trim()) {
+                document.title = titleMatch[1].trim();
+            } else {
+                document.title = 'Live Editor';
+            }
+
+            // 儲存至 LocalStorage
+            localStorage.setItem(STORAGE_KEY_CODE, content);
+        }, 250);
+    }
+
+    editor.on('change', updatePreview);
+    updatePreview(); // 首次執行載入
+
+    // 4. 左右比例拖曳調整與記憶
+    const resizer = document.getElementById('resizer');
+    let isDragging = false;
+    let currentWidthPercent = savedRatio || 50;
+
+    resizer.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        resizer.classList.add('dragging');
+        preview.style.pointerEvents = 'none'; // 防止 iframe 搶走滑鼠事件
+        document.body.style.userSelect = 'none';
+    });
+
+    window.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        
+        let newWidth = (e.clientX / window.innerWidth) * 100;
+        if (newWidth < 10) newWidth = 10;
+        if (newWidth > 90) newWidth = 90;
+
+        currentWidthPercent = newWidth;
+        editorPane.style.width = `${newWidth}%`;
+    });
+
+    window.addEventListener('mouseup', () => {
+        if (isDragging) {
+            isDragging = false;
+            resizer.classList.remove('dragging');
+            preview.style.pointerEvents = 'auto';
+            document.body.style.userSelect = 'auto';
+            editor.refresh();
+            
+            // 記住比例
+            localStorage.setItem(STORAGE_KEY_RATIO, currentWidthPercent);
+        }
+    });
+</script>
+
+</body>
+</html>
