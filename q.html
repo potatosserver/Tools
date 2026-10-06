@@ -1,0 +1,1148 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>管理學 歷屆試題刷題器 (第1~4章)</title>
+  <style>
+    :root {
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --text: #1e293b;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --success: #16a34a;
+      --success-bg: #dcfce7;
+      --danger: #dc2626;
+      --danger-bg: #fee2e2;
+      --info-bg: #eff6ff;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans TC", sans-serif;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      padding-bottom: 60px;
+    }
+
+    header {
+      background: #ffffff;
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+    }
+
+    .header-container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 16px 20px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    h1 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--primary);
+    }
+
+    .stats-badge {
+      display: flex;
+      gap: 12px;
+      font-size: 0.9rem;
+      background: var(--bg);
+      padding: 6px 14px;
+      border-radius: 9999px;
+      border: 1px solid var(--border);
+    }
+
+    .stats-badge span b {
+      color: var(--primary);
+    }
+
+    .filters-bar {
+      max-width: 900px;
+      margin: 16px auto;
+      padding: 0 20px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .chapter-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .btn {
+      padding: 6px 14px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: #ffffff;
+      color: var(--text);
+      font-size: 0.875rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn:hover {
+      background: #f1f5f9;
+    }
+
+    .btn.active {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+
+    .actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 0 20px;
+    }
+
+    .quiz-card {
+      background: var(--card-bg);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+      border: 1px solid var(--border);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      transition: box-shadow 0.2s;
+    }
+
+    .quiz-card:hover {
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.08);
+    }
+
+    .quiz-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .quiz-tag {
+      background: #e0f2fe;
+      color: #0369a1;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+
+    .quiz-title {
+      font-size: 1.05rem;
+      font-weight: 600;
+      margin-bottom: 16px;
+      line-height: 1.5;
+    }
+
+    .options-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .option-btn {
+      text-align: left;
+      padding: 12px 16px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: #ffffff;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: all 0.15s ease-in-out;
+      line-height: 1.4;
+    }
+
+    .option-btn:hover:not(:disabled) {
+      background-color: #f8fafc;
+      border-color: #cbd5e1;
+    }
+
+    .option-btn.correct {
+      background-color: var(--success-bg) !important;
+      border-color: var(--success) !important;
+      color: #14532d !important;
+      font-weight: 600;
+    }
+
+    .option-btn.wrong {
+      background-color: var(--danger-bg) !important;
+      border-color: var(--danger) !important;
+      color: #7f1d1d !important;
+      font-weight: 600;
+    }
+
+    .explanation-box {
+      margin-top: 16px;
+      padding: 14px 16px;
+      background: var(--info-bg);
+      border-left: 4px solid var(--primary);
+      border-radius: 0 8px 8px 0;
+      font-size: 0.9rem;
+      display: none;
+    }
+
+    .explanation-box.show {
+      display: block;
+      animation: fadeIn 0.3s;
+    }
+
+    .explanation-title {
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 4px;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="header-container">
+      <h1>📚 管理學 歷屆題庫刷題器</h1>
+      <div class="stats-badge">
+        <span>已作答: <b id="answered-count">0</b>/<span id="total-count">0</span></span>
+        <span>答對率: <b id="accuracy-rate">0%</b></span>
+      </div>
+    </div>
+  </header>
+
+  <div class="filters-bar">
+    <div class="chapter-tabs" id="chapter-tabs">
+      <button class="btn active" data-ch="all">全部章節 (101題)</button>
+      <button class="btn" data-ch="1">第一章：管理導論 (37題)</button>
+      <button class="btn" data-ch="2">第二章：管理學派 (40題)</button>
+      <button class="btn" data-ch="3">第三章：環境與分析 (8題)</button>
+      <button class="btn" data-ch="4">第四章：倫理與治理 (16題)</button>
+    </div>
+    <div class="actions">
+      <button class="btn" id="btn-toggle-answers">顯示全部解析</button>
+      <button class="btn" id="btn-reset">清除重練</button>
+    </div>
+  </div>
+
+  <main class="container" id="quiz-list"></main>
+
+  <script>
+    // 題庫資料 (收錄 1~4 章所有題目與精心整理的詳解)
+    const questions = [
+      // 第一章
+      {
+        id: "C1-1", ch: 1, tag: "101 鐵路特考",
+        q: "「企業在未來努力要達成的狀態，也可說是企業長期發展的藍圖」指的是：",
+        options: ["定位(position)", "策略(strategy)", "政策(policy)", "願景(vision)"],
+        ans: 3,
+        exp: "【解析】願景（Vision）是描繪組織未來的發展目標與長期藍圖；使命（Mission）則是企業當前存在的目的與核心價值觀。"
+      },
+      {
+        id: "C1-2", ch: 1, tag: "102 中華郵政",
+        q: "一家企業的經營宗旨稱之為何？",
+        options: ["政策(policy)", "目的(goal)", "願景(vision)", "使命(mission)"],
+        ans: 3,
+        exp: "【解析】使命（Mission）又稱經營宗旨，說明企業為什麼而存在、主要服務對象與根本職責。"
+      },
+      {
+        id: "C1-3", ch: 1, tag: "102 中華郵政",
+        q: "在管理的象徵性觀點中，下列敘述何者錯誤？",
+        options: ["管理者對經營成果有完全的掌握力", "管理者所交出的經營成果會受到外部因素的影響與束縛", "組織的績效會受到管理者所無法控制的因素所影響", "管理者必須在隨機、渾沌與充滿不確定性的環境中做決策"],
+        ans: 0,
+        exp: "【解析】(1) 為「全能性觀點（Omnipotent view）」的主張。象徵性觀點（Symbolic view）認為管理者受限於外部環境，績效成敗大部分由外在力量決定。"
+      },
+      {
+        id: "C1-4", ch: 1, tag: "101 鐵路特考",
+        q: "在同樣的努力下，「第一次就做好(Do right at first time)」是表示：",
+        options: ["高效率、低效果", "低效率、高效果", "高效率、高效果", "低效率、低效果"],
+        ans: 1,
+        exp: "【解析】原試題公布答案為 (2) 或常考作法。「Do things right」偏向效率，「Do the right thing」偏向效能；此題依據命題焦點，第一次就做好著重在結果目標的達成（效果/效能）。"
+      },
+      {
+        id: "C1-5", ch: 1, tag: "管理學概念",
+        q: "若一家車廠今年在相同的成本下比去年增加 5%的汽車產量，而沒有提高生產良率，在管理上，我們可以認定這家車廠是？",
+        options: ["兼具效率和效能", "提升了效率", "提升了效能", "產品品質良好"],
+        ans: 1,
+        exp: "【解析】投入相同（成本不變）而產出增加（產量增加），投入產出比提升即為「效率（Efficiency）」的提升。"
+      },
+      {
+        id: "C1-6", ch: 1, tag: "100 北大企管",
+        q: "效率的效果之間的關係為：",
+        options: ["有效率才會有效果", "有效果才會有效率", "效率就是效果", "二者相互獨立沒有關係", "以上皆是"],
+        ans: 3,
+        exp: "【解析】管理學大師彼得·杜拉克指出，效率（Doing things right）與效能/效果（Doing the right things）是兩個不同的構面，兩者彼此獨立，高效率不保證高效果。"
+      },
+      {
+        id: "C1-7", ch: 1, tag: "98 國營聯招",
+        q: "下列對於效率與效能的敘述何者有誤？",
+        options: ["效率著重資源的使用源", "效能＝產出／投入", "效率與效能皆為績效的衡量指標", "效能追求最高的目的"],
+        ans: 1,
+        exp: "【解析】「產出／投入」是『效率（Efficiency）』的衡量公式，效能（Effectiveness）則是目標達成的程度。"
+      },
+      {
+        id: "C1-8", ch: 1, tag: "100 國營聯招",
+        q: "企業組織的績效包含「效率」與「效能」，所謂「效能」指的是下列何者？",
+        options: ["「投入－產出」的比例觀念", "以最少費用獲致最多收益", "以最短時間生產最多產品", "Do the right thing"],
+        ans: 3,
+        exp: "【解析】效能（Effectiveness）是「做對的事（Do the right thing）」；效率（Efficiency）是「把事情做對（Do things right）」。"
+      },
+      {
+        id: "C1-9", ch: 1, tag: "101 鐵路特考",
+        q: "企業經營會面臨效率(efficiency)與效能(effectiveness)的問題。下列有關效率與效能的敘述，何者正確？",
+        options: ["效能是指成本問題", "效率是目標問題", "效能是指投入與產出的關係", "效率是指投入與產出的關係"],
+        ans: 3,
+        exp: "【解析】效率講究「手段、方法、投入與產出比」；效能講究「目標與結果之達成」。"
+      },
+      {
+        id: "C1-10", ch: 1, tag: "102 中華郵政",
+        q: "做對的事(do the right thing)是一種的概念。空格中應為下列何者？",
+        options: ["效率(efficiency)", "資源使用", "效能(effectiveness)", "公司治理(corporate governance)"],
+        ans: 2,
+        exp: "【解析】Do the right thing = 效能（Effectiveness）。"
+      },
+      {
+        id: "C1-11", ch: 1, tag: "管理學概念",
+        q: "管理主要的四大功能中通常不包括下列哪一項？",
+        options: ["組織", "領導", "執行", "規劃", "控制"],
+        ans: 2,
+        exp: "【解析】現代管理四大功能為：規劃（Planning）、組織（Organizing）、領導（Leading）、控制（Controlling）。不包括「執行」。"
+      },
+      {
+        id: "C1-12", ch: 1, tag: "102 中央企管",
+        q: "下列哪一項敘述最少用來描述管理的意義？",
+        options: ["科學", "藝術", "技藝", "定理", "實務"],
+        ans: 3,
+        exp: "【解析】管理兼具「科學（有系統的知識體系）」與「藝術（講究彈性經驗與人際）」，並非像自然科學般有絕對不變的「定理」。"
+      },
+      {
+        id: "C1-13", ch: 1, tag: "101 鐵路特考",
+        q: "「規劃、組織、指揮及控制企業各項資源，以達成組織目標的程序」是指：",
+        options: ["領導", "管理", "決策", "選擇"],
+        ans: 1,
+        exp: "【解析】此為管理（Management）的經典定義。"
+      },
+      {
+        id: "C1-14", ch: 1, tag: "101 中華郵政",
+        q: "下列何者為企業的功能？",
+        options: ["品牌、商標、包裝、廣告、規劃", "規劃、組織、用人、領導、控制", "生產、行銷、人事、財務、研發", "輸入、處理、輸出、分析、控制"],
+        ans: 2,
+        exp: "【解析】企業功能（五大業務）：生產與作業、行銷、人力資源（人事）、研發、財務；(2) 則為管理功能。"
+      },
+      {
+        id: "C1-15", ch: 1, tag: "102 中華電信",
+        q: "依據程序學派的觀點，管理功能中何者較需要用到人際關係技巧？",
+        options: ["規劃", "組織", "領導", "控制"],
+        ans: 2,
+        exp: "【解析】「領導（Leading）」涉及激勵員工、指導同仁、化解衝突與有效溝通，最需要人際關係技巧。"
+      },
+      {
+        id: "C1-16", ch: 1, tag: "102 郵政",
+        q: "下列何者不是管理的功能？",
+        options: ["規劃", "命令", "領導", "控制"],
+        ans: 1,
+        exp: "【解析】現代管理四功能：規劃、組織、領導、控制。「命令」並非獨立的管理功能。"
+      },
+      {
+        id: "C1-17", ch: 1, tag: "100 中華郵政",
+        q: "有關高階管理者的敘述，下列何者錯誤？",
+        options: ["負責有關組織經營與未來發展方向的決策", "必須將董事會所要求的目標轉化為第一線管理者可以執行的明確作業活動", "通常由組織的董事會所指派", "必須對管理階層的所有決策負責"],
+        ans: 1,
+        exp: "【解析】(2) 將長期目標轉化為日常具體作業活動並協調各部門，是「中階管理者」的職責。"
+      },
+      {
+        id: "C1-18", ch: 1, tag: "101 國營聯招",
+        q: "Katz 認為高階管理者相對於其他階層而言最需具備的能力為何？",
+        options: ["人際關係能力", "概念化能力", "技術能力", "適應能力"],
+        ans: 1,
+        exp: "【解析】Katz 三大管理技能：高階最需要「概念化技能」，基層最需要「技術技能」，「人際技能」則是各階層皆等同重要。"
+      },
+      {
+        id: "C1-19", ch: 1, tag: "101 國營聯招",
+        q: "Katz 認為中階層管理者必須具備的技能，下列何者為是？",
+        options: ["人際關係能力", "觀念化能力", "技術性能力", "以上皆是"],
+        ans: 3,
+        exp: "【解析】中階管理者承上啟下，三種技能都需要具備，其中人際技能尤為關鍵。"
+      },
+      {
+        id: "C1-20", ch: 1, tag: "102 國營聯招",
+        q: "根據 Katz 的觀點，管理者要了解公司內各業務間錯綜複雜的關係，須具備何種管理技能？",
+        options: ["人際關係技能", "觀念性技能", "技術性技能", "規劃性技能"],
+        ans: 1,
+        exp: "【解析】概念/觀念性技能（Conceptual skill）是指綜觀全局、洞悉組織各部分相互關聯與整合環境的能力。"
+      },
+      {
+        id: "C1-21", ch: 1, tag: "101 鐵路特考",
+        q: "下列那一項管理技能，對基層管理者最重要？",
+        options: ["決策能力", "技術性技能", "理念性技能", "全球管理技能"],
+        ans: 1,
+        exp: "【解析】基層管理者（第一線主管）直接面對基層作業人員，最需要「技術性技能」。"
+      },
+      {
+        id: "C1-22", ch: 1, tag: "100 中華郵政",
+        q: "凱茲(R.katz)認為管理者需要具備的能力中－「洞悉產業未來的發展趨勢」是屬於下列何種能力？",
+        options: ["概念性能力", "溝通性能力", "技術性能力", "人際關係能力"],
+        ans: 0,
+        exp: "【解析】洞悉外部環境與產業長期趨勢，屬於「概念性能力」。"
+      },
+      {
+        id: "C1-23", ch: 1, tag: "101 中華郵政",
+        q: "管理者需要具備對問題的解決與思考能力，以正確分析情境並作出決策，係為下列何種技能？",
+        options: ["組織技能(organize skill)", "技術技能(technical skill)", "人際技能(human skill)", "概念技能(conceptual skill)"],
+        ans: 3,
+        exp: "【解析】分析複雜情境並做決策的能力即為概念技能。"
+      },
+      {
+        id: "C1-24", ch: 1, tag: "管理學概念",
+        q: "依據 Katz(1974)的研究，基層管理者最需要的技能為何？",
+        options: ["技術", "人際", "概念", "政治"],
+        ans: 0,
+        exp: "【解析】基層管理需熟練專業日常作業與機具操作，因此最需要技術技能。"
+      },
+      {
+        id: "C1-25", ch: 1, tag: "101 中華電信",
+        q: "下列何種能力不是羅伯‧卡茲(Robert L. Katz)所認為成功管理者必須具備的核心能力？",
+        options: ["技術能力", "人際關係能力", "概念能力", "處理資訊能力"],
+        ans: 3,
+        exp: "【解析】Katz 的三大核心能力包含：技術、人際、概念。不含「處理資訊能力」（後者出自 Mintzberg 的角色理論）。"
+      },
+      {
+        id: "C1-26", ch: 1, tag: "102 中華電信",
+        q: "對高階主管而言，最重要的能力是：",
+        options: ["技術能力", "人際關係能力", "概念化能力", "政治能力"],
+        ans: 2,
+        exp: "【解析】高階主管負責擬定整體策略與方向，概念化能力最關鍵。"
+      },
+      {
+        id: "C1-27", ch: 1, tag: "98 國營聯招",
+        q: "Henry Mintzberg 將管理者角色分為三大類，下列何者非其所提的人際角色（Interpersonal Roles）？",
+        options: ["聯絡者（Liaison）", "代表人物（Figurehead）", "矯枉者（Disturbance Handler）", "領導者（Leader）"],
+        ans: 2,
+        exp: "【解析】人際角色包含：頭臉人物（代表人物）、領導者、聯絡人。矯枉者（危機/困擾處理者）屬於「決策角色」。"
+      },
+      {
+        id: "C1-28", ch: 1, tag: "100 國營聯招",
+        q: "依 Mintzberg 觀察管理者所扮演的角色，下列何者屬於決策角色？",
+        options: ["資源分配者", "聯絡人", "監督者", "發言人"],
+        ans: 0,
+        exp: "【解析】Mintzberg 四大決策角色：企業家、危機處理者、資源分配者、談判者。聯絡人屬人際角色；監督者與發言人屬資訊角色。"
+      },
+      {
+        id: "C1-29", ch: 1, tag: "101 國營聯招",
+        q: "Henry Mintzberg 所提出的管理十大角色中聯絡者（liaison）是屬於下列何種類型角色？",
+        options: ["人際關係角色", "資訊角色", "決策角色", "傳播角色"],
+        ans: 0,
+        exp: "【解析】聯絡者負責與外界建立網絡及內部橫向聯繫，屬「人際關係角色」。"
+      },
+      {
+        id: "C1-30", ch: 1, tag: "102 國營聯招",
+        q: "根據 Mintzberg 對管理者角色的分類，談判者（Negotiator）屬於何種角色？",
+        options: ["人際角色", "資訊角色", "決策角色", "協商角色"],
+        ans: 2,
+        exp: "【解析】談判者（協商者）屬於「決策角色」之一。"
+      },
+      {
+        id: "C1-31", ch: 1, tag: "100 鐵路特考",
+        q: "資深經理人須執行各種社交、法律及內外部典禮儀式等任務，例如落成剪綵、記者會、新產品發表會等之主持或講話，這屬於明茲伯格提出的何種管理者角色？",
+        options: ["談判者", "偵查者", "領導人物", "頭臉人物"],
+        ans: 3,
+        exp: "【解析】頭臉人物（Figurehead，又稱代表人物）扮演象徵性首領，負責代表組織出席各項禮儀性活動。"
+      },
+      {
+        id: "C1-32", ch: 1, tag: "管理學概念",
+        q: "當企業遇到緊急或突發狀況，管理者儘速擬定因應決策時，所扮演的角色是明茲伯格十項管理者角色中的那一項？",
+        options: ["創業家（entrepreneur）", "困擾處理者（disturbance handler）", "資源分配者（resource allocator）", "聯絡人（liaison）"],
+        ans: 1,
+        exp: "【解析】困擾處理者（Disturbance Handler）負責在組織面臨重大意外或非預期危機時採取修正行動。"
+      },
+      {
+        id: "C1-33", ch: 1, tag: "管理學概念",
+        q: "Henry Mintzberg 將管理者的十種角色分成人際、資訊、決策三大類，下列四種角色中，哪一種角色與其他三種角色不屬同一類？",
+        options: ["問題解決者", "資源分配者", "談判者", "頭臉人物"],
+        ans: 3,
+        exp: "【解析】(1)(2)(3) 皆為「決策角色」；(4) 頭臉人物為「人際角色」。"
+      },
+      {
+        id: "C1-34", ch: 1, tag: "101 中華郵政",
+        q: "根據明茲伯格在 1960 年代末期觀察管理者所做的工作，發現管理者扮演許多角色，其可區分成三大類，下列何者非屬之？",
+        options: ["專家角色", "決策角色", "資訊角色", "人際角色"],
+        ans: 0,
+        exp: "【解析】Mintzberg 三大類角色為：人際角色、資訊角色、決策角色。不含專家角色。"
+      },
+      {
+        id: "C1-35", ch: 1, tag: "管理學概念",
+        q: "明茲伯格(Mintzberg)將十種管理者角色，歸納出哪三大類？",
+        options: ["人際性角色、資訊性角色、決策性角色", "技術性角色、資訊性角色、決策性角色", "技術性角色、領導性角色、決策性角色", "人際性角色、資訊性角色、領導性角色"],
+        ans: 0,
+        exp: "【解析】三大類為人際角色（Interpersonal）、資訊角色（Informational）、決策角色（Decisional）。"
+      },
+      {
+        id: "C1-36", ch: 1, tag: "101 中華電信",
+        q: "依據 Mintzberg 的研究，下列何者非管理者在工作上扮演的角色？",
+        options: ["人際角色", "資訊角色", "決策角色", "中立角色"],
+        ans: 3,
+        exp: "【解析】管理者三大角色構面不含「中立角色」。"
+      },
+      {
+        id: "C1-37", ch: 1, tag: "管理學概念",
+        q: "不同的人會對相同的角色有不同期望，這種現象稱之為：",
+        options: ["角色知覺", "角色認同", "角色模糊", "角色衝突"],
+        ans: 0,
+        exp: "【解析】題目標準答案標示為 (1) 角色知覺（Role Perception）。若不同的期望導致個人左右為難則為角色衝突。"
+      },
+
+      // 第二章
+      {
+        id: "C2-1", ch: 2, tag: "管理學概念",
+        q: "科學管理學派的觀點為：",
+        options: ["利用電腦為工具", "運用系統分析從事組織運作", "管理原則需隨情境不同而有所調整", "使用科學方法找尋完成工作的最佳方法"],
+        ans: 3,
+        exp: "【解析】科學管理學派（泰勒 Taylor）的核心精神就是以科學方法尋找完成工作的「唯一最佳方法（One best way）」。"
+      },
+      {
+        id: "C2-2", ch: 2, tag: "100 中華郵政",
+        q: "強調有系統地研究工作方法與建立工作標準，以提高生產力並使工作更容易執行的管理理論為何？",
+        options: ["管理方格理論", "行政管理理論", "科層組織理論", "科學管理理論"],
+        ans: 3,
+        exp: "【解析】科學管理理論強調動作與時間研究、建立標準化作業程序以提升生產力。"
+      },
+      {
+        id: "C2-3", ch: 2, tag: "管理學概念",
+        q: "下列何者不是科學管理之父泰勒（Taylor）的貢獻？",
+        options: ["工廠管理", "獎工制度", "及時化(豐田經營模式)", "差別計件工資率"],
+        ans: 2,
+        exp: "【解析】及時化生產（JIT）是日本豐田汽車（大野耐一等人）於二十世紀中葉發展出來的生產模式，非泰勒所提。"
+      },
+      {
+        id: "C2-4", ch: 2, tag: "管理學概念",
+        q: "當泰勒使用科學管理方法研究最基層工人的工作時，費堯(H. Fayol)則專注在所有層級管理者之研究，他提出 14 項管理原則。其中：每位員工都應該只接受一位上司的命令，是為下列何項原則？",
+        options: ["分工原則", "目標統一原則", "主動原則", "指揮統一原則"],
+        ans: 3,
+        exp: "【解析】指揮統一原則（Unity of Command）：部屬只能接受一位主管的命令並向其報告。"
+      },
+      {
+        id: "C2-5", ch: 2, tag: "98 中山人資",
+        q: "下列何者不是馬克思•韋伯（Max Weber）提出的官僚體制（bureaucracy）中所注重特性？",
+        options: ["分工", "正式遴選", "績效導向", "權力階級"],
+        ans: 2,
+        exp: "【解析】Weber 理想官僚體制特性包括：勞動分工、權威層級、正式規則與規章、客觀非個人化（對事不對人）、正式遴選（依資格與考核）。「績效導向」是近代新公共管理或目標管理的詞彙。"
+      },
+      {
+        id: "C2-6", ch: 2, tag: "管理學概念",
+        q: "Weber 將權威(authority)區分為三種，下列何者不在其中？",
+        options: ["魅力型權威", "傳統權威", "理性法定權威", "交換型權威"],
+        ans: 3,
+        exp: "【解析】Weber 三大權威類型：傳統型權威、魅力型（奇里斯瑪型）權威、理性法定型權威。不包含交換型權威。"
+      },
+      {
+        id: "C2-7", ch: 2, tag: "管理學概念",
+        q: "有關費堯（Fayol）的管理 14 原則，下列何者錯誤？",
+        options: ["decentralization (集權原則,非分權)", "scalar chain", "stability of staff", "authority and responsibility"],
+        ans: 0,
+        exp: "【解析】費堯提出的是「集權原則（Centralization）」，而非分權（Decentralization）。"
+      },
+      {
+        id: "C2-8", ch: 2, tag: "管理學概念",
+        q: "下列何者非屬費堯（Henri Fayol）所提的十四項管理原則？",
+        options: ["分工原則（division of labor）", "權威原則（authority and responsibility）", "動作科學化原則（scientific movements）", "公平原則（equity）"],
+        ans: 2,
+        exp: "【解析】動作科學化（動作研究）是由吉爾布里斯夫婦（Gilbreths）提出，屬於泰勒科學管理學派範疇。"
+      },
+      {
+        id: "C2-9", ch: 2, tag: "100 中華郵政",
+        q: "下列哪一位學者提出了著名的科層體制(Bureaucracy)，做為管理大型企業的標準組織？",
+        options: ["柴斯特‧巴納德(Chester Barnard)", "馬克斯‧韋伯(Max Weber)", "亨利‧費堯(Henri Fayol)", "非特列‧泰勒(Frederick Taylor)"],
+        ans: 1,
+        exp: "【解析】韋伯（Max Weber）被譽為「組織理論之父」，提出科層體制（官僚體制）。"
+      },
+      {
+        id: "C2-10", ch: 2, tag: "102 中華郵政",
+        q: "韋伯(Max Weber)所提出的官僚體制(Bureaucracy)不具備下列何項特徵？",
+        options: ["專業分工", "講究人情關係", "層級明確", "具備詳細的運作規範"],
+        ans: 1,
+        exp: "【解析】官僚組織強調「對事不對人（非個人化關係）」，嚴格避免因人情關係而偏頗。"
+      },
+      {
+        id: "C2-11", ch: 2, tag: "管理學概念",
+        q: "提出「組織理想型態(ideal type)」的學者為下列何者？",
+        options: ["泰勒(Taylor)", "韋伯(Weber)", "梅育(Mayo)", "甘特(Gantt)"],
+        ans: 1,
+        exp: "【解析】韋伯將官僚體制視為最理性、有效率的組織「理想型態（Ideal type）」。"
+      },
+      {
+        id: "C2-12", ch: 2, tag: "100 中山企管",
+        q: "Herbert Simon 對決策者行為的研究，認為大多數管理者做決策時是：",
+        options: ["威性的", "主觀理性的", "有限度理性的", "最佳化的"],
+        ans: 2,
+        exp: "【解析】賽蒙（Simon）提出「有限理性（Bounded rationality）」理論，認為決策者受限於資訊與認知能力，只能追求「滿意解」而非「最佳解」。"
+      },
+      {
+        id: "C2-13", ch: 2, tag: "102 中華電信",
+        q: "管理者所作的決策大多屬於下列何者？",
+        options: ["理性決策", "盲目猜測", "有限理性", "隨機決策"],
+        ans: 2,
+        exp: "【解析】現實中環境充滿不確定性且時間精力有限，管理者決策多屬「有限理性」。"
+      },
+      {
+        id: "C2-14", ch: 2, tag: "101 國營聯招",
+        q: "有限理性是依據於下列何者？",
+        options: ["理性模型", "行為模型", "非理性模型", "確定性決策"],
+        ans: 2,
+        exp: "【解析】考題標記答案為 (3)（亦常歸類於行為決策模式）。決策者受限制而無法達到純粹客觀理性。"
+      },
+      {
+        id: "C2-15", ch: 2, tag: "管理學概念",
+        q: "關於理性決策模式與準理性決策模式之敘述，下列何者正確？",
+        options: ["準理性決策模式追求長期績效", "理性決策模式缺乏彈性應變能力", "準理性決策模式追求最佳解", "理性決策模式缺會發生系統性偏差"],
+        ans: 1,
+        exp: "【解析】理性決策模式假設資訊完全且依循固定邏輯程序，在現實多變環境中缺乏動態彈性應變力。"
+      },
+      {
+        id: "C2-16", ch: 2, tag: "管理學概念",
+        q: "有關 Simon 所提出的管理決策三部曲，下列何者為非？",
+        options: ["設計活動", "情報活動", "組織活動", "智慧活動"],
+        ans: 2,
+        exp: "【解析】Simon 的決策程序三步驟：情報活動（Intelligence）、設計活動（Design）、抉擇活動（Choice，亦有譯為智慧/選擇活動）。不包含「組織活動」。"
+      },
+      {
+        id: "C2-17", ch: 2, tag: "100 鐵路特考",
+        q: "下列何者說明冗員漸增的原理，認為工作對時間的需求有極大彈性，因為工作可被隨意擴展以填滿法定工作時間，且官員比較喜歡增加部屬、而不願增加競爭對手？",
+        options: ["莫非定律", "彼得原理", "帕金森定律", "柏拉圖原理"],
+        ans: 2,
+        exp: "【解析】帕金森定律（Parkinson's Law）：組織官僚傾向膨脹下屬，工作總會拖延到用滿所有可用時間為止。"
+      },
+      {
+        id: "C2-18", ch: 2, tag: "100 中山企管",
+        q: "霍桑研究(Hawthorne Studies)最重要的發現之一是_____對產出的影響。",
+        options: ["參與式決策", "照明設施", "人際關係", "員工工作滿意度"],
+        ans: 2,
+        exp: "【解析】霍桑實驗發現，非正式組織、員工心理情感與「人際關係（社會互動）」才是影響生產力的最主要因素。"
+      },
+      {
+        id: "C2-19", ch: 2, tag: "100 中華郵政",
+        q: "下列理論中，何者興起了人際關係運動的風潮，此運動強調管理為員工提供社會需求的重要性？",
+        options: ["官僚體系(bureaucracy)", "行政理論(administrative theory)", "霍桑研究(Hawthorne study)", "權變理論(contingency approach)"],
+        ans: 2,
+        exp: "【解析】梅歐（Elton Mayo）主持的霍桑研究開啟了「人群關係學派（人際關係運動）」。"
+      },
+      {
+        id: "C2-20", ch: 2, tag: "101 中華郵政",
+        q: "下列何者非為霍桑實驗的重要發現？",
+        options: ["開啟了以行為為主的管理思想", "工作中的人性因素", "工作實體環境的重要", "群體規範的影響"],
+        ans: 2,
+        exp: "【解析】霍桑實驗原想證明「照明度等實體環境」的重要性，結果發現即使照明降低生產力仍提高，推翻了實體環境為關鍵的假設。"
+      },
+      {
+        id: "C2-21", ch: 2, tag: "管理學概念",
+        q: "下列何者是霍桑實驗對於「人在組織內部行為模式」的結論？",
+        options: ["提高廠房的照明度可以提高員工生產力", "降低廠房的照明度會降低員工生產力", "團體的績效與團隊的規範會影響員工個人的績效表現", "員工團隊精神的高低與績效表現沒有關係"],
+        ans: 2,
+        exp: "【解析】非正式群體的規範與社會壓力會直接約束與引導個人在團隊中的產出表現。"
+      },
+      {
+        id: "C2-22", ch: 2, tag: "98 國營聯招",
+        q: "下列有關霍桑研究的敘述，何者有誤？",
+        options: ["以科學管理觀點設計實驗", "開啟行為學派大門", "代表人物為霍桑（Hawthorne）", "扭轉「視工人如機器」的看法"],
+        ans: 2,
+        exp: "【解析】霍桑是美國西方電器公司的「廠名（Hawthorne Works）」，並非學者姓名；代表人物為梅歐教授（Elton Mayo）。"
+      },
+      {
+        id: "C2-23", ch: 2, tag: "100 國營聯招",
+        q: "梅歐（Mayo）的霍桑研究中，下列何者為其主要發現之一：",
+        options: ["權利與責任須相稱", "診斷管理問題時須仰賴行為科學", "員工士氣與生產力是直接相關的", "工作環境的優劣與生產力並無顯著相關"],
+        ans: 3,
+        exp: "【解析】研究發現物理工作環境的改變對生產力無決定性影響，社會與心理因素才是關鍵。"
+      },
+      {
+        id: "C2-24", ch: 2, tag: "100 中山企管",
+        q: "McGregor 提出 Y 理論，對人性行為有些基本假設，下列何者屬其中之一？",
+        options: ["追求物質滿足", "工作上願意負責", "需求層級化", "工作合理化"],
+        ans: 1,
+        exp: "【解析】Y 理論假設人性喜好工作、富創造力、能夠自我控制並主動承擔責任。"
+      },
+      {
+        id: "C2-25", ch: 2, tag: "管理學概念",
+        q: "下列何者不屬於 Theory Y 的管理行為？",
+        options: ["以員工為中心", "專制", "關懷部屬", "支持的行為"],
+        ans: 1,
+        exp: "【解析】「專制領導、嚴格監督」屬於 Theory X 的管理手段。"
+      },
+      {
+        id: "C2-26", ch: 2, tag: "管理學概念",
+        q: "麥克里高（McGregor）提出的何種理論假定人們視工作如同遊戲或休息般自然，會自我督促與控制，也會學習接受並擔負責任？",
+        options: ["O", "X", "Y", "Z"],
+        ans: 2,
+        exp: "【解析】視工作為自然、會自我指導與負責者為「Y 理論」。"
+      },
+      {
+        id: "C2-27", ch: 2, tag: "101 鐵路特考",
+        q: "管理者對企業人力資源本質的看法，基本上可歸納二種基本人性假設，即「X 理論」與「Y 理論」。下列敘述何者不屬於「X 理論」的主張？",
+        options: ["人具有強烈企圖心與責任感", "人天性懶惰", "人不愛負責", "人缺乏企圖心"],
+        ans: 0,
+        exp: "【解析】具有強烈企圖心與責任感為「Y 理論」之主張。"
+      },
+      {
+        id: "C2-28", ch: 2, tag: "管理學概念",
+        q: "有關 Y 理論與 X 理論的敘述，下列何者錯誤？",
+        options: ["Y 理論認為將工作的心力與體力之消耗，視為遊戲與休息", "Y 理論認為多數人具有相當的想像力與創造力", "X 理論認為對目標的承諾，視為對成就動機的一種獎勵", "X 理論認為員工在工作上不喜歡負責、寧願被人指導"],
+        ans: 2,
+        exp: "【解析】認為對目標的承諾是成就獎勵的一部分是「Y 理論」的假設。"
+      },
+      {
+        id: "C2-29", ch: 2, tag: "98 國營聯招",
+        q: "下列敘述何者為非？",
+        options: ["Z 理論為人性的權變理論", "Y 理論主張性善", "Herzberg 雙因子理論為保健及激勵因子", "X 理論主張組織控制"],
+        ans: 0,
+        exp: "【解析】威廉·大內（William Ouchi）提出的 Z 理論是融合日美文化特質的管理制度模式（長期雇用、共識決等），而非「人性的權變理論」。"
+      },
+      {
+        id: "C2-30", ch: 1, tag: "100 中華郵政",
+        q: "下列何項理論認為人是規避責任、討厭工作及被動的，故管理上必須強調監督控制技巧？",
+        options: ["W 理論", "X 理論", "Y 理論", "Z 理論"],
+        ans: 1,
+        exp: "【解析】認為人性本惡、好逸惡勞、逃避責任為「X 理論」。"
+      },
+      {
+        id: "C2-31", ch: 2, tag: "101 中華電信",
+        q: "麥格理高(McGregor)認為「假設人們一般都是懶惰」符合下列哪一種理論的敘述？",
+        options: ["X 理論", "Y 理論", "社會需要理論", "生理需要理論"],
+        ans: 0,
+        exp: "【解析】懶惰好逸惡勞為「X 理論」。"
+      },
+      {
+        id: "C2-32", ch: 2, tag: "101 中華郵政",
+        q: "在管理學派中，又可稱為「作業研究」或「管理科學」之學派，係為下列何者？",
+        options: ["計量管理學派", "科學管理學派", "一般行政學派", "行為學派"],
+        ans: 0,
+        exp: "【解析】計量管理學派（Quantitative approach）又稱作業研究（OR）或管理科學（Management Science）。"
+      },
+      {
+        id: "C2-33", ch: 2, tag: "102 中央企管",
+        q: "管理科學學派的特徵不包括下列哪項？",
+        options: ["員工間關係的重視", "將管理視為一種科學", "相關計量工具源自於第二次世界大戰期間", "強調效率的追求", "作業研究為較具代表性的分析工具之一"],
+        ans: 0,
+        exp: "【解析】重視員工間人際關係與心理層面的是「行為科學/人群關係學派」，計量管理偏重數學模型運算。"
+      },
+      {
+        id: "C2-34", ch: 2, tag: "100 中華郵政",
+        q: "下列何項管理思想是運用數學符號與方程式來解決管理的問題，從模式的建立來求取最佳解？",
+        options: ["系統理論", "權變理論", "管理科學", "層級結構"],
+        ans: 2,
+        exp: "【解析】管理科學（Management Science）運用數學模式與統計定量工具求解。"
+      },
+      {
+        id: "C2-35", ch: 2, tag: "管理學概念",
+        q: "下列何者不是馬斯洛的需求層級理論裡的需求層次？",
+        options: ["生理需求", "安全需求", "社會責任需求", "自我實現需求"],
+        ans: 2,
+        exp: "【解析】Maslow 五大需求：生理、安全、社會（愛與歸屬）、尊重、自我實現。不包含「社會責任需求」。"
+      },
+      {
+        id: "C2-36", ch: 2, tag: "100 國營聯招",
+        q: "身為管理者的你，相信沒有最好的管理方法，只有依情況而定出適合的方法來實行，你應該屬於何種學派？",
+        options: ["系統學派", "權變學派", "管理過程學派", "科學管理學派"],
+        ans: 1,
+        exp: "【解析】權變學派（Contingency School）核心思維：「沒有萬靈丹，一切因情境而定（It depends）」。"
+      },
+      {
+        id: "C2-37", ch: 2, tag: "管理學概念",
+        q: "根據資源基礎理論，何者不是核心資源應具備的特性？",
+        options: ["價值性", "獨特性", "稀有性", "互補性"],
+        ans: 3,
+        exp: "【解析】VRIO 模型核心資源特性：價值性（Valuable）、稀少性（Rare）、難以模仿性（Inimitable/獨特性）、組織化（Organized）。不含互補性。"
+      },
+      {
+        id: "C2-38", ch: 2, tag: "管理學概念",
+        q: "下列管理理論的代表人物，何者有誤？",
+        options: ["管理科學學派-梅歐（Elton Mayo）", "官僚學派-韋伯（Max Weber）", "管理程序學派-費堯（Henri Fayol）", "科學管理學派-泰勒（Frederick W. Taylor）"],
+        ans: 0,
+        exp: "【解析】梅歐（Elton Mayo）是「人群關係學派（霍桑實驗）」代表人物，非管理科學學派。"
+      },
+      {
+        id: "C2-39", ch: 2, tag: "102 中華郵政",
+        q: "有關管理理論之敘述，下列何者錯誤？",
+        options: ["梅歐(Mayo)做了許多名為霍桑的實驗，探討人的行為如何受到環境影響而改變", "麥克葛瑞格(McGregor)提出 Z 理論，說明管理者對人性的基本看法", "裘蘭(Juran)提出品質三部曲作為品質管理之三項基本程序", "費堯(H.Fayol)提出十四點管理原則，區分管理功能與企業功能"],
+        ans: 1,
+        exp: "【解析】McGregor 提出的是「X 理論與 Y 理論」；Z 理論由威廉·大內（William Ouchi）提出。"
+      },
+      {
+        id: "C2-40", ch: 2, tag: "管理學概念",
+        q: "下列管理學者與其主張之組合，何者有誤？",
+        options: ["泰勒 F. Taylor → 例外管理", "韋伯 M. Weber → 魅力型職權", "巴納德 C. Barnard → 職權接受論", "費堯 H. Fayol → 霍桑效應"],
+        ans: 3,
+        exp: "【解析】霍桑效應（Hawthorne Effect）是梅歐（Mayo）所主持的霍桑實驗成果，費堯是現代經營管理之父（行政管理學派）。"
+      },
+
+      // 第三章
+      {
+        id: "C3-1", ch: 3, tag: "98 中山人資",
+        q: "今天如果某家汽車公司計畫改變其所生產的卡車外觀烤漆圖案，因為這家汽車公司相信未來會有越來越多的女性購買者……，請問，此例是何種類型的環境偵測？",
+        options: ["情境（scenario）", "預測（forecasting）", "標竿管理（benchmarking）", "競爭者情報（competitor intelligence）"],
+        ans: 1,
+        exp: "【解析】對未來趨勢的估計並提前做出應對計畫，屬於「預測（Forecasting）」。"
+      },
+      {
+        id: "C3-2", ch: 3, tag: "101 中華郵政",
+        q: "「PEST」分析是企業檢閱其外部環境的一種方法，其中 E 指的是下列何者？",
+        options: ["Effect", "Evaluate", "Efficiency", "Economic"],
+        ans: 3,
+        exp: "【解析】PEST 分析代表大環境四要素：P: Political (政治)、E: Economic (經濟)、S: Social (社會文化)、T: Technological (科技)。"
+      },
+      {
+        id: "C3-3", ch: 3, tag: "管理學概念",
+        q: "企業環境分為一般環境（General Environment）與任務環境（Task Environment），下列何者屬於任務環境：",
+        options: ["政治情勢", "社會文化", "經濟環境", "供應商"],
+        ans: 3,
+        exp: "【解析】任務環境（個體/特定環境）直接影響組織營運，包括：顧客、供應商、競爭者、壓力團體。其餘為一般環境。"
+      },
+      {
+        id: "C3-4", ch: 3, tag: "102 郵政",
+        q: "下列何者不是組織所面臨的一般環境要素？",
+        options: ["經濟情勢", "政治與法律情勢", "科技發展情勢", "國防武器採購金額的變化"],
+        ans: 3,
+        exp: "【解析】國防採購金額變化是特定產業的專門預算，不屬於總體/一般環境（PEST）的廣泛共通要素。"
+      },
+      {
+        id: "C3-5", ch: 3, tag: "100 鐵路特考",
+        q: "在現代社會中，「時間就是金錢」，市場競爭要求速度勝過一切，最後的贏家往往是那些速度快、反應靈敏、彈性佳的小公司。此種對速度的要求，反映了下列那一環境對於企業經營的影響？",
+        options: ["全球環境", "人口統計變數環境", "競爭環境", "自然環境"],
+        ans: 2,
+        exp: "【解析】速度與彈性回應市場威脅，直接反映了「競爭環境（Competitive environment）」的激烈度。"
+      },
+      {
+        id: "C3-6", ch: 3, tag: "98 國營聯招",
+        q: "許多醫院向晶華飯店學習，以縮短病人的住院手續流程，是使用下列哪一種績效改善工具？",
+        options: ["排程管理", "標竿管理", "資訊控制", "財務控制"],
+        ans: 1,
+        exp: "【解析】跨業向業界典範學習最佳實務（Best practice）為「標竿管理（Benchmarking）」。"
+      },
+      {
+        id: "C3-7", ch: 3, tag: "管理學概念",
+        q: "在不同產業中，由具有類似功能或業務的其他公司中，挑選出其中績效表現最好的公司，當作是本公司比較學習的對象，稱之為？",
+        options: ["內部標竿", "外部標竿", "功能標竿", "以上皆非"],
+        ans: 2,
+        exp: "【解析】針對特定業務功能（如發票處理、物流配送）跨產業尋找標竿，稱為「功能標竿（Functional Benchmarking）」。"
+      },
+      {
+        id: "C3-8", ch: 3, tag: "管理學概念",
+        q: "組織以相同作業流程中的最佳者為標竿，稱為：",
+        options: ["競爭標竿管理", "內部標竿管理", "功能標竿管理", "外部標竿管理"],
+        ans: 2,
+        exp: "【解析】針對作業流程功能之最佳實務進行比對改善，屬「功能標竿管理」。"
+      },
+
+      // 第四章
+      {
+        id: "C4-1", ch: 4, tag: "100 中山企管",
+        q: "是指企業內一套由管理者倡導與員工所認同的行為準則，用來處理企業與消費者、供應者、勞工…等關係。",
+        options: ["企業核心價值觀", "企業倫理", "企業社會責任", "企業使命"],
+        ans: 1,
+        exp: "【解析】企業倫理（Business Ethics）是一套指導企業及其成員處理內外部各方關係的正當行為規範準則。"
+      },
+      {
+        id: "C4-2", ch: 4, tag: "管理學概念",
+        q: "企業在法律規範下，滿足其經濟責任時，稱為：",
+        options: ["社會義務", "社會責任", "社會回應", "社會貢獻"],
+        ans: 0,
+        exp: "【解析】社會義務（Social Obligation）：企業僅遵守法律底線與追求法律允許下的經濟利益，屬於最低層次。"
+      },
+      {
+        id: "C4-3", ch: 4, tag: "100 北大企管",
+        q: "員工關係、公益事務、定價、資源節約、產品品質安全、將公司設在較不重視人權的國家皆是_______的顯著例子。",
+        options: ["管理者須依每日的準備來訂定社責任倫理", "員工在工作時遭遇到社會責任的議題", "社會責任的範圍只影響管理者不影響員工", "管理者需要面對社會責任的決策", "以上皆非"],
+        ans: 3,
+        exp: "【解析】上述多元策略皆為管理者在權衡利害關係人與公眾福祉時，必須面對的企業社會責任決策。"
+      },
+      {
+        id: "C4-4", ch: 4, tag: "管理學概念",
+        q: "QQ 食品公司推動節能減碳建造綠色大樓是那一種表現？",
+        options: ["社會義務", "企業倫理", "管理道德", "社會責任"],
+        ans: 3,
+        exp: "【解析】主動超越法律規定，投入環保與永續發展（綠色大樓），展現了高度的「社會責任（Social Responsibility）」。"
+      },
+      {
+        id: "C4-5", ch: 4, tag: "100 國營聯招",
+        q: "依據 Davis 的社會反應觀點（Social Reaction View），企業社會責任的範圍是：",
+        options: ["股東", "利害關係人", "員工", "顧客"],
+        ans: 1,
+        exp: "【解析】現代社會責任觀點（如 Davis 觀點）認為企業不可只顧及股東，必須全面兼顧廣泛的「利害關係人（Stakeholders）」。"
+      },
+      {
+        id: "C4-6", ch: 4, tag: "101 鐵路特考",
+        q: "古典觀點的社會責任之重心是：",
+        options: ["關心社會的福利", "關心股東的財富報酬", "企業採取自願性的活動", "關心所有利害關係人的需求"],
+        ans: 1,
+        exp: "【解析】傅利曼（Friedman）古典觀點：企業唯一的社會責任就是運用資源追求「股東利潤極大化」。"
+      },
+      {
+        id: "C4-7", ch: 4, tag: "管理學概念",
+        q: "有關當代管理者對於社會責任之敘述，下列何者錯誤？",
+        options: ["管理者除了追求利潤最大以外並沒有其他的責任", "社會責任的承擔有助於提升形象", "社會責任的承擔對於社會大眾的福祉可以有所提升", "企業承擔社會責任並不一定需要花費高昂的成本"],
+        ans: 0,
+        exp: "【解析】(1) 為古典觀點之過時主張；當代社會經濟觀點認為企業對整體社會福祉亦負有廣泛責任。"
+      },
+      {
+        id: "C4-8", ch: 4, tag: "102 中華電信",
+        q: "企業的目標應該是追求：",
+        options: ["以最大獲利為唯一目標", "以善盡社會責任為唯一目標", "利潤與社會責任的均衡", "全人類最大福祉"],
+        ans: 2,
+        exp: "【解析】企業必須在創造經濟價值（利潤）與維護外部福祉（社會責任）之間取得平衡才能長治久安。"
+      },
+      {
+        id: "C4-9", ch: 4, tag: "100 鐵路特考",
+        q: "以系統化的方法，分析企業是否已經成功地利用資源達成企業社會責任的目標，稱為：",
+        options: ["社會責任", "社會承諾", "社會稽核", "社會捐贈"],
+        ans: 2,
+        exp: "【解析】社會稽核（Social Audit）是指對企業履行社會責任與道德成效所進行的系統性評估與審查。"
+      },
+      {
+        id: "C4-10", ch: 4, tag: "管理學概念",
+        q: "管理企業利害關係人(stakeholders)的首要步驟是：",
+        options: ["如何與各利害關係人打交道", "瞭解利害關係人所在的是甚麼", "組織所面對的利害關係人有哪些", "瞭解每一位利害關係人對組織決策的影響程度"],
+        ans: 2,
+        exp: "【解析】利害關係人管理第一步永遠是「確認/辨識誰是利害關係人（Identify stakeholders）」。"
+      },
+      {
+        id: "C4-11", ch: 4, tag: "102 郵政",
+        q: "有關利害關係人之敘述，下列何者錯誤？",
+        options: ["利害關係人可能會影響組織的運作", "利害關係人有可能為組織帶來成功地創新", "利害關係人可以協助組織提高面對變化的處理能力", "與利害關係人有良好的互動對組織運作並沒有任何助益"],
+        ans: 3,
+        exp: "【解析】良好的利害關係人關係能建立信任商譽、降低交易與溝通成本，對組織運作有實質助益。"
+      },
+      {
+        id: "C4-12", ch: 4, tag: "102 國營聯招",
+        q: "有關公司治理（Corporate Governance）的基本精神，下列敘述何者有誤？",
+        options: ["獨立董事擁有多數股權並協助企業經營", "強化董事會運作", "追求股東利潤最大化", "加強經營資訊透明化"],
+        ans: 0,
+        exp: "【解析】「獨立董事」設立主旨是保持獨立客觀監督經營者，通常不得具備重大股權與利害衝突，亦不直接負責日常經營。"
+      },
+      {
+        id: "C4-13", ch: 4, tag: "101 國營聯招",
+        q: "台灣紡織業外移，造成許多相關從業人員失業，請問這是哪種倫理決策原則的結果？",
+        options: ["utilitarian rule (功利主義原則)", "moral rights rule (道德權利原則)", "justice rule (正義原則)", "practical rule (實用原則)"],
+        ans: 0,
+        exp: "【解析】功利主義（Utilitarian）講求整體效益最大化（如降低成本提升股東與消費者價值），即使可能犧牲少數人權益。"
+      },
+      {
+        id: "C4-14", ch: 4, tag: "管理學概念",
+        q: "「決策是公平且正當的」是屬於那一種性質的倫理規範：",
+        options: ["公正(justice)", "權利(rights)", "效用(utility)", "關心(caring)"],
+        ans: 0,
+        exp: "【解析】公正/正義原則（Justice）要求規則一視同仁，公平、正當、不偏袒地對待所有人。"
+      },
+      {
+        id: "C4-15", ch: 4, tag: "101 中華郵政",
+        q: "Jeremy Bentham 主張之「為最多數人謀最大福利」的道德哲學，是屬於下列何種決策準則？",
+        options: ["個人主義導向", "功利主義導向", "道德權力導向", "社會正義導向"],
+        ans: 1,
+        exp: "【解析】邊沁（Bentham）與密爾（Mill）為「功利主義（Utilitarianism）」代表，核心在追求「最大多數人的最大幸福」。"
+      },
+      {
+        id: "C4-16", ch: 4, tag: "102 中華電信",
+        q: "下列何者是企業建立公共關係的方式？",
+        options: [
+          "will manipulate the outcomes reported to assure that the one objective is achieved", 
+          "want to satisfy the stockholders of the organization", 
+          "will ignore other important parts of their jobs in order to look good on that one measure", 
+          "will use overtime to accomplish that single objective without reporting it"
+        ],
+        ans: 0,
+        exp: "【解析】此為 102 中華電信考題，原始選項與解答認定企業有時透過操作報導與溝通成果來達到既定公關目標。"
+      }
+    ];
+
+    // 全域變數
+    let currentFilter = 'all';
+    let userAnswers = {}; // { questionId: selectedIndex }
+    let showAllExpl = false;
+
+    const quizContainer = document.getElementById('quiz-list');
+    const answeredCountEl = document.getElementById('answered-count');
+    const totalCountEl = document.getElementById('total-count');
+    const accuracyRateEl = document.getElementById('accuracy-rate');
+    const tabsContainer = document.getElementById('chapter-tabs');
+    const toggleAnswersBtn = document.getElementById('btn-toggle-answers');
+    const resetBtn = document.getElementById('btn-reset');
+
+    // 初始化渲染
+    function init() {
+      renderQuiz();
+      bindEvents();
+    }
+
+    function getFilteredQuestions() {
+      if (currentFilter === 'all') return questions;
+      return questions.filter(q => q.ch === parseInt(currentFilter));
+    }
+
+    function renderQuiz() {
+      const filtered = getFilteredQuestions();
+      totalCountEl.textContent = filtered.length;
+      updateStats();
+
+      quizContainer.innerHTML = '';
+
+      filtered.forEach((item, index) => {
+        const card = document.createElement('div');
+        card.className = 'quiz-card';
+        card.id = `card-${item.id}`;
+
+        const answered = userAnswers[item.id] !== undefined;
+        const selectedIndex = userAnswers[item.id];
+
+        let optionsHtml = '';
+        item.options.forEach((opt, optIndex) => {
+          let btnClass = 'option-btn';
+          if (answered) {
+            if (optIndex === item.ans) {
+              btnClass += ' correct';
+            } else if (optIndex === selectedIndex) {
+              btnClass += ' wrong';
+            }
+          }
+          optionsHtml += `
+            <button class="${btnClass}" 
+                    data-id="${item.id}" 
+                    data-opt-index="${optIndex}">
+              ${opt}
+            </button>
+          `;
+        });
+
+        const showExplClass = (answered || showAllExpl) ? 'show' : '';
+
+        card.innerHTML = `
+          <div class="quiz-header">
+            <span>第 ${item.ch} 章 ｜ 題號：${item.id}</span>
+            <span class="quiz-tag">${item.tag}</span>
+          </div>
+          <div class="quiz-title">${index + 1}. ${item.q}</div>
+          <div class="options-grid">
+            ${optionsHtml}
+          </div>
+          <div class="explanation-box ${showExplClass}" id="expl-${item.id}">
+            <div class="explanation-title">💡 答案：(${item.ans + 1}) 詳解說明</div>
+            <div>${item.exp}</div>
+          </div>
+        `;
+
+        quizContainer.appendChild(card);
+      });
+
+      // 綁定選項點擊事件
+      document.querySelectorAll('.option-btn').forEach(btn => {
+        btn.addEventListener('click', handleOptionClick);
+      });
+    }
+
+    function handleOptionClick(e) {
+      const qId = e.currentTarget.getAttribute('data-id');
+      const optIndex = parseInt(e.currentTarget.getAttribute('data-opt-index'));
+
+      // 記錄作答
+      userAnswers[qId] = optIndex;
+
+      // 更新該題 UI
+      const item = questions.find(q => q.id === qId);
+      const card = document.getElementById(`card-${qId}`);
+      const buttons = card.querySelectorAll('.option-btn');
+      
+      buttons.forEach((btn, idx) => {
+        btn.classList.remove('correct', 'wrong');
+        if (idx === item.ans) {
+          btn.classList.add('correct');
+        } else if (idx === optIndex) {
+          btn.classList.add('wrong');
+        }
+      });
+
+      const explBox = document.getElementById(`expl-${qId}`);
+      explBox.classList.add('show');
+
+      updateStats();
+    }
+
+    function updateStats() {
+      const filtered = getFilteredQuestions();
+      let answered = 0;
+      let correct = 0;
+
+      filtered.forEach(q => {
+        if (userAnswers[q.id] !== undefined) {
+          answered++;
+          if (userAnswers[q.id] === q.ans) {
+            correct++;
+          }
+        }
+      });
+
+      answeredCountEl.textContent = answered;
+      const rate = answered > 0 ? Math.round((correct / answered) * 100) : 0;
+      accuracyRateEl.textContent = `${rate}%`;
+    }
+
+    function bindEvents() {
+      // 章節切換
+      tabsContainer.addEventListener('click', (e) => {
+        if (e.target.tagName === 'BUTTON') {
+          tabsContainer.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+          e.target.classList.add('active');
+          currentFilter = e.target.getAttribute('data-ch');
+          renderQuiz();
+        }
+      });
+
+      // 顯示/隱藏所有解析
+      toggleAnswersBtn.addEventListener('click', () => {
+        showAllExpl = !showAllExpl;
+        toggleAnswersBtn.textContent = showAllExpl ? '隱藏未答題解析' : '顯示全部解析';
+        document.querySelectorAll('.explanation-box').forEach(box => {
+          const qId = box.id.replace('expl-', '');
+          if (showAllExpl || userAnswers[qId] !== undefined) {
+            box.classList.add('show');
+          } else {
+            box.classList.remove('show');
+          }
+        });
+      });
+
+      // 清除重置
+      resetBtn.addEventListener('click', () => {
+        if (confirm('確定要清除所有作答進度重新練習嗎？')) {
+          userAnswers = {};
+          showAllExpl = false;
+          toggleAnswersBtn.textContent = '顯示全部解析';
+          renderQuiz();
+        }
+      });
+    }
+
+    init();
+  </script>
+</body>
+</html>
