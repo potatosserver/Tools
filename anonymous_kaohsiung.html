@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>社群圖文卡片產生器 - M3 亮色風格</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Google Fonts: Noto Sans TC, Roboto -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <!-- html-to-image CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.11/html-to-image.min.js"></script>
+
+  <!-- M3 亮色色彩定義 -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'm3-sys-light': {
+              'primary': '#006495',
+              'surface': '#f8f9fa',
+              'surface-container-low': '#f3f4f6',
+              'surface-container': '#edeef0',
+              'surface-container-high': '#e7e8ea',
+              'on-surface': '#191c1e',
+              'on-surface-variant': '#41474d',
+              'outline': '#72787e',
+              'outline-variant': '#c1c7ce',
+              'error': '#ba1a1a',
+            }
+          },
+          fontFamily: {
+            sans: ['"Roboto"', '"Noto Sans TC"', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    input[type=range] {
+      -webkit-appearance: none;
+      background: transparent;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      height: 20px;
+      width: 20px;
+      border-radius: 50%;
+      background: #006495;
+      cursor: pointer;
+      margin-top: -8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+    }
+    input[type=range]::-webkit-slider-runnable-track {
+      width: 100%;
+      height: 4px;
+      background: #c1c7ce;
+      border-radius: 2px;
+    }
+  </style>
+</head>
+
+<body class="bg-m3-sys-light-surface text-m3-sys-light-on-surface font-sans min-h-screen flex flex-col antialiased">
+
+  <!-- 頂部導覽列 -->
+  <header class="bg-m3-sys-light-surface sticky top-0 z-40 px-6 py-4 border-b border-m3-sys-light-outline-variant flex items-center justify-between">
+    <div class="flex items-center space-x-3">
+      <div class="w-9 h-9 rounded-xl bg-m3-sys-light-primary text-white flex items-center justify-center shadow-sm">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 fill-current" viewBox="0 0 24 24">
+          <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
+        </svg>
+      </div>
+      <div>
+        <h1 class="text-base sm:text-lg font-bold tracking-tight text-m3-sys-light-on-surface">社群圖文卡片產生器</h1>
+        <p class="text-xs text-m3-sys-light-on-surface-variant font-medium">1:1 正方形 • 輕巧上下留白設計</p>
+      </div>
+    </div>
+    <div class="text-xs font-semibold px-3 py-1.5 rounded-full bg-m3-sys-light-surface-container-high text-m3-sys-light-on-surface-variant">
+      2x Retina 輸出
+    </div>
+  </header>
+
+  <!-- 主內容區 -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+    
+    <!-- 左側：設定控制面板 (5 格) -->
+    <section class="lg:col-span-5 bg-m3-sys-light-surface-container-low border border-m3-sys-light-outline-variant rounded-[28px] p-6 space-y-5">
+      
+      <!-- 內容編輯區 -->
+      <div class="space-y-3.5">
+        <div class="text-xs font-bold text-m3-sys-light-primary tracking-wider uppercase flex items-center space-x-1.5">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 fill-current" viewBox="0 0 24 24">
+            <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+          </svg>
+          <span>內容與投稿附圖</span>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-m3-sys-light-on-surface-variant mb-1 ml-1">標題標籤</label>
+          <input type="text" id="input-title" value="#匿名高雄" placeholder="#匿名高雄" 
+                 class="w-full bg-white border border-m3-sys-light-outline-variant rounded-xl px-3.5 py-2 text-sm text-m3-sys-light-on-surface focus:outline-none focus:ring-2 focus:ring-m3-sys-light-primary transition shadow-sm">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-m3-sys-light-on-surface-variant mb-1 ml-1">正文文字</label>
+          <textarea id="input-body" rows="4" placeholder="在此輸入文字內容..." 
+                    class="w-full bg-white border border-m3-sys-light-outline-variant rounded-xl p-3 text-sm text-m3-sys-light-on-surface focus:outline-none focus:ring-2 focus:ring-m3-sys-light-primary transition shadow-sm resize-none leading-relaxed">港風吹拂的黃昏，走在駁二的倉庫群間。
+
+有時候不需要太多的言語，安靜地看著夕陽落下，就是一天中最溫柔的收尾。</textarea>
+        </div>
+
+        <!-- 投稿附圖上傳 -->
+        <div>
+          <label class="block text-xs font-semibold text-m3-sys-light-on-surface-variant mb-1 ml-1">投稿附圖 (選填，無圖也能直接匯出)</label>
+          <div class="flex items-center gap-2">
+            <label class="flex-1 cursor-pointer bg-white border border-dashed border-m3-sys-light-outline hover:border-m3-sys-light-primary rounded-xl px-3 py-2 text-xs font-medium text-m3-sys-light-on-surface-variant flex items-center justify-center space-x-2 transition shadow-sm">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 fill-current text-m3-sys-light-primary" viewBox="0 0 24 24">
+                <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+              </svg>
+              <span id="upload-status-text">選擇並上傳圖片</span>
+              <input type="file" id="input-image" accept="image/*" class="hidden">
+            </label>
+            <button type="button" id="btn-remove-image" class="hidden px-3 py-2 bg-m3-sys-light-surface-container-high hover:bg-red-50 text-red-600 rounded-xl text-xs font-semibold transition border border-m3-sys-light-outline-variant">
+              移除圖片
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-m3-sys-light-on-surface-variant mb-1 ml-1">頁腳作者</label>
+          <input type="text" id="input-footer" value="@anonymous_kaohsiung" placeholder="@anonymous_kaohsiung" 
+                 class="w-full bg-white border border-m3-sys-light-outline-variant rounded-xl px-3.5 py-2 text-sm text-m3-sys-light-on-surface focus:outline-none focus:ring-2 focus:ring-m3-sys-light-primary transition shadow-sm font-mono">
+        </div>
+      </div>
+
+      <hr class="border-m3-sys-light-outline-variant/60">
+
+      <!-- 防雷遮罩設定 -->
+      <div class="bg-white rounded-2xl p-3.5 border border-m3-sys-light-outline-variant/80 space-y-2.5">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center space-x-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-m3-sys-light-error fill-current" viewBox="0 0 24 24">
+              <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>
+            </svg>
+            <label for="toggle-spoiler" class="text-sm font-medium text-m3-sys-light-on-surface cursor-pointer">防雷警告（模糊化圖文）</label>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" id="toggle-spoiler" class="sr-only peer">
+            <div class="w-12 h-7 bg-m3-sys-light-surface-container-high rounded-full peer peer-checked:bg-m3-sys-light-error transition-colors duration-200 border border-m3-sys-light-outline"></div>
+            <div class="absolute left-1 top-1 bg-m3-sys-light-outline w-5 h-5 rounded-full transition-transform duration-200 peer-checked:translate-x-5 peer-checked:bg-white"></div>
+          </label>
+        </div>
+
+        <div id="spoiler-text-container" class="hidden pt-1">
+          <input type="text" id="input-spoiler-text" value="防雷注意 • 敏感內容" 
+                 class="w-full bg-m3-sys-light-surface border border-m3-sys-light-outline-variant rounded-xl px-3 py-1.5 text-xs font-semibold text-m3-sys-light-error focus:outline-none focus:ring-1 focus:ring-m3-sys-light-error">
+        </div>
+      </div>
+
+      <!-- 配色切換 (僅黑與白) -->
+      <div>
+        <label class="block text-xs font-semibold text-m3-sys-light-on-surface-variant mb-1.5 ml-1">風格色系</label>
+        <div class="grid grid-cols-2 gap-3">
+          <button type="button" class="theme-btn active p-2.5 rounded-2xl border-2 flex items-center justify-center space-x-2 transition border-m3-sys-light-primary bg-white shadow-sm" data-theme="white">
+            <span class="w-3.5 h-3.5 rounded-full bg-white border border-neutral-400"></span>
+            <span class="text-xs font-bold text-neutral-800">純粹白底</span>
+          </button>
+          <button type="button" class="theme-btn p-2.5 rounded-2xl border-2 flex items-center justify-center space-x-2 transition border-transparent bg-white hover:border-m3-sys-light-outline-variant text-neutral-600" data-theme="black">
+            <span class="w-3.5 h-3.5 rounded-full bg-neutral-950 border border-neutral-700"></span>
+            <span class="text-xs font-bold text-neutral-800">沉穩黑底</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 排版微調 -->
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <div class="flex justify-between items-center mb-1 ml-1">
+            <label class="text-xs font-semibold text-m3-sys-light-on-surface-variant">字體大小</label>
+            <span id="font-size-val" class="text-xs font-mono font-bold text-m3-sys-light-primary">19px</span>
+          </div>
+          <div class="py-1.5">
+            <input type="range" id="input-font-size" min="14" max="28" value="19" step="1" class="w-full">
+          </div>
+        </div>
+        
+        <div>
+          <label class="block text-xs font-semibold text-m3-sys-light-on-surface-variant mb-1 ml-1">對齊位置</label>
+          <div class="grid grid-cols-2 bg-m3-sys-light-surface-container rounded-xl p-1 border border-m3-sys-light-outline-variant">
+            <button type="button" class="align-btn active py-1 rounded-lg text-xs font-bold transition bg-white shadow-sm text-m3-sys-light-on-surface" data-align="left">置左</button>
+            <button type="button" class="align-btn py-1 rounded-lg text-xs font-medium transition text-m3-sys-light-on-surface-variant" data-align="center">置中</button>
+          </div>
+        </div>
+      </div>
+
+      <hr class="border-m3-sys-light-outline-variant/60">
+
+      <!-- 下載按鈕 -->
+      <button type="button" id="btn-export" 
+              class="w-full py-3.5 rounded-full font-bold text-sm tracking-wide bg-m3-sys-light-primary text-white hover:shadow-lg active:scale-[0.98] transition flex items-center justify-center space-x-2">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+        </svg>
+        <span>下載高解析度 1:1 圖片</span>
+      </button>
+
+    </section>
+
+    <!-- 右側：即時預覽區 (7 格) -->
+    <section class="lg:col-span-7 flex flex-col items-center">
+      <div class="w-full max-w-lg sticky top-24 space-y-3">
+        <div class="flex items-center justify-between px-2">
+          <span class="text-xs font-bold tracking-wider text-m3-sys-light-on-surface-variant uppercase">即時預覽</span>
+          <span class="text-xs bg-m3-sys-light-surface-container-high border border-m3-sys-light-outline-variant/80 text-m3-sys-light-on-surface-variant font-mono px-2.5 py-0.5 rounded-full">1080 × 1080 (1:1)</span>
+        </div>
+
+        <!-- 畫布底框 -->
+        <div class="bg-m3-sys-light-surface-container-low p-3 sm:p-4 rounded-[28px] border border-m3-sys-light-outline-variant shadow-sm flex items-center justify-center">
+          
+          <!-- 被截圖的核心卡片 (緊湊優雅 Padding: p-6 sm:p-7) -->
+          <div id="export-target" class="w-full aspect-square rounded-[22px] relative overflow-hidden flex flex-col p-6 sm:p-7 transition-all duration-200 shadow-sm bg-white text-neutral-900 border border-neutral-200">
+            
+            <!-- 頂部標題列 (輕巧邊距，不吃空間) -->
+            <div class="z-10 shrink-0 flex items-center justify-between border-b pb-2.5 transition-colors border-neutral-200 mb-2" id="card-header">
+              <span id="card-title" class="font-bold tracking-wider text-sm sm:text-base whitespace-nowrap break-keep shrink-0">#匿名高雄</span>
+              <div class="flex space-x-1.5 opacity-60 shrink-0">
+                <div class="w-2 h-2 rounded-full bg-current"></div>
+                <div class="w-2 h-2 rounded-full bg-current"></div>
+                <div class="w-2 h-2 rounded-full bg-current"></div>
+              </div>
+            </div>
+
+            <!-- 中間圖文內容區 (釋放充足高度空間) -->
+            <div id="card-content-area" class="z-10 flex-1 min-h-0 flex flex-col justify-center transition-all duration-300 py-1 space-y-2.5">
+              
+              <!-- 正文文字 -->
+              <p id="card-body" class="whitespace-pre-line leading-relaxed font-normal text-left shrink-0" style="font-size: 19px;">港風吹拂的黃昏，走在駁二的倉庫群間。
+
+有時候不需要太多的言語，安靜地看著夕陽落下，就是一天中最溫柔的收尾。</p>
+
+              <!-- 投稿附圖容器 (動態渲染，高度不夠時自動等比縮小) -->
+              <div id="card-image-box" class="hidden flex-1 min-h-0 w-full flex items-center justify-center overflow-hidden">
+                <!-- 圖片將由 JS 動態注入，徹底解決空 src 匯出失敗問題 -->
+              </div>
+
+            </div>
+
+            <!-- 底部頁腳列 (輕巧邊距，右側留空) -->
+            <div class="z-10 shrink-0 flex items-center justify-start text-xs tracking-wider pt-2.5 border-t transition-colors border-neutral-200 font-mono mt-2" id="card-footer-box">
+              <span id="card-footer" class="font-semibold text-xs sm:text-sm">@anonymous_kaohsiung</span>
+            </div>
+
+            <!-- 防雷覆蓋層 (SVG 向量警告標記) -->
+            <div id="spoiler-overlay" class="hidden absolute inset-0 z-30 bg-black/45 flex flex-col items-center justify-center p-6 text-center text-white transition-opacity duration-300">
+              <div class="w-13 h-13 p-3 rounded-2xl bg-m3-sys-light-error text-white flex items-center justify-center mb-3 shadow-xl shrink-0">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7 fill-current" viewBox="0 0 24 24">
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                </svg>
+              </div>
+
+              <h3 id="spoiler-label" class="text-base sm:text-lg font-bold tracking-wider mb-1.5 text-white whitespace-nowrap drop-shadow">
+                防雷注意 • 敏感內容
+              </h3>
+              
+              <p class="text-xs text-neutral-200 max-w-[260px] leading-relaxed font-normal drop-shadow">
+                點選或往左滑動前請確認是否閱讀相關內容
+              </p>
+            </div>
+
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    // 狀態管理
+    const state = {
+      title: '#匿名高雄',
+      body: `港風吹拂的黃昏，走在駁二的倉庫群間。\n\n有時候不需要太多的言語，安靜地看著夕陽落下，就是一天中最溫柔的收尾。`,
+      footer: '@anonymous_kaohsiung',
+      theme: 'white',
+      fontSize: 19,
+      align: 'left',
+      isSpoiler: false,
+      spoilerText: '防雷注意 • 敏感內容',
+      imageDataUrl: null
+    };
+
+    // DOM 快取
+    const cardTitle = document.getElementById('card-title');
+    const cardBody = document.getElementById('card-body');
+    const cardFooter = document.getElementById('card-footer');
+    const cardHeader = document.getElementById('card-header');
+    const cardFooterBox = document.getElementById('card-footer-box');
+    const exportTarget = document.getElementById('export-target');
+    const cardContentArea = document.getElementById('card-content-area');
+    const cardImageBox = document.getElementById('card-image-box');
+
+    const spoilerOverlay = document.getElementById('spoiler-overlay');
+    const spoilerLabel = document.getElementById('spoiler-label');
+    const spoilerTextContainer = document.getElementById('spoiler-text-container');
+
+    const inputTitle = document.getElementById('input-title');
+    const inputBody = document.getElementById('input-body');
+    const inputFooter = document.getElementById('input-footer');
+    const inputImage = document.getElementById('input-image');
+    const btnRemoveImage = document.getElementById('btn-remove-image');
+    const uploadStatusText = document.getElementById('upload-status-text');
+
+    const toggleSpoiler = document.getElementById('toggle-spoiler');
+    const inputSpoilerText = document.getElementById('input-spoiler-text');
+    const inputFontSize = document.getElementById('input-font-size');
+    const fontSizeVal = document.getElementById('font-size-val');
+    const btnExport = document.getElementById('btn-export');
+
+    // 核心渲染邏輯
+    function render() {
+      cardTitle.innerText = state.title || ' ';
+      cardBody.innerText = state.body || ' ';
+      cardFooter.innerText = state.footer || ' ';
+      cardBody.style.fontSize = `${state.fontSize}px`;
+      cardBody.style.textAlign = state.align;
+
+      // 動態注入圖片，徹底避免空 img 導致的匯出崩潰
+      if (state.imageDataUrl) {
+        const borderClass = state.theme === 'white' ? 'border-neutral-200' : 'border-neutral-800';
+        cardImageBox.innerHTML = `
+          <img src="${state.imageDataUrl}" alt="投稿附圖" 
+               class="max-h-full max-w-full w-auto h-auto object-contain rounded-xl shadow-sm border ${borderClass}">
+        `;
+        cardImageBox.classList.remove('hidden');
+        btnRemoveImage.classList.remove('hidden');
+        uploadStatusText.innerText = '更換已選圖片';
+      } else {
+        cardImageBox.innerHTML = ''; // 清空元素
+        cardImageBox.classList.add('hidden');
+        btnRemoveImage.classList.add('hidden');
+        uploadStatusText.innerText = '選擇並上傳圖片';
+      }
+
+      // 主題切換 (白 / 黑)
+      if (state.theme === 'white') {
+        exportTarget.className = "w-full aspect-square rounded-[22px] relative overflow-hidden flex flex-col p-6 sm:p-7 transition-all duration-200 shadow-sm bg-white text-neutral-900 border border-neutral-200";
+        cardHeader.className = "z-10 shrink-0 flex items-center justify-between border-b pb-2.5 transition-colors border-neutral-200 mb-2";
+        cardFooterBox.className = "z-10 shrink-0 flex items-center justify-start text-xs tracking-wider pt-2.5 border-t transition-colors border-neutral-200 font-mono mt-2";
+      } else {
+        exportTarget.className = "w-full aspect-square rounded-[22px] relative overflow-hidden flex flex-col p-6 sm:p-7 transition-all duration-200 shadow-sm bg-neutral-950 text-neutral-50 border border-neutral-800";
+        cardHeader.className = "z-10 shrink-0 flex items-center justify-between border-b pb-2.5 transition-colors border-neutral-800 mb-2";
+        cardFooterBox.className = "z-10 shrink-0 flex items-center justify-start text-xs tracking-wider pt-2.5 border-t transition-colors border-neutral-800 font-mono mt-2";
+      }
+
+      // 防雷高斯模糊處理
+      if (state.isSpoiler) {
+        spoilerOverlay.classList.remove('hidden');
+        spoilerTextContainer.classList.remove('hidden');
+        spoilerLabel.innerText = state.spoilerText;
+        cardContentArea.style.filter = "blur(18px)";
+        cardContentArea.style.transform = "scale(0.98)";
+      } else {
+        spoilerOverlay.classList.add('hidden');
+        spoilerTextContainer.classList.add('hidden');
+        cardContentArea.style.filter = "none";
+        cardContentArea.style.transform = "none";
+      }
+    }
+
+    // 事件監聽
+    inputTitle.addEventListener('input', (e) => { state.title = e.target.value; render(); });
+    inputBody.addEventListener('input', (e) => { state.body = e.target.value; render(); });
+    inputFooter.addEventListener('input', (e) => { state.footer = e.target.value; render(); });
+
+    // 附圖處理
+    inputImage.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          state.imageDataUrl = event.target.result;
+          render();
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+
+    btnRemoveImage.addEventListener('click', () => {
+      state.imageDataUrl = null;
+      inputImage.value = '';
+      render();
+    });
+
+    // 防雷切換
+    toggleSpoiler.addEventListener('change', (e) => {
+      state.isSpoiler = e.target.checked;
+      render();
+    });
+    inputSpoilerText.addEventListener('input', (e) => {
+      state.spoilerText = e.target.value;
+      render();
+    });
+
+    // 主題選擇
+    document.querySelectorAll('.theme-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.theme-btn').forEach(b => {
+          b.classList.remove('border-m3-sys-light-primary');
+          b.classList.add('border-transparent');
+        });
+        btn.classList.add('border-m3-sys-light-primary');
+        btn.classList.remove('border-transparent');
+
+        state.theme = btn.dataset.theme;
+        render();
+      });
+    });
+
+    // 字型大小滑桿
+    inputFontSize.addEventListener('input', (e) => {
+      state.fontSize = e.target.value;
+      fontSizeVal.innerText = `${state.fontSize}px`;
+      render();
+    });
+
+    // 對齊按鈕
+    document.querySelectorAll('.align-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.align-btn').forEach(b => {
+          b.classList.remove('bg-white', 'shadow-sm', 'font-bold', 'text-m3-sys-light-on-surface');
+          b.classList.add('text-m3-sys-light-on-surface-variant', 'font-medium');
+        });
+        btn.classList.add('bg-white', 'shadow-sm', 'font-bold', 'text-m3-sys-light-on-surface');
+        btn.classList.remove('text-m3-sys-light-on-surface-variant', 'font-medium');
+
+        state.align = btn.dataset.align;
+        render();
+      });
+    });
+
+    // 一鍵匯出高解析度 PNG
+    btnExport.addEventListener('click', async () => {
+      const originalHTML = btnExport.innerHTML;
+      try {
+        btnExport.disabled = true;
+        btnExport.innerHTML = `
+          <svg class="animate-spin h-5 w-5 text-white inline-block mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+          </svg>
+          <span>正在生成高畫質圖片...</span>
+        `;
+
+        await document.fonts.ready;
+
+        const dataUrl = await htmlToImage.toPng(exportTarget, {
+          pixelRatio: 2.5,
+          cacheBust: true,
+          quality: 1
+        });
+
+        const link = document.createElement('a');
+        const timestamp = new Date().toISOString().slice(0, 10);
+        link.download = `kaohsiung-post-${state.theme}-${timestamp}.png`;
+        link.href = dataUrl;
+        link.click();
+      } catch (err) {
+        console.error('輸出失敗：', err);
+        alert('匯出時發生問題，請稍候重試。');
+      } finally {
+        btnExport.disabled = false;
+        btnExport.innerHTML = originalHTML;
+      }
+    });
+
+    // 初始化渲染
+    render();
+  </script>
+</body>
+</html>
