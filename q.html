@@ -26,7 +26,6 @@
       --md-sys-color-outline: #72787e;
       --md-sys-color-outline-variant: #c1c7ce;
       --md-sys-color-error: #ba1a1a;
-      --md-sys-color-on-error: #ffffff;
       --md-sys-color-error-container: #ffdad6;
       --md-sys-color-success: #1b6d2e;
       --md-sys-color-success-container: #a3f7a9;
@@ -101,14 +100,38 @@
       flex: 1;
     }
 
+    /* Status Notification Banner */
+    .status-banner {
+      padding: 14px 20px;
+      border-radius: 16px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      font-size: 0.95rem;
+    }
+    .status-banner.info {
+      background: var(--md-sys-color-primary-container);
+      color: var(--md-sys-color-on-primary-container);
+    }
+    .status-banner.error {
+      background: var(--md-sys-color-error-container);
+      color: var(--md-sys-color-error);
+    }
+    .status-banner.success {
+      background: var(--md-sys-color-success-container);
+      color: #0c3b17;
+    }
+
     /* Common Card */
     .m3-card {
       background: var(--md-sys-color-surface-container);
       border-radius: 20px;
       padding: 20px;
       margin-bottom: 16px;
-      transition: transform 0.2s, box-shadow 0.2s;
       border: 1px solid var(--md-sys-color-outline-variant);
+      transition: transform 0.2s, box-shadow 0.2s;
     }
     .m3-card:hover {
       box-shadow: 0 4px 12px rgba(0,0,0,0.08);
@@ -131,7 +154,6 @@
       border-radius: 12px;
       font-size: 0.95rem;
       outline: none;
-      transition: border-color 0.2s;
     }
     .m3-input:focus, .m3-select:focus {
       border-color: var(--md-sys-color-primary);
@@ -142,30 +164,30 @@
       min-width: 220px;
     }
 
-    /* Badges */
+    /* Chips */
     .m3-chip {
       display: inline-flex;
       align-items: center;
       padding: 4px 12px;
       border-radius: 8px;
-      font-size: 0.8rem;
+      font-size: 0.85rem;
       font-weight: 500;
       background: var(--md-sys-color-primary-container);
       color: var(--md-sys-color-on-primary-container);
     }
 
-    /* Question Review Card */
+    /* Question Display Card */
     .q-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 10px;
+      margin-bottom: 12px;
     }
     .q-title {
       font-size: 1.05rem;
       font-weight: 600;
-      line-height: 1.5;
-      margin-bottom: 12px;
+      line-height: 1.6;
+      margin-bottom: 14px;
     }
     .q-answer-box {
       background: #e6f4ea;
@@ -180,12 +202,12 @@
       color: var(--md-sys-color-on-surface-variant);
       padding: 12px 14px;
       border-radius: 10px;
-      font-size: 0.9rem;
-      line-height: 1.5;
+      font-size: 0.92rem;
+      line-height: 1.6;
       border-left: 4px solid var(--md-sys-color-primary);
     }
 
-    /* Common Quiz Modes UI */
+    /* Practice & Kahoot Viewport */
     .quiz-viewport {
       display: flex;
       flex-direction: column;
@@ -250,16 +272,16 @@
       color: var(--md-sys-color-error) !important;
     }
 
-    /* M3 Pill Buttons */
+    /* Material Pill Buttons */
     .m3-btn {
       display: inline-flex;
       align-items: center;
       justify-content: center;
       gap: 8px;
-      padding: 12px 24px;
+      padding: 10px 24px;
       border-radius: 999px;
       border: none;
-      font-size: 1rem;
+      font-size: 0.95rem;
       font-weight: 600;
       cursor: pointer;
       font-family: var(--font-family);
@@ -274,7 +296,7 @@
       opacity: 0.92;
     }
 
-    /* Kahoot Mode Special Style */
+    /* Kahoot Mode Special UI */
     .kahoot-header {
       width: 100%;
       display: flex;
@@ -309,7 +331,7 @@
       border-radius: 20px;
       border: none;
       color: white;
-      font-size: 1.1rem;
+      font-size: 1.05rem;
       font-weight: 700;
       display: flex;
       flex-direction: column;
@@ -338,20 +360,6 @@
       margin-bottom: 4px;
     }
 
-    /* File loader fallback banner */
-    .alert-banner {
-      background: var(--md-sys-color-error-container);
-      color: var(--md-sys-color-error);
-      padding: 16px;
-      border-radius: 16px;
-      margin-bottom: 20px;
-      display: none;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-    }
-
-    /* Summary Result Dialog */
     .result-box {
       text-align: center;
       padding: 32px 16px;
@@ -370,7 +378,7 @@
   <header class="top-bar">
     <div class="top-bar-title">
       <span class="material-symbols-rounded">menu_book</span>
-      管理學題庫庫存 (Ch1 ~ Ch8)
+      管理學題庫 (Ch1 ~ Ch8)
     </div>
     <div class="nav-segments">
       <button class="segment-btn active" onclick="switchMode('review')">
@@ -385,14 +393,12 @@
     </div>
   </header>
 
-  <!-- Local CORS Alert Banner -->
   <div class="container">
-    <div id="file-banner" class="alert-banner">
-      <div>
-        <strong>提示：</strong> 無法自動存取同目錄的 <code>questions.json</code>（瀏覽器本機安全性限制）。
-      </div>
-      <label class="m3-btn m3-btn-primary" style="font-size: 0.85rem; padding: 8px 16px;">
-        選取 questions.json
+    <!-- Live Status / Fallback Banner -->
+    <div id="status-banner" class="status-banner info">
+      <span id="status-msg">正在連線讀取 questions.json ...</span>
+      <label class="m3-btn m3-btn-primary" id="manual-file-btn" style="display:none; padding: 6px 16px; font-size:0.85rem;">
+        手動選取 questions.json
         <input type="file" id="file-input" accept=".json" style="display:none;" onchange="handleFileSelect(event)">
       </label>
     </div>
@@ -420,13 +426,12 @@
     <!-- VIEW 2: PRACTICE MODE -->
     <section id="view-practice" style="display: none;">
       <div class="quiz-viewport">
-        <!-- Settings before quiz -->
         <div id="practice-setup" class="quiz-card" style="text-align:center;">
           <h2 style="margin-bottom:16px;">📖 普通練習模式</h2>
-          <p style="color:var(--md-sys-color-on-surface-variant); margin-bottom:24px;">隨機出題，無時間限制，答題後立即查看解析。</p>
-          <div style="margin-bottom:24px; display:inline-flex; gap:12px;">
+          <p style="color:var(--md-sys-color-on-surface-variant); margin-bottom:24px;">隨機出題，無時間壓力，作答後即刻查看答案與解析。</p>
+          <div style="margin-bottom:24px;">
             <select id="practice-chapter-select" class="m3-select">
-              <option value="all">全章節隨機</option>
+              <option value="all">全章節隨機題庫</option>
               <option value="第一章">第一章</option>
               <option value="第二章">第二章</option>
               <option value="第三章">第三章</option>
@@ -437,12 +442,9 @@
               <option value="第八章">第八章</option>
             </select>
           </div>
-          <div>
-            <button class="m3-btn m3-btn-primary" onclick="startPractice()">開始作答</button>
-          </div>
+          <button class="m3-btn m3-btn-primary" onclick="startPractice()">開始作答</button>
         </div>
 
-        <!-- Practice Card -->
         <div id="practice-quiz" class="quiz-card" style="display: none;">
           <div class="quiz-meta">
             <span id="practice-progress" class="m3-chip">第 1 題</span>
@@ -456,9 +458,8 @@
           </div>
         </div>
 
-        <!-- Practice Result -->
         <div id="practice-result" class="quiz-card result-box" style="display: none;">
-          <h2>練習結束！</h2>
+          <h2>練習完成！</h2>
           <div id="practice-final-score" class="result-score">0 / 0</div>
           <button class="m3-btn m3-btn-primary" onclick="switchMode('practice')">返回設定</button>
         </div>
@@ -468,10 +469,9 @@
     <!-- VIEW 3: KAHOOT TIMED MODE -->
     <section id="view-kahoot" style="display: none;">
       <div class="quiz-viewport">
-        <!-- Kahoot Setup -->
         <div id="kahoot-setup" class="quiz-card" style="text-align:center;">
           <h2 style="margin-bottom:8px;">⚡ 卡胡特 Kahoot! 限時競速</h2>
-          <p style="color:var(--md-sys-color-on-surface-variant); margin-bottom:24px;">刺激搶答！時間越快分數越高，連續答對可獲得連擊獎勵。</p>
+          <p style="color:var(--md-sys-color-on-surface-variant); margin-bottom:24px;">搶答模式！越快答對分數越高，連續答對累積連勝加成！</p>
           <div style="display:flex; justify-content:center; gap:16px; margin-bottom:24px; flex-wrap:wrap;">
             <select id="kahoot-chapter-select" class="m3-select">
               <option value="all">全章節隨機挑戰</option>
@@ -494,7 +494,6 @@
           <button class="m3-btn m3-btn-primary" onclick="startKahoot()">開始挑戰</button>
         </div>
 
-        <!-- Kahoot Question Card -->
         <div id="kahoot-quiz" class="quiz-card" style="display: none;">
           <div class="kahoot-header">
             <span id="kahoot-progress" class="m3-chip">Q 1/10</span>
@@ -534,9 +533,8 @@
           </div>
         </div>
 
-        <!-- Kahoot Result -->
         <div id="kahoot-result" class="quiz-card result-box" style="display: none;">
-          <h2>🏆 競速挑戰完成！</h2>
+          <h2>🏆 競速挑戰結束！</h2>
           <div id="kahoot-final-points" class="result-score">0 PTS</div>
           <p id="kahoot-accuracy" style="margin-bottom:24px; color:var(--md-sys-color-on-surface-variant);"></p>
           <button class="m3-btn m3-btn-primary" onclick="switchMode('kahoot')">再來一局</button>
@@ -562,20 +560,26 @@
     let kahootCurrentChoices = [];
     let kahootCorrectAnswerText = '';
 
-    // Web Audio API Synthesizer
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    function playTone(freq, type = 'sine', duration = 0.15) {
+    // Web Audio API Synthesizer (Zero External Audio Dependencies)
+    let audioCtx = null;
+    function initAudio() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       if (audioCtx.state === 'suspended') audioCtx.resume();
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.type = type;
-      osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-      gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
-      osc.start();
-      osc.stop(audioCtx.currentTime + duration);
+    }
+    function playTone(freq, type = 'sine', duration = 0.15) {
+      initAudio();
+      try {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch(e) {}
     }
     function playSound(type) {
       if (type === 'correct') {
@@ -584,50 +588,106 @@
         setTimeout(() => playTone(783.99, 'triangle', 0.25), 200);
       } else if (type === 'wrong') {
         playTone(220, 'sawtooth', 0.2);
-        setTimeout(() => playTone(180, 'sawtooth', 0.3), 150);
+        setTimeout(() => playTone(174.61, 'sawtooth', 0.3), 150);
       } else if (type === 'tick') {
-        playTone(800, 'sine', 0.04);
+        playTone(880, 'sine', 0.05);
       }
     }
 
-    // Initialize App & Load Data
-    window.addEventListener('DOMContentLoaded', () => {
-      fetch('./questions.json')
-        .then(res => {
-          if (!res.ok) throw new Error('File not found');
-          return res.json();
-        })
-        .then(data => {
-          loadQuestionsData(data);
-        })
-        .catch(err => {
-          console.warn('Fetch failed, local file restrictions likely apply.', err);
-          document.getElementById('file-banner').style.display = 'flex';
-        });
-    });
+    // UI Status Helper
+    function setStatus(text, type = 'info', showManualBtn = false) {
+      const banner = document.getElementById('status-banner');
+      const msg = document.getElementById('status-msg');
+      const btn = document.getElementById('manual-file-btn');
+      banner.className = `status-banner ${type}`;
+      msg.innerHTML = text;
+      btn.style.display = showManualBtn ? 'inline-flex' : 'none';
+      banner.style.display = 'flex';
+    }
 
+    // Load JSON from File Picker Fallback
     function handleFileSelect(e) {
       const file = e.target.files[0];
       if (!file) return;
+      console.log('[題庫系統] 手動選取檔案:', file.name);
       const reader = new FileReader();
       reader.onload = (event) => {
         try {
-          const data = JSON.parse(event.target.result);
-          loadQuestionsData(data);
-          document.getElementById('file-banner').style.display = 'none';
+          const parsed = JSON.parse(event.target.result);
+          parseAndLoadData(parsed);
         } catch (err) {
-          alert('JSON 解析失敗，請確認檔案格式！');
+          console.error('[題庫系統] 手動 JSON 解析失敗:', err);
+          setStatus('JSON 格式錯誤，無法解析！', 'error', true);
         }
       };
       reader.readAsText(file);
     }
 
-    function loadQuestionsData(data) {
-      allQuestions = Array.isArray(data) ? data : (data.response ? JSON.parse(data.response) : []);
+    // Data Parser (Supports Raw Array or Wrapped Object)
+    function parseAndLoadData(data) {
+      let finalArr = [];
+      if (Array.isArray(data)) {
+        finalArr = data;
+      } else if (data && typeof data === 'object') {
+        if (Array.isArray(data.response)) {
+          finalArr = data.response;
+        } else if (typeof data.response === 'string') {
+          try {
+            finalArr = JSON.parse(data.response);
+          } catch(e) {
+            console.error('[題庫系統] 解析 response 欄位失敗', e);
+          }
+        }
+      }
+
+      if (!Array.isArray(finalArr) || finalArr.length === 0) {
+        console.error('[題庫系統] 資料無法轉換為題目陣列:', data);
+        setStatus('讀取成功但未發現題目資料，請確認格式！', 'error', true);
+        return;
+      }
+
+      allQuestions = finalArr;
+      console.log(`[題庫系統] 成功載入 ${allQuestions.length} 道題目！`);
+      setStatus(`✓ 成功讀取 <strong>${allQuestions.length}</strong> 題管理學試題！`, 'success', false);
       filterQuestions();
     }
 
-    // Switch Navigation Modes
+    // Primary Fetch Initiator (Bust cache with timestamp so it definitely appears in F12)
+    function fetchQuestionsFile() {
+      const targetUrl = `./questions.json?t=${Date.now()}`;
+      console.log('[題庫系統] 正式發起網路請求:', targetUrl);
+      setStatus(`正在請求檔案：<code>questions.json</code> ...`, 'info', false);
+
+      fetch(targetUrl)
+        .then(response => {
+          console.log('[題庫系統] 伺服器回應狀態碼:', response.status);
+          if (!response.ok) {
+            throw new Error(`HTTP 錯誤：${response.status} ${response.statusText}`);
+          }
+          return response.json();
+        })
+        .then(jsonData => {
+          console.log('[題庫系統] Fetch 成功獲取 JSON 資料');
+          parseAndLoadData(jsonData);
+        })
+        .catch(error => {
+          console.warn('[題庫系統] Fetch 失敗:', error);
+          const isFileProtocol = window.location.protocol === 'file:';
+          let hint = isFileProtocol 
+            ? '偵測到您使用本機瀏覽 (<code>file://</code>)，瀏覽器安全原則會阻擋自動載入。'
+            : `找不到 <code>questions.json</code> (${error.message})。`;
+          setStatus(`${hint} 請點右側按鈕手動載入檔案：`, 'error', true);
+        });
+    }
+
+    // Auto Run on Startup (Avoid missing DOMContentLoaded)
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', fetchQuestionsFile);
+    } else {
+      fetchQuestionsFile();
+    }
+
+    // Mode Switcher
     function switchMode(mode) {
       clearInterval(kahootTimer);
       document.querySelectorAll('.segment-btn').forEach((btn, idx) => {
@@ -649,25 +709,21 @@
       }
     }
 
-    // Generate 4 Options Intelligently
+    // Smart 4-Option Generator
     function buildChoices(currentQ, pool) {
       const correct = currentQ.answer;
-      // Gather pool of candidates from same or nearby items
       const distractors = pool
         .map(q => q.answer)
         .filter(ans => ans && ans !== correct);
 
-      // Unique distractors
       const uniqueDistractors = [...new Set(distractors)];
-      // Shuffle & pick 3
       uniqueDistractors.sort(() => Math.random() - 0.5);
       const chosen = uniqueDistractors.slice(0, 3);
       const choices = [correct, ...chosen];
-      // Shuffle 4 choices
       return choices.sort(() => Math.random() - 0.5);
     }
 
-    // VIEW 1: Review Mode Logic
+    // VIEW 1: Review Mode Filter
     function filterQuestions() {
       const chapter = document.getElementById('review-chapter-filter').value;
       const search = document.getElementById('review-search').value.toLowerCase().trim();
@@ -700,12 +756,12 @@
       });
     }
 
-    // VIEW 2: Practice Mode Logic
+    // VIEW 2: Practice Mode
     function startPractice() {
       const chapter = document.getElementById('practice-chapter-select').value;
       practicePool = allQuestions.filter(q => (chapter === 'all' || q.chapter === chapter));
       if (practicePool.length === 0) {
-        alert('此章節暫無題目！');
+        alert('題庫尚未載入成功或該章節無題目！');
         return;
       }
       practicePool.sort(() => Math.random() - 0.5);
@@ -720,7 +776,7 @@
     function renderPracticeCard() {
       const current = practicePool[practiceIndex];
       document.getElementById('practice-progress').innerText = `第 ${practiceIndex + 1} / ${practicePool.length} 題`;
-      document.getElementById('practice-score').innerText = `正確率: ${practiceCorrect}/${practiceIndex}`;
+      document.getElementById('practice-score').innerText = `正解: ${practiceCorrect}/${practiceIndex}`;
       document.getElementById('practice-question').innerText = current.question;
       document.getElementById('practice-feedback').style.display = 'none';
 
@@ -753,7 +809,7 @@
         });
       }
 
-      document.getElementById('practice-exp-box').innerHTML = `💡 <strong>解析：</strong>${explanation}`;
+      document.getElementById('practice-exp-box').innerHTML = `💡 <strong>解析：</strong>${explanation || '暫無詳細解析'}`;
       document.getElementById('practice-feedback').style.display = 'block';
     }
 
@@ -768,16 +824,15 @@
       }
     }
 
-    // VIEW 3: Kahoot Timed Mode Logic
+    // VIEW 3: Kahoot Mode
     function startKahoot() {
       const chapter = document.getElementById('kahoot-chapter-select').value;
       kahootMaxTime = parseInt(document.getElementById('kahoot-time-limit').value, 10) || 10;
       kahootPool = allQuestions.filter(q => (chapter === 'all' || q.chapter === chapter));
       if (kahootPool.length === 0) {
-        alert('此章節暫無題目！');
+        alert('題庫尚未載入成功或該章節無題目！');
         return;
       }
-      // Take up to 10 random questions for a dynamic round
       kahootPool.sort(() => Math.random() - 0.5);
       kahootPool = kahootPool.slice(0, 10);
       kahootIndex = 0;
@@ -801,7 +856,6 @@
       document.getElementById('kahoot-feedback').style.display = 'none';
       document.getElementById('kahoot-options').style.display = 'grid';
 
-      // Set choices labels
       const btns = document.querySelectorAll('.kahoot-btn');
       btns.forEach((btn, idx) => {
         btn.disabled = false;
@@ -809,7 +863,6 @@
         btn.querySelector('.k-label').innerText = kahootCurrentChoices[idx];
       });
 
-      // Start Countdown
       kahootTimeRemaining = kahootMaxTime;
       updateTimerUI();
       kahootTimer = setInterval(() => {
@@ -819,3 +872,75 @@
           timeOutKahoot();
         } else {
           updateTimerUI();
+        }
+      }, 100);
+    }
+
+    function updateTimerUI() {
+      const pct = Math.max(0, (kahootTimeRemaining / kahootMaxTime) * 100);
+      document.getElementById('timer-bar').style.width = pct + '%';
+      const secCeil = Math.ceil(kahootTimeRemaining);
+      document.getElementById('kahoot-timer-text').innerText = secCeil;
+      if (secCeil <= 3 && Math.abs(kahootTimeRemaining - secCeil) < 0.15) {
+        playSound('tick');
+      }
+    }
+
+    function answerKahoot(choiceIdx) {
+      clearInterval(kahootTimer);
+      const selected = kahootCurrentChoices[choiceIdx];
+      const isCorrect = (selected === kahootCorrectAnswerText);
+      const btns = document.querySelectorAll('.kahoot-btn');
+      btns.forEach(b => b.disabled = true);
+
+      const statusEl = document.getElementById('kahoot-feedback-status');
+      if (isCorrect) {
+        kahootStreak++;
+        const timeFactor = Math.round((kahootTimeRemaining / kahootMaxTime) * 500);
+        const streakBonus = kahootStreak * 50;
+        const pts = 500 + timeFactor + streakBonus;
+        kahootScore += pts;
+        statusEl.innerHTML = `<span style="color:#26890c;">✓ 太棒了！+${pts} 分</span>`;
+        playSound('correct');
+      } else {
+        kahootStreak = 0;
+        statusEl.innerHTML = `<span style="color:#e21b3c;">✕ 答錯了！</span>`;
+        playSound('wrong');
+      }
+
+      endKahootQuestionUI();
+    }
+
+    function timeOutKahoot() {
+      const btns = document.querySelectorAll('.kahoot-btn');
+      btns.forEach(b => b.disabled = true);
+      kahootStreak = 0;
+      playSound('wrong');
+      const statusEl = document.getElementById('kahoot-feedback-status');
+      statusEl.innerHTML = `<span style="color:#e21b3c;">⏰ 時間到！</span>`;
+      endKahootQuestionUI();
+    }
+
+    function endKahootQuestionUI() {
+      const current = kahootPool[kahootIndex];
+      document.getElementById('kahoot-exp-box').innerHTML = `
+        <div style="font-weight:700; color:#137333; margin-bottom:4px;">正確答案：${current.answer}</div>
+        <div>💡 <strong>解析：</strong>${current.explanation || '暫無解析'}</div>
+      `;
+      document.getElementById('kahoot-feedback').style.display = 'block';
+    }
+
+    function nextKahootQuestion() {
+      kahootIndex++;
+      if (kahootIndex < kahootPool.length) {
+        renderKahootCard();
+      } else {
+        document.getElementById('kahoot-quiz').style.display = 'none';
+        document.getElementById('kahoot-result').style.display = 'block';
+        document.getElementById('kahoot-final-points').innerText = `${kahootScore} PTS`;
+        document.getElementById('kahoot-accuracy').innerText = `共完成 ${kahootPool.length} 題競速作答！`;
+      }
+    }
+  </script>
+</body>
+</html>
