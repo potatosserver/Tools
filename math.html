@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>高雄醫學大學 113 學年度第一學期微積分期中考試</title>
   
-  <!-- 引入 KaTeX 數學公式排版引擎 -->
+  <!-- KaTeX 數學公式排版引擎 -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"
@@ -14,21 +14,16 @@
   <style>
     :root {
       --primary: #1e3a8a;
-      --primary-light: #eff6ff;
       --accent: #2563eb;
       --text: #1f2937;
       --bg: #f8fafc;
       --card-bg: #ffffff;
-      --border: #e2e8f0;
+      --border: #cbd5e1;
       --answer-bg: #f0fdf4;
       --answer-border: #86efac;
     }
 
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans TC", sans-serif;
@@ -39,36 +34,29 @@
     }
 
     .container {
-      max-width: 800px;
+      max-width: 960px;
       margin: 0 auto;
     }
 
     header {
       background: var(--card-bg);
-      padding: 18px;
-      border-radius: 12px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-      margin-bottom: 16px;
+      padding: 16px;
+      border-radius: 10px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+      margin-bottom: 14px;
       text-align: center;
-      border-top: 4px solid var(--primary);
+      border-top: 5px solid var(--primary);
     }
 
-    h1 {
-      font-size: 1.25rem;
-      color: var(--primary);
-      margin-bottom: 6px;
-    }
-
-    .subtitle {
-      font-size: 0.85rem;
-      color: #64748b;
-    }
+    h1 { font-size: 1.25rem; color: var(--primary); margin-bottom: 4px; }
+    .exam-meta { font-size: 0.85rem; color: #475569; }
+    .rules { font-size: 0.8rem; color: #b91c1c; margin-top: 6px; }
 
     .toolbar {
       display: flex;
       justify-content: flex-end;
       gap: 8px;
-      margin-bottom: 16px;
+      margin-bottom: 12px;
     }
 
     .btn {
@@ -85,47 +73,69 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 4px;
     }
 
-    .btn:hover {
-      background: var(--primary-light);
-    }
+    .btn:hover { background: #eff6ff; }
 
     .card {
       background: var(--card-bg);
-      border-radius: 12px;
+      border-radius: 10px;
       padding: 16px;
-      margin-bottom: 16px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+      margin-bottom: 14px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
       border: 1px solid var(--border);
     }
 
     .q-title {
       font-weight: 700;
       color: var(--primary);
-      margin-bottom: 10px;
-      font-size: 1rem;
-      display: flex;
-      align-items: baseline;
-      gap: 6px;
-    }
-
-    .q-content {
-      margin-bottom: 12px;
+      margin-bottom: 8px;
       font-size: 0.95rem;
     }
 
-    .sub-q {
-      margin: 10px 0;
-      padding-left: 6px;
+    .q-content { font-size: 0.94rem; margin-bottom: 10px; }
+    .sub-q { margin: 8px 0; }
+
+    /* 文字內嵌精準幾何 SVG 圖示樣式 */
+    .icon-square {
+      width: 0.95em;
+      height: 0.95em;
+      vertical-align: -0.1em;
+      display: inline-block;
+    }
+    .icon-rose {
+      width: 1.05em;
+      height: 1.05em;
+      vertical-align: -0.15em;
+      display: inline-block;
+    }
+    .icon-star {
+      width: 1.15em;
+      height: 1.15em;
+      vertical-align: -0.2em;
+      display: inline-block;
     }
 
-    /* 答案折疊元件樣式 */
+    /* 第五題圖文排版容器 */
+    .q-layout {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+    }
+    .q-layout-main { flex: 1; min-width: 0; }
+    .q-layout-side {
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* 答案區塊折疊樣式 */
     details {
-      margin-top: 12px;
+      margin-top: 10px;
       border: 1px solid var(--border);
-      border-radius: 8px;
+      border-radius: 6px;
       overflow: hidden;
       background: #fafafa;
     }
@@ -142,88 +152,68 @@
       align-items: center;
       gap: 6px;
     }
-
-    summary::-webkit-details-marker {
-      display: none;
-    }
-
+    summary::-webkit-details-marker { display: none; }
     summary::before {
       content: '▶';
       font-size: 0.7rem;
-      transition: transform 0.2s ease;
+      transition: transform 0.2s;
       color: var(--accent);
     }
-
-    details[open] summary::before {
-      transform: rotate(90deg);
-    }
+    details[open] summary::before { transform: rotate(90deg); }
 
     .answer-body {
-      padding: 14px;
+      padding: 12px;
       background: var(--answer-bg);
       border-top: 1px solid var(--answer-border);
-      font-size: 0.9rem;
+      font-size: 0.88rem;
       overflow-x: auto;
     }
 
-    /* 底部原始圖片區塊 */
+    /* 第五題幾何大圖樣式 */
+    .box-frame {
+      border: 1px solid #cbd5e1;
+      background: #ffffff;
+      border-radius: 8px;
+      box-shadow: inset 0 0 4px rgba(0,0,0,0.02);
+    }
+    .svg-box { stroke: #0f172a; stroke-width: 2.5; fill: none; }
+    .svg-arc-level-1 { stroke: #475569; stroke-width: 2; fill: none; }
+    .svg-square-level-2 { stroke: #0284c7; stroke-width: 1.8; fill: none; }
+    .svg-arc-level-2 { stroke: #2563eb; stroke-width: 1.8; stroke-dasharray: 6,4; fill: none; }
+    .svg-pt-outer { fill: #0f172a; }
+    .svg-pt-inner { fill: #dc2626; }
+    .svg-lbl { font-family: "Times New Roman", Times, serif; font-style: italic; font-size: 28px; fill: #0f172a; font-weight: 500; }
+    .svg-lbl-inner { font-family: "Times New Roman", Times, serif; font-style: italic; font-size: 24px; fill: #dc2626; font-weight: bold; }
+
+    /* 底部原圖連結 */
     .image-nav {
       background: var(--card-bg);
       padding: 16px;
-      border-radius: 12px;
+      border-radius: 10px;
       border: 1px solid var(--border);
-      margin-top: 24px;
+      margin-top: 20px;
       text-align: center;
     }
-
-    .image-nav-title {
-      font-size: 0.9rem;
-      font-weight: 600;
-      color: #64748b;
-      margin-bottom: 12px;
-    }
-
     .image-nav-buttons {
       display: flex;
       justify-content: center;
       gap: 12px;
       flex-wrap: wrap;
+      margin-top: 8px;
     }
-
     .btn-photo {
       background: #f8fafc;
       border: 1px solid #cbd5e1;
       color: #334155;
-      padding: 10px 16px;
-      font-size: 0.9rem;
-      border-radius: 8px;
+      padding: 8px 14px;
     }
+    .btn-photo:hover { background: #e2e8f0; }
 
-    .btn-photo:hover {
-      background: #e2e8f0;
-      color: #0f172a;
-    }
-
-    /* 針對窄螢幕最佳化 */
-    @media (max-width: 480px) {
-      body {
-        padding: 8px;
-      }
-      header {
-        padding: 12px;
-      }
-      h1 {
-        font-size: 1.1rem;
-      }
-      .card {
-        padding: 12px;
-      }
-      .image-nav-buttons {
-        flex-direction: column;
-      }
-      .btn-photo {
-        width: 100%;
-      }
+    /* 手機直向檢視時自動轉為上下排列 */
+    @media (max-width: 768px) {
+      .q-layout { flex-direction: column; align-items: stretch; }
+      .q-layout-side { width: 100%; align-items: center; margin-top: 12px; }
+      .btn-photo { width: 100%; }
     }
   </style>
 </head>
@@ -232,7 +222,8 @@
 <div class="container">
   <header>
     <h1>高雄醫學大學 113 學年度第一學期 微積分 期中考試</h1>
-    <div class="subtitle">考試時間：Nov. 8, 10:00–12:00 | 總分：102 分</div>
+    <div class="exam-meta">學分/學時數：2/2 ｜ 時間：Nov. 8, 10:00–12:00 (CS407) ｜ 總分：102 分</div>
+    <div class="rules">※ 本試卷共 5 大題 102 分，請於試卷空白處作答。請用鉛筆或紅筆以外之筆書寫，違者扣分。</div>
   </header>
 
   <div class="toolbar">
@@ -242,22 +233,20 @@
 
   <!-- 第一題 -->
   <div class="card">
-    <div class="q-title">第 1 題 (5%, 3%)</div>
+    <div class="q-title">1. 敘述並說明：(5%, 3%)</div>
     <div class="q-content">
-      敘述並說明：三角函數的和差角公式 $\sin(\alpha \pm \beta)$ 和 $\cos(\alpha \pm \beta)$，且由此說明倍角與積化和差公式。
+      三角函數的和差角公式 $\sin(\alpha \pm \beta)$ 和 $\cos(\alpha \pm \beta)$ 且由此說明倍角與積化和差公式。
     </div>
     <details>
-      <summary>點擊查看答案與解析</summary>
+      <summary>查看答案與詳細推導</summary>
       <div class="answer-body">
         <strong>1. 和差角公式：</strong>
         $$\sin(\alpha \pm \beta) = \sin\alpha\cos\beta \pm \cos\alpha\sin\beta$$
         $$\cos(\alpha \pm \beta) = \cos\alpha\cos\beta \mp \sin\alpha\sin\beta$$
-
         <strong>2. 倍角公式（取 $\beta = \alpha$）：</strong>
         $$\sin(2\alpha) = 2\sin\alpha\cos\alpha$$
         $$\cos(2\alpha) = \cos^2\alpha - \sin^2\alpha = 2\cos^2\alpha - 1 = 1 - 2\sin^2\alpha$$
-
-        <strong>3. 積化和差公式（兩式相加或相減導出）：</strong>
+        <strong>3. 積化和差公式：</strong>
         $$\sin\alpha\cos\beta = \frac{1}{2}[\sin(\alpha+\beta) + \sin(\alpha-\beta)]$$
         $$\cos\alpha\sin\beta = \frac{1}{2}[\sin(\alpha+\beta) - \sin(\alpha-\beta)]$$
         $$\cos\alpha\cos\beta = \frac{1}{2}[\cos(\alpha+\beta) + \cos(\alpha-\beta)]$$
@@ -268,179 +257,229 @@
 
   <!-- 第二題 -->
   <div class="card">
-    <div class="q-title">第 2 題：極限計算 (5%, 3%, 3%, 3%)</div>
-    <div class="q-content">請計算並說明下列問題的極限值：</div>
-
-    <div class="sub-q">(1) $\displaystyle \lim_{x \to 0} x^2 \sqrt{1 + \frac{24}{x^4}}$</div>
-    <details>
-      <summary>查看 (1) 答案</summary>
-      <div class="answer-body">
-        將 $x^2$ 移入根號內（因為 $x \to 0$ 時 $x^2 = \sqrt{x^4}$）：
-        $$\lim_{x \to 0} \sqrt{x^4\left(1 + \frac{24}{x^4}\right)} = \lim_{x \to 0} \sqrt{x^4 + 24} = \sqrt{0 + 24} = 2\sqrt{6}$$
-        <strong>答案：$2\sqrt{6}$</strong>
-      </div>
-    </details>
-
-    <div class="sub-q" style="margin-top: 15px;">(2) $\displaystyle \lim_{x \to 0} \left[ \ln(2+x) - \ln(1+x) \right]$</div>
-    <details>
-      <summary>查看 (2) 答案</summary>
-      <div class="answer-body">
-        由於自然對數函數在其定義域內連續，可直接代入 $x = 0$：
-        $$\lim_{x \to 0} \left[ \ln(2+x) - \ln(1+x) \right] = \ln(2+0) - \ln(1+0) = \ln 2 - 0 = \ln 2$$
-        <strong>答案：$\ln 2$</strong>
-      </div>
-    </details>
-
-    <div class="sub-q" style="margin-top: 15px;">(3) $\displaystyle \lim_{x \to \infty} \frac{1}{x} \sin\left(\frac{1}{x}\right)$</div>
-    <details>
-      <summary>查看 (3) 答案</summary>
-      <div class="answer-body">
-        當 $x \to \infty$ 時，$\frac{1}{x} \to 0$，故 $\sin\left(\frac{1}{x}\right) \to \sin(0) = 0$。
-        $$\lim_{x \to \infty} \frac{1}{x}\sin\left(\frac{1}{x}\right) = 0 \cdot 0 = 0$$
-        （亦可用夾擠定理：由 $|\sin(\frac{1}{x})| \le 1$ 得式子界於 $-\frac{1}{x}$ 與 $\frac{1}{x}$ 之間，當 $x\to\infty$ 極限為 $0$）。<br>
-        <strong>答案：$0$</strong>
-      </div>
-    </details>
-
-    <div class="sub-q" style="margin-top: 15px;">(4) $\displaystyle \lim_{x \to \infty} (\sqrt{x^2+1} - 2x)$</div>
-    <details>
-      <summary>查看 (4) 答案</summary>
-      <div class="answer-body">
-        提領公因式 $x$（注意當 $x > 0$ 時 $\sqrt{x^2+1} = x\sqrt{1+\frac{1}{x^2}}$）：
-        $$\lim_{x \to \infty} x \left( \sqrt{1 + \frac{1}{x^2}} - 2 \right)$$
-        括弧內項之極限為 $1 - 2 = -1$，因此原式為 $\infty \cdot (-1) = -\infty$。<br>
-        <strong>答案：$-\infty$（極限不存在）</strong>
-      </div>
-    </details>
-  </div>
-
-  <!-- 第三題 -->
-  <div class="card">
-    <div class="q-title">第 3 題：費氏數列 (12%, 5%, 5%, 8%)</div>
+    <div class="q-title">2. 請計算並說明下列問題極限：(5%, 3%, 3%, 3%)</div>
     <div class="q-content">
-      Fibonacci 數列的遞迴方式為 $a_n = a_{n-1} + a_{n-2}\;(n \ge 3)$，其中 $a_1 = a_2 = 1$。
+      <div class="sub-q">(1) $\displaystyle \lim_{x \to 0} x^2 \sqrt{1 + \frac{24}{x^4}}$</div>
+      <details>
+        <summary>查看 (1) 答案</summary>
+        <div class="answer-body">
+          將 $x^2$ 移入根號內：
+          $$\lim_{x \to 0} \sqrt{x^4\left(1 + \frac{24}{x^4}\right)} = \lim_{x \to 0} \sqrt{x^4 + 24} = \sqrt{24} = 2\sqrt{6}$$
+          <strong>答案：$2\sqrt{6}$</strong>
+        </div>
+      </details>
+
+      <div class="sub-q" style="margin-top:12px;">(2) $\displaystyle \lim_{x \to 0} \left[ \ln(2+x) - \ln(1+x) \right]$</div>
+      <details>
+        <summary>查看 (2) 答案</summary>
+        <div class="answer-body">
+          直接代入連續點 $x=0$：
+          $$\ln(2+0) - \ln(1+0) = \ln 2 - 0 = \ln 2$$
+          <strong>答案：$\ln 2$</strong>
+        </div>
+      </details>
+
+      <div class="sub-q" style="margin-top:12px;">(3) $\displaystyle \lim_{x \to \infty} \frac{1}{x} \sin\left(\frac{1}{x}\right)$</div>
+      <details>
+        <summary>查看 (3) 答案</summary>
+        <div class="answer-body">
+          當 $x \to \infty$ 時 $\frac{1}{x} \to 0$，式子為 $0 \cdot 0 = 0$（由夾擠定理亦同）。<br>
+          <strong>答案：$0$</strong>
+        </div>
+      </details>
+
+      <div class="sub-q" style="margin-top:12px;">(4) $\displaystyle \lim_{x \to \infty} (\sqrt{x^2+1} - 2x)$</div>
+      <details>
+        <summary>查看 (4) 答案</summary>
+        <div class="answer-body">
+          提出最高次項 $x$：
+          $$\lim_{x \to \infty} x\left(\sqrt{1+\frac{1}{x^2}} - 2\right) = \infty \cdot (1 - 2) = -\infty$$
+          <strong>答案：$-\infty$（極限不存在）</strong>
+        </div>
+      </details>
     </div>
+  </div>
 
-    <div class="sub-q">(1) 數列通項 $a_n\;(\forall n \in \mathbb{N})$ 為何？</div>
+  <!-- 第三題 (無圖) -->
+  <div class="card">
+    <div class="q-title">3. 請計算並說明：Fibonacci 數列 (12%, 5%, 5%, 8%)</div>
+    <div class="q-content">
+      Fibonacci 數列的迭代方式為 $a_n = a_{n-1} + a_{n-2}\;(n \ge 3)$，其中 $a_1 = a_2 = 1$ 則請答：<br>
+      (1) 數列的通項 $a_n\;(\forall n \in \mathbb{N})$ 為何？<br>
+      (2) 求 $\displaystyle \lim_{n \to \infty} \frac{a_{n+k}}{a_n}\;(\forall k \in \mathbb{N})$；<br>
+      (3) 化簡數列的前 $n$ 項和 $S_n = \sum_{i=1}^n a_i$；<br>
+      (4) 求 $\displaystyle \lim_{n \to \infty} \frac{S_{2n}}{\sum_{i=1}^n a_{2i}}$。
+    </div>
     <details>
-      <summary>查看 (1) 答案</summary>
+      <summary>查看答案與詳細推導</summary>
       <div class="answer-body">
-        特徵方程式為 $r^2 - r - 1 = 0$，解得特徵根為 $r = \frac{1 \pm \sqrt{5}}{2}$。<br>
-        由初始條件 $a_1 = 1, a_2 = 1$ 導出 Binet 公式：
-        $$a_n = \frac{1}{\sqrt{5}} \left[ \left(\frac{1+\sqrt{5}}{2}\right)^n - \left(\frac{1-\sqrt{5}}{2}\right)^n \right]$$
-      </div>
-    </details>
-
-    <div class="sub-q" style="margin-top: 15px;">(2) 求 $\displaystyle \lim_{n \to \infty} \frac{a_{n+k}}{a_n}\;(\forall k \in \mathbb{N})$ 為何？</div>
-    <details>
-      <summary>查看 (2) 答案</summary>
-      <div class="answer-body">
-        已知 $\lim_{n \to \infty} \frac{a_{n+1}}{a_n} = \phi = \frac{1+\sqrt{5}}{2}$。<br>
-        因此：
-        $$\lim_{n \to \infty} \frac{a_{n+k}}{a_n} = \lim_{n \to \infty} \left( \frac{a_{n+k}}{a_{n+k-1}} \cdots \frac{a_{n+1}}{a_n} \right) = \phi^k = \left(\frac{1+\sqrt{5}}{2}\right)^k$$
-      </div>
-    </details>
-
-    <div class="sub-q" style="margin-top: 15px;">(3) 化簡數列的前 $n$ 項和 $S_n = \sum_{i=1}^n a_i$：</div>
-    <details>
-      <summary>查看 (3) 答案</summary>
-      <div class="answer-body">
-        由遞迴式 $a_i = a_{i+2} - a_{i+1}$ 進行裂項相消：
-        $$S_n = (a_3 - a_2) + (a_4 - a_3) + \dots + (a_{n+2} - a_{n+1}) = a_{n+2} - a_2 = a_{n+2} - 1$$
-        <strong>答案：$S_n = a_{n+2} - 1$</strong>
-      </div>
-    </details>
-
-    <div class="sub-q" style="margin-top: 15px;">(4) 求 $\displaystyle \lim_{n \to \infty} \frac{S_{2n}}{\sum_{i=1}^n a_{2i}}$：</div>
-    <details>
-      <summary>查看 (4) 答案</summary>
-      <div class="answer-body">
-        已知分母偶數項和為 $\sum_{i=1}^n a_{2i} = a_{2n+1} - 1$，分子為 $S_{2n} = a_{2n+2} - 1$。<br>
-        $$\lim_{n \to \infty} \frac{a_{2n+2} - 1}{a_{2n+1} - 1} = \lim_{n \to \infty} \frac{a_{2n+2}}{a_{2n+1}} = \frac{1+\sqrt{5}}{2}$$
+        <strong>(1) 通項公式 (Binet's Formula)：</strong>
+        $$a_n = \frac{1}{\sqrt{5}}\left[\left(\frac{1+\sqrt{5}}{2}\right)^n - \left(\frac{1-\sqrt{5}}{2}\right)^n\right]$$
+        <strong>(2) 比值極限：</strong>
+        已知 $\lim_{n \to \infty} \frac{a_{n+1}}{a_n} = \phi = \frac{1+\sqrt{5}}{2}$，故：
+        $$\lim_{n \to \infty} \frac{a_{n+k}}{a_n} = \phi^k = \left(\frac{1+\sqrt{5}}{2}\right)^k$$
+        <strong>(3) 前 $n$ 項和：</strong>
+        $$S_n = \sum_{i=1}^n a_i = a_{n+2} - 1$$
+        <strong>(4) 和之極限：</strong>
+        已知偶數項和 $\sum_{i=1}^n a_{2i} = a_{2n+1} - 1$，故：
+        $$\lim_{n \to \infty} \frac{a_{2n+2}-1}{a_{2n+1}-1} = \frac{1+\sqrt{5}}{2}$$
       </div>
     </details>
   </div>
 
-  <!-- 第四題 -->
+  <!-- 第四題 (無圖) -->
   <div class="card">
-    <div class="q-title">第 4 題：反函數求解 (7%, 10%, 8%)</div>
-    <div class="q-content">請說明並計算下列問題的反函數是否存在？若有請找出來：</div>
-
-    <div class="sub-q">(1) $y = \sqrt[3]{x + \sqrt{1+x^2}} + \sqrt[3]{x - \sqrt{1+x^2}}$</div>
-    <details>
-      <summary>查看 (1) 答案</summary>
-      <div class="answer-body">
-        令 $u = \sqrt[3]{x + \sqrt{1+x^2}}$，$v = \sqrt[3]{x - \sqrt{1+x^2}}$。<br>
-        乘積 $uv = \sqrt[3]{x^2 - (1+x^2)} = \sqrt[3]{-1} = -1$。<br>
-        展開立方：$y^3 = (u+v)^3 = u^3 + v^3 + 3uv(u+v) = 2x - 3y$。<br>
-        因此 $2x = y^3 + 3y \implies x = \frac{y^3 + 3y}{2}$。<br>
-        因 $\frac{dx}{dy} > 0$ 嚴格遞增，一對一反函數存在：
-        $$f^{-1}(x) = \frac{x^3 + 3x}{2},\quad x \in \mathbb{R}$$
-      </div>
-    </details>
-
-    <div class="sub-q" style="margin-top: 15px;">(2) $y = \sqrt{x^2 - x + 1} - \sqrt{x^2 + x + 1}$</div>
-    <details>
-      <summary>查看 (2) 答案</summary>
-      <div class="answer-body">
-        函數嚴格單調遞減，值域為 $(-1, 1)$，反函數存在。<br>
-        由有理化：$\sqrt{x^2-x+1} + \sqrt{x^2+x+1} = \frac{-2x}{y}$。<br>
-        與原式聯立平方求解可得 $x^2 = \frac{y^2(4-y^2)}{4(1-y^2)}$。<br>
-        因 $x, y$ 異號：
-        $$f^{-1}(x) = -\frac{x}{2}\sqrt{\frac{4-x^2}{1-x^2}},\quad x \in (-1, 1)$$
-      </div>
-    </details>
-
-    <div class="sub-q" style="margin-top: 15px;">
-      (3) $y = \begin{cases} -x^2 - 1, & \text{if } x \le 0 \\ \ln(x+1), & \text{if } x > 0 \end{cases}$
+    <div class="q-title">4. 反函數是否存在並求解 (7%, 10%, 8%)</div>
+    <div class="q-content">
+      請說明並計算下列問題的反函數是否存在？若有請找出來：<br>
+      (1) $y = \sqrt[3]{x + \sqrt{1+x^2}} + \sqrt[3]{x - \sqrt{1+x^2}}$；<br>
+      (2) $y = \sqrt{x^2 - x + 1} - \sqrt{x^2 + x + 1}$；<br>
+      (3) $y = \begin{cases} -x^2 - 1, & \text{if } x \le 0 \\ \ln(x+1), & \text{if } x > 0 \end{cases}$。
     </div>
     <details>
-      <summary>查看 (3) 答案</summary>
+      <summary>查看答案與詳細推導</summary>
       <div class="answer-body">
-        $x \le 0$ 對應 $y \le -1$，可解得 $x = -\sqrt{-y-1}$。<br>
-        $x > 0$ 對應 $y > 0$，可解得 $x = e^y - 1$。<br>
-        兩區段值域互不重疊且皆為嚴格遞增，反函數存在：
+        <strong>(1)</strong> 經立方展開得 $2x = y^3 + 3y$。嚴格單調遞增，<strong>反函數存在</strong>：
+        $$f^{-1}(x) = \frac{x^3 + 3x}{2},\quad x \in \mathbb{R}$$
+        <strong>(2)</strong> 函數值域為 $(-1, 1)$ 且嚴格遞減，<strong>反函數存在</strong>：
+        $$f^{-1}(x) = -\frac{x}{2}\sqrt{\frac{4-x^2}{1-x^2}},\quad x \in (-1, 1)$$
+        <strong>(3)</strong> 值域為 $(-\infty, -1] \cup (0, \infty)$ 且單調遞增，<strong>反函數存在</strong>：
         $$f^{-1}(x) = \begin{cases} -\sqrt{-x-1}, & \text{if } x \le -1 \\ e^x - 1, & \text{if } x > 0 \end{cases}$$
-        （定義域為 $(-\infty, -1] \cup (0, \infty)$）
       </div>
     </details>
   </div>
 
   <!-- 第五題 -->
   <div class="card">
-    <div class="q-title">第 5 題：幾何極限問題 (6%, 10%, 7%, 2%)</div>
-    <div class="q-content">
-      以邊長為 $a$ 正方形 $ABCD$ 四頂點為圓心，邊長為半徑畫弧，分別相交於 $A'B'C'D'$ 四點，連接此四點可得四邊形 $\square A'B'C'D'$。<br>
-      (1) 請說明四邊形 $\square A'B'C'D'$ 為正方形？<br>
-      (2) 以此類推進行迭代過程。若類方圓花苞形 (rose) $\lozenge A'B'C'D'$ 面積為 $P_1$，下一級面積為 $P_2 \dots$，求級數和 $P_1 + P_2 + \dots$？<br>
-      (3) 若類玫瑰花形 (star) 的面積為 $S_1, S_2, \dots$，則 $S_1 + S_2 + \dots$ 為何？<br>
-      (4) 由 (2) 和 (3) 我們可預測這些圖形的面積和收斂，則其周（邊）長和也會收斂嗎？
+    <div class="q-title">5. 請計算下列幾何極限問題 (見右圖)：(6%, 10%, 7%, 2%)</div>
+    <div class="q-layout">
+      <!-- 題目文字部分（套用精準 SVG 符號） -->
+      <div class="q-layout-main">
+        <div class="q-content">
+          以邊長為 $a$ 正四邊形 $ABCD$ 四頂點為圓心，邊長為半徑畫弧，分別相交於 $A'B'C'D'$ 四點，連接此四點可得四邊形
+          <!-- 正方形符號 -->
+          <svg class="icon-square" viewBox="0 0 16 16">
+            <rect x="2" y="2" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"/>
+          </svg><i>A′B′C′D′</i>，則：<br>
+          (1) 請說明四邊形
+          <svg class="icon-square" viewBox="0 0 16 16">
+            <rect x="2" y="2" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"/>
+          </svg><i>A′B′C′D′</i> 為正方形？<br>
+          (2) 因此繼續以四邊形
+          <svg class="icon-square" viewBox="0 0 16 16">
+            <rect x="2" y="2" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"/>
+          </svg><i>A′B′C′D′</i> 四頂點為圓心，邊長為半徑畫弧，分別相交於 $A''B''C''D''$ 四點，依此類推進行迭代過程下去。若類方圓花苞形 (rose) 
+          <!-- 花苞符號 -->
+          <svg class="icon-rose" viewBox="70 70 460 460">
+            <path d="M 300 80.385 A 600 600 0 0 1 519.615 300 A 600 600 0 0 1 300 519.615 A 600 600 0 0 1 80.385 300 A 600 600 0 0 1 300 80.385 Z" fill="none" stroke="currentColor" stroke-width="32" stroke-linejoin="round"/>
+          </svg><i>A′B′C′D′</i> 面積 $P_1$，類方圓花苞形
+          <svg class="icon-rose" viewBox="70 70 460 460">
+            <path d="M 300 80.385 A 600 600 0 0 1 519.615 300 A 600 600 0 0 1 300 519.615 A 600 600 0 0 1 80.385 300 A 600 600 0 0 1 300 80.385 Z" fill="none" stroke="currentColor" stroke-width="32" stroke-linejoin="round"/>
+          </svg><i>A″B″C″D″</i> 面積為 $P_2 \dots$，則請問這些類方圓形的面積和 $P_1 + P_2 + \dots$ 為何？<br>
+          (3) 若類玫瑰花形 (star) 
+          <!-- 星花符號 -->
+          <svg class="icon-star" viewBox="-20 -20 640 640">
+            <path d="M 0 0 A 600 600 0 0 1 300 80.385 A 600 600 0 0 1 600 0 A 600 600 0 0 1 519.615 300 A 600 600 0 0 1 600 600 A 600 600 0 0 1 300 519.615 A 600 600 0 0 1 0 600 A 600 600 0 0 1 80.385 300 A 600 600 0 0 1 0 0 Z" fill="none" stroke="currentColor" stroke-width="32" stroke-linejoin="round"/>
+          </svg><i>AA′DD′CC′BB′</i> 的面積 $S_1$，類玫瑰花形 
+          <svg class="icon-star" viewBox="-20 -20 640 640">
+            <path d="M 0 0 A 600 600 0 0 1 300 80.385 A 600 600 0 0 1 600 0 A 600 600 0 0 1 519.615 300 A 600 600 0 0 1 600 600 A 600 600 0 0 1 300 519.615 A 600 600 0 0 1 0 600 A 600 600 0 0 1 80.385 300 A 600 600 0 0 1 0 0 Z" fill="none" stroke="currentColor" stroke-width="32" stroke-linejoin="round"/>
+          </svg><i>A′A″D′D″C′C″B′B″</i> 面積為 $S_2 \dots$，則這些類玫瑰花形的面積和 $S_1 + S_2 + \dots$ 為何？<br>
+          (4) 由 (2) 和 (3) 我們可預測這些圖形的面積和收斂則其周(邊)長和也會收斂嗎？
+        </div>
+      </div>
+
+      <!-- 右側幾何大圖（精準幾何坐標與優雅配色） -->
+      <div class="q-layout-side">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="-60 -60 720 720" width="310" height="310" class="box-frame">
+          <!-- 1. 最外層正方形 ABCD (邊長 600) -->
+          <rect x="0" y="0" width="600" height="600" class="svg-box" />
+
+          <!-- 2. 第一層四條圓弧 (半徑 R = 600) -->
+          <path d="M 600 0 A 600 600 0 0 1 0 600" class="svg-arc-level-1" />
+          <path d="M 0 0 A 600 600 0 0 0 600 600" class="svg-arc-level-1" />
+          <path d="M 0 600 A 600 600 0 0 1 600 0" class="svg-arc-level-1" />
+          <path d="M 0 0 A 600 600 0 0 1 600 600" class="svg-arc-level-1" />
+
+          <!-- 3. 連接第一層交點的正方形 A'B'C'D' -->
+          <polygon points="300,80.385 80.385,300 300,519.615 519.615,300" class="svg-square-level-2" />
+
+          <!-- 4. 第二層四條圓弧 (圓心為 A', B', C', D'，半徑 r = 310.58) -->
+          <path d="M 80.385 300 A 310.58 310.58 0 0 0 519.615 300" class="svg-arc-level-2" />
+          <path d="M 80.385 300 A 310.58 310.58 0 0 1 519.615 300" class="svg-arc-level-2" />
+          <path d="M 300 80.385 A 310.58 310.58 0 0 1 300 519.615" class="svg-arc-level-2" />
+          <path d="M 300 80.385 A 310.58 310.58 0 0 0 300 519.615" class="svg-arc-level-2" />
+
+          <!-- 5. 頂點與交點圓點 -->
+          <!-- 第一層交點 A', B', C', D' -->
+          <circle cx="300" cy="80.385" r="5.5" class="svg-pt-outer" />
+          <circle cx="80.385" cy="300" r="5.5" class="svg-pt-outer" />
+          <circle cx="300" cy="519.615" r="5.5" class="svg-pt-outer" />
+          <circle cx="519.615" cy="300" r="5.5" class="svg-pt-outer" />
+
+          <!-- 第二層交點 A'', B'', C'', D'' -->
+          <circle cx="219.6" cy="219.6" r="5" class="svg-pt-inner" />
+          <circle cx="219.6" cy="380.4" r="5" class="svg-pt-inner" />
+          <circle cx="380.4" cy="380.4" r="5" class="svg-pt-inner" />
+          <circle cx="380.4" cy="219.6" r="5" class="svg-pt-inner" />
+
+          <!-- 6. 標籤文字 -->
+          <!-- 外層頂點 -->
+          <text x="-35" y="-12" class="svg-lbl">A</text>
+          <text x="618" y="-12" class="svg-lbl">D</text>
+          <text x="618" y="626" class="svg-lbl">C</text>
+          <text x="-35" y="626" class="svg-lbl">B</text>
+
+          <!-- 第一層交點標籤 -->
+          <text x="290" y="55" class="svg-lbl">A′</text>
+          <text x="32" y="308" class="svg-lbl">B′</text>
+          <text x="290" y="560" class="svg-lbl">C′</text>
+          <text x="535" y="308" class="svg-lbl">D′</text>
+
+          <!-- 第二層交點標籤 -->
+          <text x="175" y="215" class="svg-lbl-inner">A″</text>
+          <text x="175" y="405" class="svg-lbl-inner">B″</text>
+          <text x="398" y="405" class="svg-lbl-inner">C″</text>
+          <text x="398" y="215" class="svg-lbl-inner">D″</text>
+        </svg>
+      </div>
     </div>
+
     <details>
-      <summary>點擊查看答案與解析</summary>
+      <summary>查看答案與詳細推導</summary>
       <div class="answer-body">
-        <strong>(1) 說明正方形：</strong> 由正方形之四重旋轉對稱性與鏡射對稱，四交點構成之四邊形邊長相等且夾角皆為 $90^\circ$，必為正方形。<br><br>
-        <strong>(2) & (3) 面積和：</strong><br>
-        每一層迭代之線性縮放比例為 $r = \frac{\sqrt{6}-\sqrt{2}}{2} < 1$，面積公比為 $k = r^2 = 2 - \sqrt{3} < 1$。<br>
-        由於 $|k| < 1$，面積級數和均收斂為：
-        $$\sum P_n = \frac{P_1}{1 - (2-\sqrt{3})} = \frac{\sqrt{3}+1}{2}P_1$$
-        $$\sum S_n = \frac{S_1}{1 - (2-\sqrt{3})} = \frac{\sqrt{3}+1}{2}S_1$$<br>
+        <strong>(1) 說明 $\square A'B'C'D'$ 為正方形：</strong><br>
+        正方形 $ABCD$ 具備繞中心旋轉 $90^\circ$ 的四重旋轉對稱性與水平/垂直/對角線反射對稱。圓弧交點 $A', B', C', D'$ 構成之四邊形對角線相互垂直平分且等長，故必為正方形。<br><br>
+
+        <strong>幾何公比計算：</strong><br>
+        外正方形邊長為 $a$。以頂點為原點建立坐標，交點 $A'$ 到頂邊距離為 $\left(1 - \frac{\sqrt{3}}{2}\right)a$。<br>
+        內部正方形 $A'B'C'D'$ 對角線長為 $(\sqrt{3}-1)a$，其邊長為 $a_1 = \frac{\sqrt{3}-1}{\sqrt{2}}a = \frac{\sqrt{6}-\sqrt{2}}{2}a$。<br>
+        線性縮放比為 $r = \frac{\sqrt{6}-\sqrt{2}}{2} \approx 0.5176 < 1$。<br>
+        面積公比為 $k = r^2 = 2 - \sqrt{3} \approx 0.2679 < 1$。<br><br>
+
+        <strong>(2) 類方圓花苞形 (rose) 面積和：</strong><br>
+        因公比 $|k| < 1$，等比級數和收斂：
+        $$\sum_{n=1}^\infty P_n = \frac{P_1}{1 - k} = \frac{P_1}{1 - (2 - \sqrt{3})} = \frac{P_1}{\sqrt{3}-1} = \frac{\sqrt{3}+1}{2} P_1$$
+
+        <strong>(3) 類玫瑰花形 (star) 面積和：</strong><br>
+        同理公比 $k = 2 - \sqrt{3}$，等比級數和收斂：
+        $$\sum_{n=1}^\infty S_n = \frac{S_1}{1 - k} = \frac{\sqrt{3}+1}{2} S_1$$
+
         <strong>(4) 周長和是否收斂：</strong><br>
-        <strong>會收斂。</strong><br>
-        <strong>原因：</strong> 周長比例以公比 $r = \frac{\sqrt{6}-\sqrt{2}}{2} \approx 0.518$ 遞減，因公比 $|r| < 1$，故等比級數周長和亦必定收斂。
+        <strong>答：會收斂。</strong><br>
+        <strong>原因：</strong> 每次迭代圖形的周長均依比例 $r = \frac{\sqrt{6}-\sqrt{2}}{2} \approx 0.518$ 等比遞減。由於線性公比滿足 $|r| < 1$，由等比級數審斂法，周長和必定收斂。
       </div>
     </details>
   </div>
 
-  <!-- 底部按鈕：跳轉至原始考卷圖片 -->
+  <!-- 底部按鈕：在新分頁開啟原始考卷相片 -->
   <div class="image-nav">
-    <div class="image-nav-title">原始考卷圖片對照</div>
+    <div style="font-size:0.85rem; color:#64748b; font-weight:600;">原始試卷相片檢視（新分頁開啟）</div>
     <div class="image-nav-buttons">
       <a href="math1.jpg" target="_blank" rel="noopener noreferrer" class="btn btn-photo">
-        📷 在新分頁查看 math1.jpg
+        📄 在新分頁開啟 math1.jpg
       </a>
       <a href="math2.jpg" target="_blank" rel="noopener noreferrer" class="btn btn-photo">
-        📷 在新分頁查看 math2.jpg
+        📄 在新分頁開啟 math2.jpg
       </a>
     </div>
   </div>
@@ -448,10 +487,8 @@
 </div>
 
 <script>
-  // 全部展開/收合切換功能
   function toggleAll(openState) {
-    const allDetails = document.querySelectorAll('details');
-    allDetails.forEach(d => d.open = openState);
+    document.querySelectorAll('details').forEach(el => el.open = openState);
   }
 </script>
 
