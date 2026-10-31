@@ -169,21 +169,20 @@
       overflow-x: auto;
     }
 
-    /* 第五題幾何大圖樣式 */
-    .box-frame {
+    /* 第五題精確線條樣式（百分之百還原試卷） */
+    .exam-svg-frame {
       border: 1px solid #cbd5e1;
       background: #ffffff;
-      border-radius: 8px;
-      box-shadow: inset 0 0 4px rgba(0,0,0,0.02);
+      border-radius: 6px;
     }
-    .svg-box { stroke: #0f172a; stroke-width: 2.5; fill: none; }
-    .svg-arc-level-1 { stroke: #475569; stroke-width: 2; fill: none; }
-    .svg-square-level-2 { stroke: #0284c7; stroke-width: 1.8; fill: none; }
-    .svg-arc-level-2 { stroke: #2563eb; stroke-width: 1.8; stroke-dasharray: 6,4; fill: none; }
-    .svg-pt-outer { fill: #0f172a; }
-    .svg-pt-inner { fill: #dc2626; }
-    .svg-lbl { font-family: "Times New Roman", Times, serif; font-style: italic; font-size: 28px; fill: #0f172a; font-weight: 500; }
-    .svg-lbl-inner { font-family: "Times New Roman", Times, serif; font-style: italic; font-size: 24px; fill: #dc2626; font-weight: bold; }
+    .geo-box { stroke: #1e293b; stroke-width: 2; fill: none; }
+    .geo-arc-l1 { stroke: #334155; stroke-width: 1.6; fill: none; }
+    .geo-seg-l2 { stroke: #64748b; stroke-width: 1.2; stroke-dasharray: 4,4; fill: none; }
+    .geo-arc-l2 { stroke: #0284c7; stroke-width: 1.5; fill: none; }
+    .geo-pt { fill: #0f172a; }
+    .geo-pt-inner { fill: #dc2626; }
+    .geo-lbl { font-family: "Times New Roman", Times, serif; font-style: italic; font-size: 24px; fill: #0f172a; }
+    .geo-lbl-inner { font-family: "Times New Roman", Times, serif; font-style: italic; font-size: 20px; fill: #dc2626; font-weight: bold; }
 
     /* 底部原圖連結 */
     .image-nav {
@@ -246,7 +245,7 @@
         $$\sin(2\alpha) = 2\sin\alpha\cos\alpha$$
         $$\cos(2\alpha) = \cos^2\alpha - \sin^2\alpha = 2\cos^2\alpha - 1 = 1 - 2\sin^2\alpha$$
         <strong>3. 積化和差公式：</strong>
-        由上兩式相加相減可得：
+        由和差角公式相加減推導得：
         $$\sin\alpha\cos\beta = \frac{1}{2}[\sin(\alpha+\beta) + \sin(\alpha-\beta)]$$
         $$\cos\alpha\sin\beta = \frac{1}{2}[\sin(\alpha+\beta) - \sin(\alpha-\beta)]$$
         $$\cos\alpha\cos\beta = \frac{1}{2}[\cos(\alpha+\beta) + \cos(\alpha-\beta)]$$
@@ -283,12 +282,13 @@
       <details>
         <summary>查看 (3) 答案</summary>
         <div class="answer-body">
-          <strong>方法一（直接代入）：</strong><br>
+          <strong>方法一（直接求極限）：</strong><br>
           當 $x \to \infty$ 時，$\frac{1}{x} \to 0$ 且 $\sin\left(\frac{1}{x}\right) \to \sin 0 = 0$。
-          故原式 $= 0 \cdot 0 = 0$。<br><br>
+          故極限為 $0 \cdot 0 = 0$。<br><br>
           <strong>方法二（夾擠定理 Squeeze Theorem）：</strong><br>
-          由於 $-1 \le \sin\left(\frac{1}{x}\right) \le 1$，當 $x > 0$ 時有 $-\frac{1}{x} \le \frac{1}{x}\sin\left(\frac{1}{x}\right) \le \frac{1}{x}$。
-          因為 $\lim_{x\to\infty} \left(-\frac{1}{x}\right) = \lim_{x\to\infty} \frac{1}{x} = 0$，由夾擠定理得極限為 $0$。<br>
+          由於 $-1 \le \sin\left(\frac{1}{x}\right) \le 1$，當 $x > 0$ 時：
+          $$-\frac{1}{x} \le \frac{1}{x}\sin\left(\frac{1}{x}\right) \le \frac{1}{x}$$
+          因 $\lim_{x\to\infty} \left(-\frac{1}{x}\right) = \lim_{x\to\infty} \frac{1}{x} = 0$，由夾擠定理得極限為 $0$。<br>
           <strong>答案：$0$</strong>
         </div>
       </details>
@@ -324,7 +324,7 @@
 
         <strong>(2) 比值極限：</strong><br>
         記黃金比例 $\phi = \frac{1+\sqrt{5}}{2}$。已知 $\lim_{n \to \infty} \frac{a_{n+1}}{a_n} = \phi$。故：
-        $$\lim_{n \to \infty} \frac{a_{n+k}}{a_n} = \lim_{n \to \infty} \left(\frac{a_{n+k}}{a_{n+k-1}} \cdot \frac{a_{n+k-1}}{a_{n+k-2}} \cdots \frac{a_{n+1}}{a_n}\right) = \phi^k = \left(\frac{1+\sqrt{5}}{2}\right)^k$$
+        $$\lim_{n \to \infty} \frac{a_{n+k}}{a_n} = \lim_{n \to \infty} \left(\frac{a_{n+k}}{a_{n+k-1}} \cdots \frac{a_{n+1}}{a_n}\right) = \phi^k = \left(\frac{1+\sqrt{5}}{2}\right)^k$$
 
         <strong>(3) 前 $n$ 項和公式：</strong><br>
         因 $a_i = a_{i+2} - a_{i+1}$，逐項累加消去得：
@@ -352,23 +352,23 @@
       <div class="answer-body">
         <strong>(1) 反函數存在：</strong><br>
         令 $u = \sqrt[3]{x + \sqrt{1+x^2}}$, $v = \sqrt[3]{x - \sqrt{1+x^2}}$，則 $uv = \sqrt[3]{x^2 - (1+x^2)} = -1$。<br>
-        兩邊立方：$y^3 = (u+v)^3 = u^3 + v^3 + 3uv(u+v) = 2x - 3y$。<br>
-        移項得 $2x = y^3 + 3y \implies x = \frac{y^3+3y}{2}$。<br>
-        因為 $\frac{dx}{dy} = \frac{3y^2+3}{2} > 0$，函數嚴格單調遞增（一對一且映成），<strong>反函數存在</strong>：
+        兩邊立方得：$y^3 = (u+v)^3 = u^3 + v^3 + 3uv(u+v) = 2x - 3y$。<br>
+        整理得 $2x = y^3 + 3y \implies x = \frac{y^3+3y}{2}$。<br>
+        因 $\frac{dx}{dy} = \frac{3y^2+3}{2} > 0$，函數嚴格單調遞增，反函數存在：
         $$f^{-1}(x) = \frac{x^3 + 3x}{2},\quad x \in \mathbb{R}$$
 
         <strong>(2) 反函數存在：</strong><br>
-        $y = \frac{-2x}{\sqrt{x^2-x+1} + \sqrt{x^2+x+1}}$。該函數在 $\mathbb{R}$ 上嚴格單調遞減，值域為 $(-1, 1)$。<br>
+        有理化得 $y = \frac{-2x}{\sqrt{x^2-x+1} + \sqrt{x^2+x+1}}$。該函數在 $\mathbb{R}$ 上嚴格單調遞減，值域為 $(-1, 1)$。<br>
         解方程式得：$x = -\frac{y}{2}\sqrt{\frac{4-y^2}{1-y^2}}$。<br>
-        故<strong>反函數存在</strong>且其表達式為：
+        故反函數存在且其表達式為：
         $$f^{-1}(x) = -\frac{x}{2}\sqrt{\frac{4-x^2}{1-x^2}},\quad x \in (-1, 1)$$
 
         <strong>(3) 反函數存在：</strong><br>
-        - 當 $x \le 0$ 時，$y = -x^2 - 1 \implies y \le -1$，解得 $x = -\sqrt{-y-1}$。<br>
-        - 當 $x > 0$ 時，$y = \ln(x+1) \implies y > 0$，解得 $x = e^y - 1$。<br>
-        函數在各區間皆嚴格單調遞增，且兩區間對應之值域 $(-\infty, -1]$ 與 $(0, \infty)$ 互斥不相交，滿足單射條件。反函數存在，並需依各自分段定義域表示：
+        - 當 $x \le 0$ 時，$y = -x^2 - 1 \le -1$，解得 $x = -\sqrt{-y-1}$。<br>
+        - 當 $x > 0$ 時，$y = \ln(x+1) > 0$，解得 $x = e^y - 1$。<br>
+        各區間皆嚴格單調遞增，且值域 $(-\infty, -1]$ 與 $(0, \infty)$ 互不重疊，滿足一對一性質。反函數存在，依其分段定義域表示為：
         $$f^{-1}(x) = \begin{cases} -\sqrt{-x-1}, & \text{if } x \le -1 \\ e^x - 1, & \text{if } x > 0 \end{cases}$$
-        （註：原函數之值域未涵蓋區間 $(-1, 0]$，故反函數在該區間內無定義）
+        （原函數之值域未涵蓋 $(-1, 0]$，故反函數在此區間無定義）
       </div>
     </details>
   </div>
@@ -408,34 +408,63 @@
         </div>
       </div>
 
+      <!-- 右側精準還原考卷的幾何大圖 -->
       <div class="q-layout-side">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="-60 -60 720 720" width="310" height="310" class="box-frame">
-          <rect x="0" y="0" width="600" height="600" class="svg-box" />
-          <path d="M 600 0 A 600 600 0 0 1 0 600" class="svg-arc-level-1" />
-          <path d="M 0 0 A 600 600 0 0 0 600 600" class="svg-arc-level-1" />
-          <path d="M 0 600 A 600 600 0 0 1 600 0" class="svg-arc-level-1" />
-          <path d="M 0 0 A 600 600 0 0 1 600 600" class="svg-arc-level-1" />
-          <polygon points="300,80.385 80.385,300 300,519.615 519.615,300" class="svg-square-level-2" />
-          <circle cx="300" cy="80.385" r="5.5" class="svg-pt-outer" />
-          <circle cx="80.385" cy="300" r="5.5" class="svg-pt-outer" />
-          <circle cx="300" cy="519.615" r="5.5" class="svg-pt-outer" />
-          <circle cx="519.615" cy="300" r="5.5" class="svg-pt-outer" />
-          <circle cx="219.6" cy="219.6" r="5" class="svg-pt-inner" />
-          <circle cx="219.6" cy="380.4" r="5" class="svg-pt-inner" />
-          <circle cx="380.4" cy="380.4" r="5" class="svg-pt-inner" />
-          <circle cx="380.4" cy="219.6" r="5" class="svg-pt-inner" />
-          <text x="-35" y="-12" class="svg-lbl">A</text>
-          <text x="618" y="-12" class="svg-lbl">D</text>
-          <text x="618" y="626" class="svg-lbl">C</text>
-          <text x="-35" y="626" class="svg-lbl">B</text>
-          <text x="290" y="55" class="svg-lbl">A′</text>
-          <text x="32" y="308" class="svg-lbl">B′</text>
-          <text x="290" y="560" class="svg-lbl">C′</text>
-          <text x="535" y="308" class="svg-lbl">D′</text>
-          <text x="175" y="215" class="svg-lbl-inner">A″</text>
-          <text x="175" y="405" class="svg-lbl-inner">B″</text>
-          <text x="398" y="405" class="svg-lbl-inner">C″</text>
-          <text x="398" y="215" class="svg-lbl-inner">D″</text>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="-60 -60 720 720" width="310" height="310" class="exam-svg-frame">
+          <!-- 1. 最外層正方形 ABCD (邊長 600) -->
+          <rect x="0" y="0" width="600" height="600" class="geo-box" />
+
+          <!-- 2. 第一層四條圓弧 (圓心分別為 A, B, C, D；半徑 R = 600) -->
+          <!-- 圓心 A(0,0): 經過 B(0,600) 到 D(600,0) -->
+          <path d="M 0 600 A 600 600 0 0 0 600 0" class="geo-arc-l1" />
+          <!-- 圓心 D(600,0): 經過 A(0,0) 到 C(600,600) -->
+          <path d="M 0 0 A 600 600 0 0 0 600 600" class="geo-arc-l1" />
+          <!-- 圓心 C(600,600): 經過 D(600,0) 到 B(0,600) -->
+          <path d="M 600 0 A 600 600 0 0 0 0 600" class="geo-arc-l1" />
+          <!-- 圓心 B(0,600): 經過 C(600,600) 到 A(0,0) -->
+          <path d="M 600 600 A 600 600 0 0 0 0 0" class="geo-arc-l1" />
+
+          <!-- 3. 連接第一層交點的正方形 A'B'C'D' 邊線 -->
+          <polygon points="300,80.385 80.385,300 300,519.615 519.615,300" class="geo-seg-l2" />
+
+          <!-- 4. 第二層四條圓弧 (圓心為 A', B', C', D'；半徑 r = 310.583) -->
+          <!-- 圓心 A'(300, 80.385): 從 B' 畫弧到 D'，凸向下方內部，通過 A'' 與 D'' -->
+          <path d="M 80.385 300 A 310.583 310.583 0 0 0 519.615 300" class="geo-arc-l2" />
+          <!-- 圓心 C'(300, 519.615): 從 B' 畫弧到 D'，凸向上方內部，通過 B'' 與 C'' -->
+          <path d="M 80.385 300 A 310.583 310.583 0 0 1 519.615 300" class="geo-arc-l2" />
+          <!-- 圓心 B'(80.385, 300): 從 A' 畫弧到 C'，凸向右側內部，通過 A'' 與 B'' -->
+          <path d="M 300 80.385 A 310.583 310.583 0 0 1 300 519.615" class="geo-arc-l2" />
+          <!-- 圓心 D'(519.615, 300): 從 A' 畫弧到 C'，凸向左側內部，通過 D'' 與 C'' -->
+          <path d="M 300 80.385 A 310.583 310.583 0 0 0 300 519.615" class="geo-arc-l2" />
+
+          <!-- 5. 頂點與交點圓點 -->
+          <!-- 第一層交點 A', B', C', D' -->
+          <circle cx="300" cy="80.385" r="4.5" class="geo-pt" />
+          <circle cx="80.385" cy="300" r="4.5" class="geo-pt" />
+          <circle cx="300" cy="519.615" r="4.5" class="geo-pt" />
+          <circle cx="519.615" cy="300" r="4.5" class="geo-pt" />
+
+          <!-- 第二層交點 A'', B'', C'', D'' (精確位於兩條第二層藍色圓弧之交會處) -->
+          <circle cx="219.615" cy="219.615" r="4" class="geo-pt-inner" />
+          <circle cx="380.385" cy="219.615" r="4" class="geo-pt-inner" />
+          <circle cx="380.385" cy="380.385" r="4" class="geo-pt-inner" />
+          <circle cx="219.615" cy="380.385" r="4" class="geo-pt-inner" />
+
+          <!-- 6. 標籤文字 (完全符合原卷版面相對方位) -->
+          <text x="-25" y="-10" class="geo-lbl">A</text>
+          <text x="612" y="-10" class="geo-lbl">D</text>
+          <text x="612" y="622" class="geo-lbl">C</text>
+          <text x="-25" y="622" class="geo-lbl">B</text>
+
+          <text x="292" y="60" class="geo-lbl">A′</text>
+          <text x="42" y="308" class="geo-lbl">B′</text>
+          <text x="292" y="555" class="geo-lbl">C′</text>
+          <text x="532" y="308" class="geo-lbl">D′</text>
+
+          <text x="180" y="215" class="geo-lbl-inner">A″</text>
+          <text x="395" y="215" class="geo-lbl-inner">D″</text>
+          <text x="395" y="405" class="geo-lbl-inner">C″</text>
+          <text x="180" y="405" class="geo-lbl-inner">B″</text>
         </svg>
       </div>
     </div>
@@ -447,7 +476,7 @@
         由於大正方形 $ABCD$ 具備繞中心之 $90^\circ$ 旋轉對稱性及四條對稱軸（水平、垂直、兩對角線）。四個交點 $A', B', C', D'$ 亦具備四重旋轉對稱，對角線 $A'C'$ 與 $B'D'$ 相互垂直平分且等長，故 $\square A'B'C'D'$ 必為正方形。<br><br>
 
         <strong>幾何公比計算：</strong><br>
-        設正方形 $ABCD$ 邊長為 $a$。以頂點坐標計算可得 $A'C' = (\sqrt{3}-1)a$。<br>
+        設正方形 $ABCD$ 邊長為 $a$。以頂點坐標計算可得對角線長 $A'C' = (\sqrt{3}-1)a$。<br>
         內層正方形 $A'B'C'D'$ 之邊長 $a_1 = \frac{A'C'}{\sqrt{2}} = \frac{\sqrt{3}-1}{\sqrt{2}}a$。<br>
         面積之縮放公比為：
         $$k = \left(\frac{a_1}{a}\right)^2 = \left(\frac{\sqrt{3}-1}{\sqrt{2}}\right)^2 = \frac{4-2\sqrt{3}}{2} = 2 - \sqrt{3}$$
