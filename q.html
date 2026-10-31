@@ -410,7 +410,7 @@
         <span class="material-symbols-rounded">edit_note</span>普通練習
       </button>
       <button class="segment-btn" onclick="switchMode('kahoot')">
-        <span class="material-symbols-rounded">timer</span>卡胡特限時
+        <span class="material-symbols-rounded">timer</span>Kahoot! 限時
       </button>
     </div>
   </header>
@@ -516,9 +516,11 @@
     <section id="view-kahoot" style="display: none;">
       <div class="quiz-viewport">
         <div id="kahoot-setup" class="quiz-card" style="text-align:center;">
-          <h2 style="margin-bottom:8px;">⚡ 卡胡特 Kahoot! 限時競速</h2>
+          <h2 style="margin-bottom:8px;">⚡ Kahoot! 限時競速</h2>
           <p style="color:var(--md-sys-color-on-surface-variant); margin-bottom:24px;">搶答模式！越快答對分數越高，連續答對累積連勝加成！</p>
+          
           <div style="display:flex; justify-content:center; gap:16px; margin-bottom:24px; flex-wrap:wrap;">
+            <!-- Chapter Selection -->
             <select id="kahoot-chapter-select" class="m3-select">
               <option value="all">全章節隨機挑戰</option>
               <option value="第一章">第一章</option>
@@ -530,6 +532,17 @@
               <option value="第七章">第七章</option>
               <option value="第八章">第八章</option>
             </select>
+
+            <!-- Question Count Selection -->
+            <select id="kahoot-count-select" class="m3-select">
+              <option value="5">挑戰 5 題</option>
+              <option value="10" selected>挑戰 10 題</option>
+              <option value="15">挑戰 15 題</option>
+              <option value="20">挑戰 20 題</option>
+              <option value="all">該範圍全部題目</option>
+            </select>
+
+            <!-- Time Limit Selection -->
             <select id="kahoot-time-limit" class="m3-select">
               <option value="5">限時 5 秒 (超限速)</option>
               <option value="10" selected>限時 10 秒 (標準)</option>
@@ -537,7 +550,8 @@
               <option value="20">限時 20 秒 (寬裕)</option>
             </select>
           </div>
-          <button class="m3-btn m3-btn-primary" onclick="startKahoot()">開始挑戰 (10 題)</button>
+
+          <button class="m3-btn m3-btn-primary" onclick="startKahoot()">開始挑戰</button>
         </div>
 
         <div id="kahoot-quiz" class="quiz-card" style="display: none;">
@@ -896,14 +910,26 @@
     // VIEW 3: Kahoot Mode Logic
     function startKahoot() {
       const chapter = document.getElementById('kahoot-chapter-select').value;
+      const countVal = document.getElementById('kahoot-count-select').value;
       kahootMaxTime = parseInt(document.getElementById('kahoot-time-limit').value, 10) || 10;
-      kahootPool = allQuestions.filter(q => (chapter === 'all' || q.chapter === chapter));
-      if (kahootPool.length === 0) {
+
+      let matched = allQuestions.filter(q => (chapter === 'all' || q.chapter === chapter));
+      if (matched.length === 0) {
         alert('題庫尚未載入成功或該章節無題目！');
         return;
       }
-      kahootPool.sort(() => Math.random() - 0.5);
-      kahootPool = kahootPool.slice(0, 10);
+
+      // Shuffle pool
+      matched.sort(() => Math.random() - 0.5);
+
+      // Determine questions count
+      if (countVal === 'all') {
+        kahootPool = matched;
+      } else {
+        const count = parseInt(countVal, 10) || 10;
+        kahootPool = matched.slice(0, count);
+      }
+
       kahootIndex = 0;
       kahootScore = 0;
       kahootSessionStreak = 0;
