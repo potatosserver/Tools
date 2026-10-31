@@ -28,7 +28,7 @@
       --md-sys-color-error: #ba1a1a;
       --md-sys-color-error-container: #ffdad6;
       --md-sys-color-success: #1b6d2e;
-      --md-sys-color-success-container: #a3f7a9;
+      --md-sys-color-success-container: #c4eed0;
       --font-family: 'Noto Sans TC', 'Roboto', sans-serif;
     }
 
@@ -52,7 +52,9 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+      flex-wrap: wrap;
+      gap: 12px;
     }
     .top-bar-title {
       font-size: 1.25rem;
@@ -91,6 +93,35 @@
       box-shadow: 0 2px 6px rgba(0,0,0,0.15);
     }
 
+    /* Global Stats Panel */
+    .stats-dashboard {
+      background: var(--md-sys-color-surface-container-high);
+      border-radius: 16px;
+      padding: 12px 20px;
+      margin-bottom: 20px;
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      border: 1px solid var(--md-sys-color-outline-variant);
+    }
+    .stat-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-width: 80px;
+    }
+    .stat-value {
+      font-size: 1.35rem;
+      font-weight: 800;
+      color: var(--md-sys-color-primary);
+    }
+    .stat-label {
+      font-size: 0.8rem;
+      color: var(--md-sys-color-on-surface-variant);
+    }
+
     /* Main Container */
     .container {
       max-width: 960px;
@@ -100,7 +131,7 @@
       flex: 1;
     }
 
-    /* Status Notification Banner */
+    /* Notification Banner */
     .status-banner {
       padding: 14px 20px;
       border-radius: 16px;
@@ -124,20 +155,20 @@
       color: #0c3b17;
     }
 
-    /* Common Card */
+    /* Card */
     .m3-card {
       background: var(--md-sys-color-surface-container);
       border-radius: 20px;
-      padding: 20px;
+      padding: 22px;
       margin-bottom: 16px;
       border: 1px solid var(--md-sys-color-outline-variant);
       transition: transform 0.2s, box-shadow 0.2s;
     }
     .m3-card:hover {
-      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.06);
     }
 
-    /* Controls Toolbar */
+    /* Toolbar Controls */
     .toolbar {
       display: flex;
       flex-wrap: wrap;
@@ -161,10 +192,9 @@
     }
     .search-box {
       flex: 1;
-      min-width: 220px;
+      min-width: 200px;
     }
 
-    /* Chips */
     .m3-chip {
       display: inline-flex;
       align-items: center;
@@ -176,35 +206,38 @@
       color: var(--md-sys-color-on-primary-container);
     }
 
-    /* Question Display Card */
-    .q-header {
+    /* Options List inside Review Card */
+    .review-options {
       display: flex;
-      justify-content: space-between;
+      flex-direction: column;
+      gap: 8px;
+      margin: 14px 0;
+    }
+    .review-opt-item {
+      padding: 8px 14px;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      background: var(--md-sys-color-surface);
+      display: flex;
       align-items: center;
-      margin-bottom: 12px;
+      gap: 8px;
     }
-    .q-title {
-      font-size: 1.05rem;
-      font-weight: 600;
-      line-height: 1.6;
-      margin-bottom: 14px;
-    }
-    .q-answer-box {
+    .review-opt-item.is-correct {
       background: #e6f4ea;
       color: #137333;
-      padding: 10px 14px;
-      border-radius: 10px;
-      font-weight: 600;
-      margin-bottom: 8px;
+      font-weight: 700;
+      border: 1.5px solid #34a853;
     }
+
     .q-explanation {
       background: var(--md-sys-color-surface);
       color: var(--md-sys-color-on-surface-variant);
-      padding: 12px 14px;
-      border-radius: 10px;
+      padding: 12px 16px;
+      border-radius: 12px;
       font-size: 0.92rem;
       line-height: 1.6;
       border-left: 4px solid var(--md-sys-color-primary);
+      margin-top: 10px;
     }
 
     /* Practice & Kahoot Viewport */
@@ -233,10 +266,10 @@
       font-weight: 600;
       line-height: 1.6;
       margin-bottom: 24px;
-      min-height: 70px;
+      min-height: 60px;
     }
 
-    /* Standard Options */
+    /* Practice Buttons */
     .options-grid {
       display: flex;
       flex-direction: column;
@@ -272,7 +305,6 @@
       color: var(--md-sys-color-error) !important;
     }
 
-    /* Material Pill Buttons */
     .m3-btn {
       display: inline-flex;
       align-items: center;
@@ -295,8 +327,12 @@
       box-shadow: 0 4px 8px rgba(0,0,0,0.2);
       opacity: 0.92;
     }
+    .m3-btn-text {
+      background: transparent;
+      color: var(--md-sys-color-primary);
+    }
 
-    /* Kahoot Mode Special UI */
+    /* Kahoot Mode Style */
     .kahoot-header {
       width: 100%;
       display: flex;
@@ -348,28 +384,14 @@
       transform: translateY(-2px);
       filter: brightness(1.08);
     }
-    .kahoot-btn:active:not(:disabled) {
-      transform: translateY(1px);
-    }
     .k-red    { background: #e21b3c; }
     .k-blue   { background: #1368ce; }
     .k-yellow { background: #d89e00; }
     .k-green  { background: #26890c; }
-    .kahoot-icon {
-      font-size: 2rem;
-      margin-bottom: 4px;
-    }
+    .kahoot-icon { font-size: 2rem; margin-bottom: 4px; }
 
-    .result-box {
-      text-align: center;
-      padding: 32px 16px;
-    }
-    .result-score {
-      font-size: 3rem;
-      font-weight: 800;
-      color: var(--md-sys-color-primary);
-      margin: 16px 0;
-    }
+    .result-box { text-align: center; padding: 32px 16px; }
+    .result-score { font-size: 3rem; font-weight: 800; color: var(--md-sys-color-primary); margin: 16px 0; }
   </style>
 </head>
 <body>
@@ -396,11 +418,34 @@
   <div class="container">
     <!-- Live Status / Fallback Banner -->
     <div id="status-banner" class="status-banner info">
-      <span id="status-msg">正在連線讀取 questions.json ...</span>
+      <span id="status-msg">正在載入題庫 questions.json ...</span>
       <label class="m3-btn m3-btn-primary" id="manual-file-btn" style="display:none; padding: 6px 16px; font-size:0.85rem;">
         手動選取 questions.json
         <input type="file" id="file-input" accept=".json" style="display:none;" onchange="handleFileSelect(event)">
       </label>
+    </div>
+
+    <!-- Overall Statistics Dashboard -->
+    <div class="stats-dashboard">
+      <div class="stat-item">
+        <span id="stat-total" class="stat-value">0</span>
+        <span class="stat-label">累積作答</span>
+      </div>
+      <div class="stat-item">
+        <span id="stat-correct" class="stat-value" style="color:var(--md-sys-color-success);">0</span>
+        <span class="stat-label">答對題數</span>
+      </div>
+      <div class="stat-item">
+        <span id="stat-rate" class="stat-value">0%</span>
+        <span class="stat-label">總答對率</span>
+      </div>
+      <div class="stat-item">
+        <span id="stat-streak" class="stat-value" style="color:#e21b3c;">0</span>
+        <span class="stat-label">當前連勝</span>
+      </div>
+      <button class="m3-btn m3-btn-text" onclick="resetStats()" title="重設累積答題記錄">
+        <span class="material-symbols-rounded">restart_alt</span>重設統計
+      </button>
     </div>
 
     <!-- VIEW 1: REVIEW MODE -->
@@ -417,7 +462,7 @@
           <option value="第七章">第七章</option>
           <option value="第八章">第八章</option>
         </select>
-        <input type="text" id="review-search" class="m3-input search-box" placeholder="搜尋題目或關鍵字..." oninput="filterQuestions()">
+        <input type="text" id="review-search" class="m3-input search-box" placeholder="搜尋題幹、選項或解析關鍵字..." oninput="filterQuestions()">
         <span id="review-count" class="m3-chip">共 0 題</span>
       </div>
       <div id="questions-list"></div>
@@ -448,7 +493,7 @@
         <div id="practice-quiz" class="quiz-card" style="display: none;">
           <div class="quiz-meta">
             <span id="practice-progress" class="m3-chip">第 1 題</span>
-            <span id="practice-score" class="m3-chip" style="background:#e8def8; color:#4a4458;">得分: 0</span>
+            <span id="practice-session-accuracy" class="m3-chip" style="background:#e8def8; color:#4a4458;">本次正確率: 0%</span>
           </div>
           <div id="practice-question" class="quiz-question-text"></div>
           <div id="practice-options" class="options-grid"></div>
@@ -461,6 +506,7 @@
         <div id="practice-result" class="quiz-card result-box" style="display: none;">
           <h2>練習完成！</h2>
           <div id="practice-final-score" class="result-score">0 / 0</div>
+          <p id="practice-final-rate" style="margin-bottom:24px; font-weight:600; color:var(--md-sys-color-outline);"></p>
           <button class="m3-btn m3-btn-primary" onclick="switchMode('practice')">返回設定</button>
         </div>
       </div>
@@ -491,14 +537,14 @@
               <option value="20">限時 20 秒 (寬裕)</option>
             </select>
           </div>
-          <button class="m3-btn m3-btn-primary" onclick="startKahoot()">開始挑戰</button>
+          <button class="m3-btn m3-btn-primary" onclick="startKahoot()">開始挑戰 (10 題)</button>
         </div>
 
         <div id="kahoot-quiz" class="quiz-card" style="display: none;">
           <div class="kahoot-header">
             <span id="kahoot-progress" class="m3-chip">Q 1/10</span>
-            <span id="kahoot-timer-text" style="font-size:1.5rem; color:#e21b3c;">10</span>
-            <span id="kahoot-streak" class="m3-chip" style="background:#ffd8e4; color:#630b26;">🔥 連勝 x0</span>
+            <span id="kahoot-timer-text" style="font-size:1.6rem; color:#e21b3c;">10</span>
+            <span id="kahoot-session-streak" class="m3-chip" style="background:#ffd8e4; color:#630b26;">🔥 連勝 x0</span>
           </div>
 
           <div class="timer-bar-container">
@@ -508,19 +554,19 @@
           <div id="kahoot-question" class="quiz-question-text" style="text-align:center;"></div>
 
           <div id="kahoot-options" class="kahoot-grid">
-            <button class="kahoot-btn k-red" onclick="answerKahoot(0)">
+            <button class="kahoot-btn k-red" onclick="answerKahoot(1)">
               <span class="kahoot-icon">▲</span>
               <span class="k-label">選項 1</span>
             </button>
-            <button class="kahoot-btn k-blue" onclick="answerKahoot(1)">
+            <button class="kahoot-btn k-blue" onclick="answerKahoot(2)">
               <span class="kahoot-icon">◆</span>
               <span class="k-label">選項 2</span>
             </button>
-            <button class="kahoot-btn k-yellow" onclick="answerKahoot(2)">
+            <button class="kahoot-btn k-yellow" onclick="answerKahoot(3)">
               <span class="kahoot-icon">●</span>
               <span class="k-label">選項 3</span>
             </button>
-            <button class="kahoot-btn k-green" onclick="answerKahoot(3)">
+            <button class="kahoot-btn k-green" onclick="answerKahoot(4)">
               <span class="kahoot-icon">■</span>
               <span class="k-label">選項 4</span>
             </button>
@@ -546,21 +592,28 @@
   <script>
     // Global State
     let allQuestions = [];
+    
+    // Overall Stats
+    let totalAnswered = 0;
+    let totalCorrect = 0;
+    let currentStreak = 0;
+
+    // Practice State
     let practicePool = [];
     let practiceIndex = 0;
-    let practiceCorrect = 0;
+    let practiceSessionCorrect = 0;
 
+    // Kahoot State
     let kahootPool = [];
     let kahootIndex = 0;
     let kahootScore = 0;
-    let kahootStreak = 0;
+    let kahootSessionStreak = 0;
+    let kahootSessionCorrect = 0;
     let kahootTimer = null;
     let kahootMaxTime = 10;
     let kahootTimeRemaining = 10;
-    let kahootCurrentChoices = [];
-    let kahootCorrectAnswerText = '';
 
-    // Web Audio API Synthesizer (Zero External Audio Dependencies)
+    // Web Audio API Synthesizer
     let audioCtx = null;
     function initAudio() {
       if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -590,11 +643,37 @@
         playTone(220, 'sawtooth', 0.2);
         setTimeout(() => playTone(174.61, 'sawtooth', 0.3), 150);
       } else if (type === 'tick') {
-        playTone(880, 'sine', 0.05);
+        playTone(880, 'sine', 0.04);
       }
     }
 
-    // UI Status Helper
+    // Stats Management
+    function recordAnswer(isCorrect) {
+      totalAnswered++;
+      if (isCorrect) {
+        totalCorrect++;
+        currentStreak++;
+      } else {
+        currentStreak = 0;
+      }
+      updateStatsUI();
+    }
+    function updateStatsUI() {
+      document.getElementById('stat-total').innerText = totalAnswered;
+      document.getElementById('stat-correct').innerText = totalCorrect;
+      const rate = totalAnswered > 0 ? Math.round((totalCorrect / totalAnswered) * 100) : 0;
+      document.getElementById('stat-rate').innerText = `${rate}%`;
+      document.getElementById('stat-streak').innerText = currentStreak;
+    }
+    function resetStats() {
+      if (!confirm('確定要歸零所有累積答題統計數據嗎？')) return;
+      totalAnswered = 0;
+      totalCorrect = 0;
+      currentStreak = 0;
+      updateStatsUI();
+    }
+
+    // Status Banner Helper
     function setStatus(text, type = 'info', showManualBtn = false) {
       const banner = document.getElementById('status-banner');
       const msg = document.getElementById('status-msg');
@@ -605,82 +684,65 @@
       banner.style.display = 'flex';
     }
 
-    // Load JSON from File Picker Fallback
+    // File Input Fallback
     function handleFileSelect(e) {
       const file = e.target.files[0];
       if (!file) return;
-      console.log('[題庫系統] 手動選取檔案:', file.name);
       const reader = new FileReader();
       reader.onload = (event) => {
         try {
           const parsed = JSON.parse(event.target.result);
           parseAndLoadData(parsed);
         } catch (err) {
-          console.error('[題庫系統] 手動 JSON 解析失敗:', err);
           setStatus('JSON 格式錯誤，無法解析！', 'error', true);
         }
       };
       reader.readAsText(file);
     }
 
-    // Data Parser (Supports Raw Array or Wrapped Object)
+    // Parse Data Supporting New Schema
     function parseAndLoadData(data) {
       let finalArr = [];
       if (Array.isArray(data)) {
         finalArr = data;
       } else if (data && typeof data === 'object') {
-        if (Array.isArray(data.response)) {
-          finalArr = data.response;
-        } else if (typeof data.response === 'string') {
-          try {
-            finalArr = JSON.parse(data.response);
-          } catch(e) {
-            console.error('[題庫系統] 解析 response 欄位失敗', e);
-          }
+        if (Array.isArray(data.response)) finalArr = data.response;
+        else if (typeof data.response === 'string') {
+          try { finalArr = JSON.parse(data.response); } catch(e) {}
         }
       }
 
       if (!Array.isArray(finalArr) || finalArr.length === 0) {
-        console.error('[題庫系統] 資料無法轉換為題目陣列:', data);
-        setStatus('讀取成功但未發現題目資料，請確認格式！', 'error', true);
+        setStatus('未找到合法的題目資料陣列，請檢查格式！', 'error', true);
         return;
       }
 
       allQuestions = finalArr;
-      console.log(`[題庫系統] 成功載入 ${allQuestions.length} 道題目！`);
-      setStatus(`✓ 成功讀取 <strong>${allQuestions.length}</strong> 題管理學試題！`, 'success', false);
+      setStatus(`✓ 成功載入 <strong>${allQuestions.length}</strong> 道試題！`, 'success', false);
       filterQuestions();
     }
 
-    // Primary Fetch Initiator (Bust cache with timestamp so it definitely appears in F12)
+    // Auto Fetch with Cache-Buster
     function fetchQuestionsFile() {
       const targetUrl = `./questions.json?t=${Date.now()}`;
-      console.log('[題庫系統] 正式發起網路請求:', targetUrl);
-      setStatus(`正在請求檔案：<code>questions.json</code> ...`, 'info', false);
+      setStatus('正在讀取 <code>questions.json</code> ...', 'info', false);
 
       fetch(targetUrl)
-        .then(response => {
-          console.log('[題庫系統] 伺服器回應狀態碼:', response.status);
-          if (!response.ok) {
-            throw new Error(`HTTP 錯誤：${response.status} ${response.statusText}`);
-          }
-          return response.json();
+        .then(res => {
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          return res.json();
         })
-        .then(jsonData => {
-          console.log('[題庫系統] Fetch 成功獲取 JSON 資料');
-          parseAndLoadData(jsonData);
-        })
-        .catch(error => {
-          console.warn('[題庫系統] Fetch 失敗:', error);
-          const isFileProtocol = window.location.protocol === 'file:';
-          let hint = isFileProtocol 
-            ? '偵測到您使用本機瀏覽 (<code>file://</code>)，瀏覽器安全原則會阻擋自動載入。'
-            : `找不到 <code>questions.json</code> (${error.message})。`;
-          setStatus(`${hint} 請點右側按鈕手動載入檔案：`, 'error', true);
+        .then(json => parseAndLoadData(json))
+        .catch(err => {
+          const isFile = window.location.protocol === 'file:';
+          const msg = isFile 
+            ? '偵測到使用 <code>file://</code> 開啟，瀏覽器已阻擋自動載入。'
+            : `找不到 questions.json (${err.message})。`;
+          setStatus(`${msg} 請點右側按鈕手動載入檔案：`, 'error', true);
         });
     }
 
-    // Auto Run on Startup (Avoid missing DOMContentLoaded)
+    // Run on startup
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', fetchQuestionsFile);
     } else {
@@ -709,21 +771,7 @@
       }
     }
 
-    // Smart 4-Option Generator
-    function buildChoices(currentQ, pool) {
-      const correct = currentQ.answer;
-      const distractors = pool
-        .map(q => q.answer)
-        .filter(ans => ans && ans !== correct);
-
-      const uniqueDistractors = [...new Set(distractors)];
-      uniqueDistractors.sort(() => Math.random() - 0.5);
-      const chosen = uniqueDistractors.slice(0, 3);
-      const choices = [correct, ...chosen];
-      return choices.sort(() => Math.random() - 0.5);
-    }
-
-    // VIEW 1: Review Mode Filter
+    // VIEW 1: Review Mode Logic
     function filterQuestions() {
       const chapter = document.getElementById('review-chapter-filter').value;
       const search = document.getElementById('review-search').value.toLowerCase().trim();
@@ -732,8 +780,8 @@
         const matchChapter = (chapter === 'all') || (q.chapter === chapter);
         const matchSearch = !search || 
           (q.question && q.question.toLowerCase().includes(search)) ||
-          (q.answer && q.answer.toLowerCase().includes(search)) ||
-          (q.explanation && q.explanation.toLowerCase().includes(search));
+          (q.explanation && q.explanation.toLowerCase().includes(search)) ||
+          (Array.isArray(q.options) && q.options.some(opt => opt.toLowerCase().includes(search)));
         return matchChapter && matchSearch;
       });
 
@@ -742,6 +790,17 @@
       container.innerHTML = '';
 
       filtered.forEach(q => {
+        const correctIndex = parseInt(q.answer, 10);
+        let optionsHtml = '';
+        if (Array.isArray(q.options)) {
+          optionsHtml = '<div class="review-options">' + q.options.map((opt, i) => {
+            const isCorrect = (i + 1) === correctIndex;
+            return `<div class="review-opt-item ${isCorrect ? 'is-correct' : ''}">
+              <span>(${i + 1})</span> <span>${opt}</span> ${isCorrect ? '<span>✓ 正解</span>' : ''}
+            </div>`;
+          }).join('') + '</div>';
+        }
+
         const card = document.createElement('div');
         card.className = 'm3-card';
         card.innerHTML = `
@@ -749,14 +808,14 @@
             <span class="m3-chip">${q.chapter || ''} ${q.id || ''}</span>
           </div>
           <div class="q-title">${q.question}</div>
-          <div class="q-answer-box">✓ 答案：${q.answer}</div>
+          ${optionsHtml}
           <div class="q-explanation">💡 <strong>AI 解析：</strong>${q.explanation || '暫無解析'}</div>
         `;
         container.appendChild(card);
       });
     }
 
-    // VIEW 2: Practice Mode
+    // VIEW 2: Practice Mode Logic
     function startPractice() {
       const chapter = document.getElementById('practice-chapter-select').value;
       practicePool = allQuestions.filter(q => (chapter === 'all' || q.chapter === chapter));
@@ -766,7 +825,7 @@
       }
       practicePool.sort(() => Math.random() - 0.5);
       practiceIndex = 0;
-      practiceCorrect = 0;
+      practiceSessionCorrect = 0;
 
       document.getElementById('practice-setup').style.display = 'none';
       document.getElementById('practice-quiz').style.display = 'block';
@@ -775,37 +834,45 @@
 
     function renderPracticeCard() {
       const current = practicePool[practiceIndex];
+      const correctIndex = parseInt(current.answer, 10);
+
       document.getElementById('practice-progress').innerText = `第 ${practiceIndex + 1} / ${practicePool.length} 題`;
-      document.getElementById('practice-score').innerText = `正解: ${practiceCorrect}/${practiceIndex}`;
+      const rate = practiceIndex > 0 ? Math.round((practiceSessionCorrect / practiceIndex) * 100) : 0;
+      document.getElementById('practice-session-accuracy').innerText = `本次正確率: ${rate}% (${practiceSessionCorrect}/${practiceIndex})`;
       document.getElementById('practice-question').innerText = current.question;
       document.getElementById('practice-feedback').style.display = 'none';
 
-      const choices = buildChoices(current, allQuestions);
       const optContainer = document.getElementById('practice-options');
       optContainer.innerHTML = '';
 
-      choices.forEach(ch => {
-        const btn = document.createElement('button');
-        btn.className = 'option-btn';
-        btn.innerText = ch;
-        btn.onclick = () => selectPracticeAnswer(btn, ch, current.answer, current.explanation);
-        optContainer.appendChild(btn);
-      });
+      if (Array.isArray(current.options)) {
+        current.options.forEach((optText, idx) => {
+          const optNumber = idx + 1;
+          const btn = document.createElement('button');
+          btn.className = 'option-btn';
+          btn.innerText = `(${optNumber}) ${optText}`;
+          btn.onclick = () => selectPracticeAnswer(btn, optNumber, correctIndex, current.explanation);
+          optContainer.appendChild(btn);
+        });
+      }
     }
 
-    function selectPracticeAnswer(selectedBtn, choice, correct, explanation) {
+    function selectPracticeAnswer(selectedBtn, chosenNum, correctNum, explanation) {
       const allBtns = document.querySelectorAll('.option-btn');
       allBtns.forEach(b => b.disabled = true);
 
-      if (choice === correct) {
+      const isCorrect = (chosenNum === correctNum);
+      recordAnswer(isCorrect);
+
+      if (isCorrect) {
         selectedBtn.classList.add('correct');
-        practiceCorrect++;
+        practiceSessionCorrect++;
         playSound('correct');
       } else {
         selectedBtn.classList.add('wrong');
         playSound('wrong');
-        allBtns.forEach(b => {
-          if (b.innerText === correct) b.classList.add('correct');
+        allBtns.forEach((b, idx) => {
+          if ((idx + 1) === correctNum) b.classList.add('correct');
         });
       }
 
@@ -820,11 +887,13 @@
       } else {
         document.getElementById('practice-quiz').style.display = 'none';
         document.getElementById('practice-result').style.display = 'block';
-        document.getElementById('practice-final-score').innerText = `${practiceCorrect} / ${practicePool.length}`;
+        document.getElementById('practice-final-score').innerText = `${practiceSessionCorrect} / ${practicePool.length}`;
+        const finalRate = Math.round((practiceSessionCorrect / practicePool.length) * 100);
+        document.getElementById('practice-final-rate').innerText = `本次測驗總答對率：${finalRate}%`;
       }
     }
 
-    // VIEW 3: Kahoot Mode
+    // VIEW 3: Kahoot Mode Logic
     function startKahoot() {
       const chapter = document.getElementById('kahoot-chapter-select').value;
       kahootMaxTime = parseInt(document.getElementById('kahoot-time-limit').value, 10) || 10;
@@ -837,7 +906,8 @@
       kahootPool = kahootPool.slice(0, 10);
       kahootIndex = 0;
       kahootScore = 0;
-      kahootStreak = 0;
+      kahootSessionStreak = 0;
+      kahootSessionCorrect = 0;
 
       document.getElementById('kahoot-setup').style.display = 'none';
       document.getElementById('kahoot-quiz').style.display = 'block';
@@ -847,11 +917,9 @@
     function renderKahootCard() {
       clearInterval(kahootTimer);
       const current = kahootPool[kahootIndex];
-      kahootCorrectAnswerText = current.answer;
-      kahootCurrentChoices = buildChoices(current, allQuestions);
 
       document.getElementById('kahoot-progress').innerText = `Q ${kahootIndex + 1} / ${kahootPool.length}`;
-      document.getElementById('kahoot-streak').innerText = `🔥 連勝 x${kahootStreak}`;
+      document.getElementById('kahoot-session-streak').innerText = `🔥 連勝 x${kahootSessionStreak}`;
       document.getElementById('kahoot-question').innerText = current.question;
       document.getElementById('kahoot-feedback').style.display = 'none';
       document.getElementById('kahoot-options').style.display = 'grid';
@@ -860,23 +928,24 @@
       btns.forEach((btn, idx) => {
         btn.disabled = false;
         btn.style.opacity = '1';
-        btn.querySelector('.k-label').innerText = kahootCurrentChoices[idx];
+        const optText = (current.options && current.options[idx]) ? current.options[idx] : `選項 ${idx + 1}`;
+        btn.querySelector('.k-label').innerText = optText;
       });
 
       kahootTimeRemaining = kahootMaxTime;
-      updateTimerUI();
+      updateKahootTimerUI();
       kahootTimer = setInterval(() => {
         kahootTimeRemaining -= 0.1;
         if (kahootTimeRemaining <= 0) {
           clearInterval(kahootTimer);
           timeOutKahoot();
         } else {
-          updateTimerUI();
+          updateKahootTimerUI();
         }
       }, 100);
     }
 
-    function updateTimerUI() {
+    function updateKahootTimerUI() {
       const pct = Math.max(0, (kahootTimeRemaining / kahootMaxTime) * 100);
       document.getElementById('timer-bar').style.width = pct + '%';
       const secCeil = Math.ceil(kahootTimeRemaining);
@@ -886,24 +955,29 @@
       }
     }
 
-    function answerKahoot(choiceIdx) {
+    function answerKahoot(chosenNum) {
       clearInterval(kahootTimer);
-      const selected = kahootCurrentChoices[choiceIdx];
-      const isCorrect = (selected === kahootCorrectAnswerText);
+      const current = kahootPool[kahootIndex];
+      const correctNum = parseInt(current.answer, 10);
+      const isCorrect = (chosenNum === correctNum);
+
+      recordAnswer(isCorrect);
+
       const btns = document.querySelectorAll('.kahoot-btn');
       btns.forEach(b => b.disabled = true);
 
       const statusEl = document.getElementById('kahoot-feedback-status');
       if (isCorrect) {
-        kahootStreak++;
+        kahootSessionCorrect++;
+        kahootSessionStreak++;
         const timeFactor = Math.round((kahootTimeRemaining / kahootMaxTime) * 500);
-        const streakBonus = kahootStreak * 50;
+        const streakBonus = kahootSessionStreak * 50;
         const pts = 500 + timeFactor + streakBonus;
         kahootScore += pts;
         statusEl.innerHTML = `<span style="color:#26890c;">✓ 太棒了！+${pts} 分</span>`;
         playSound('correct');
       } else {
-        kahootStreak = 0;
+        kahootSessionStreak = 0;
         statusEl.innerHTML = `<span style="color:#e21b3c;">✕ 答錯了！</span>`;
         playSound('wrong');
       }
@@ -912,9 +986,10 @@
     }
 
     function timeOutKahoot() {
+      recordAnswer(false);
       const btns = document.querySelectorAll('.kahoot-btn');
       btns.forEach(b => b.disabled = true);
-      kahootStreak = 0;
+      kahootSessionStreak = 0;
       playSound('wrong');
       const statusEl = document.getElementById('kahoot-feedback-status');
       statusEl.innerHTML = `<span style="color:#e21b3c;">⏰ 時間到！</span>`;
@@ -923,8 +998,11 @@
 
     function endKahootQuestionUI() {
       const current = kahootPool[kahootIndex];
+      const correctNum = parseInt(current.answer, 10);
+      const correctText = current.options ? current.options[correctNum - 1] : `選項 (${correctNum})`;
+
       document.getElementById('kahoot-exp-box').innerHTML = `
-        <div style="font-weight:700; color:#137333; margin-bottom:4px;">正確答案：${current.answer}</div>
+        <div style="font-weight:700; color:#137333; margin-bottom:6px;">正解：(${correctNum}) ${correctText}</div>
         <div>💡 <strong>解析：</strong>${current.explanation || '暫無解析'}</div>
       `;
       document.getElementById('kahoot-feedback').style.display = 'block';
@@ -938,7 +1016,8 @@
         document.getElementById('kahoot-quiz').style.display = 'none';
         document.getElementById('kahoot-result').style.display = 'block';
         document.getElementById('kahoot-final-points').innerText = `${kahootScore} PTS`;
-        document.getElementById('kahoot-accuracy').innerText = `共完成 ${kahootPool.length} 題競速作答！`;
+        const rate = Math.round((kahootSessionCorrect / kahootPool.length) * 100);
+        document.getElementById('kahoot-accuracy').innerText = `本次答對 ${kahootSessionCorrect} / ${kahootPool.length} 題 (正確率 ${rate}%)`;
       }
     }
   </script>
